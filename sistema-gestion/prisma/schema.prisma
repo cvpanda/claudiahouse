@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  contact     String?
+  phone       String?
+  email       String?
+  address     String?
+  cuit        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  products    Product[]
+  
+  @@map("suppliers")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  products    Product[]
+  
+  @@map("categories")
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  sku               String?  @unique
+  barcode           String?  @unique
+  cost              Float    @default(0)
+  wholesalePrice    Float    @default(0)
+  retailPrice       Float    @default(0)
+  stock             Int      @default(0)
+  minStock          Int      @default(0)
+  maxStock          Int?
+  unit              String   @default("unit")
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  supplierId        String
+  supplier          Supplier @relation(fields: [supplierId], references: [id])
+  
+  categoryId        String
+  category          Category @relation(fields: [categoryId], references: [id])
+  
+  saleItems         SaleItem[]
+  stockMovements    StockMovement[]
+  
+  @@map("products")
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  cuit        String?
+  customerType String  @default("retail")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  sales       Sale[]
+  
+  @@map("customers")
+}
+
+model Sale {
+  id            String   @id @default(cuid())
+  saleNumber    String   @unique
+  total         Float
+  subtotal      Float
+  tax           Float    @default(0)
+  discount      Float    @default(0)
+  paymentMethod String   @default("cash")
+  status        String   @default("completed")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  customerId    String?
+  customer      Customer? @relation(fields: [customerId], references: [id])
+  
+  saleItems     SaleItem[]
+  
+  @@map("sales")
+}
+
+model SaleItem {
+  id          String @id @default(cuid())
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+  
+  saleId      String
+  sale        Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  
+  @@map("sale_items")
+}
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  type        String
+  quantity    Int
+  reason      String?
+  reference   String?
+  createdAt   DateTime @default(now())
+  
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  
+  @@map("stock_movements")
+}
