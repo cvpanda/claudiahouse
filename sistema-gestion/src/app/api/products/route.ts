@@ -58,33 +58,40 @@ export async function GET(request: NextRequest) {
       where.categoryId = categoryId;
     }
     if (lowStock) {
-      // Para productos con stock bajo - necesitamos usar SQL raw para comparar stock <= minStock
-      const lowStockProducts = await prisma.$queryRaw`
-        SELECT p.*, s.name as supplier_name, c.name as category_name
-        FROM Product p
-        LEFT JOIN Supplier s ON p.supplierId = s.id
-        LEFT JOIN Category c ON p.categoryId = c.id
-        WHERE p.isActive = true AND p.stock <= p.minStock
-        ORDER BY ${orderBy} ${order}
-        LIMIT ${limit} OFFSET ${skip}
-      `;
+      // Para productos con stock bajo - usamos Prisma ORM sin SQL raw
+      // Primero obtenemos todos los productos activos
+      const allActiveProducts = await prisma.product.findMany({
+        where: { isActive: true },
+        include: {
+          supplier: {
+            select: { name: true },
+          },
+          category: {
+            select: { name: true },
+          },
+        },
+      });
 
-      const totalLowStockResult = await prisma.$queryRaw`
-        SELECT COUNT(*) as count
-        FROM Product p
-        WHERE p.isActive = true AND p.stock <= p.minStock
-      `;
+      // Filtramos los que tienen stock <= minStock
+      const lowStockProducts = allActiveProducts.filter(
+        (product) => product.stock <= product.minStock
+      );
 
-      const total = (totalLowStockResult as any)[0].count;
+      // Aplicamos paginación manualmente
+      const startIndex = skip;
+      const endIndex = skip + limit;
+      const paginatedProducts = lowStockProducts.slice(startIndex, endIndex);
+
+      const total = lowStockProducts.length;
 
       console.log(`Found ${total} low stock products`);
       return NextResponse.json({
-        data: lowStockProducts,
+        data: paginatedProducts,
         pagination: {
           page,
           limit,
-          total: Number(total),
-          pages: Math.ceil(Number(total) / limit),
+          total: total,
+          pages: Math.ceil(total / limit),
         },
       });
     }

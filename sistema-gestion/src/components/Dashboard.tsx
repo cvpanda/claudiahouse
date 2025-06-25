@@ -51,16 +51,19 @@ export default function Dashboard() {
       </Layout>
     );
   }
-
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Resumen de tu negocio</p>
+      <div className="space-y-4 md:space-y-6">
+        <div className="px-4 md:px-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            Dashboard
+          </h1>
+          <p className="text-sm md:text-base text-gray-600">
+            Resumen de tu negocio
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 px-4 md:px-0">
           <StatsCard
             title="Total Productos"
             value={stats.totalProducts}
@@ -100,16 +103,16 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 px-4 md:px-0">
           <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
               Productos con Stock Bajo
             </h3>
             <LowStockAlert />
           </div>
 
           <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
               Ventas Recientes
             </h3>
             <RecentSales />
@@ -133,7 +136,7 @@ function LowStockAlert() {
       const response = await fetch("/api/products?lowStock=true&limit=5");
       if (response.ok) {
         const data = await response.json();
-        setLowStockProducts(data.products || []);
+        setLowStockProducts(data.data || []);
       }
     } catch (error) {
       console.error("Error fetching low stock products:", error);

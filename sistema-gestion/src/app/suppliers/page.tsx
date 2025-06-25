@@ -11,6 +11,8 @@ import {
   Phone,
   Mail,
   MapPin,
+  Globe,
+  Flag,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 
@@ -22,6 +24,8 @@ interface Supplier {
   email?: string;
   address?: string;
   cuit?: string;
+  country?: string;
+  website?: string;
   createdAt: string;
   products?: { id: string; name: string }[];
 }
@@ -39,6 +43,8 @@ export default function SuppliersPage() {
     email: "",
     address: "",
     cuit: "",
+    country: "Argentina",
+    website: "",
   });
 
   useEffect(() => {
@@ -93,6 +99,8 @@ export default function SuppliersPage() {
           email: "",
           address: "",
           cuit: "",
+          country: "Argentina",
+          website: "",
         });
         fetchSuppliers();
       } else {
@@ -106,7 +114,6 @@ export default function SuppliersPage() {
       setLoading(false);
     }
   };
-
   const handleEdit = (supplier: Supplier) => {
     setEditingSupplier(supplier);
     setFormData({
@@ -116,6 +123,8 @@ export default function SuppliersPage() {
       email: supplier.email || "",
       address: supplier.address || "",
       cuit: supplier.cuit || "",
+      country: supplier.country || "Argentina",
+      website: supplier.website || "",
     });
     setShowModal(true);
   };
@@ -142,7 +151,6 @@ export default function SuppliersPage() {
       alert("Error al eliminar el proveedor");
     }
   };
-
   const openCreateModal = () => {
     setEditingSupplier(null);
     setFormData({
@@ -152,6 +160,8 @@ export default function SuppliersPage() {
       email: "",
       address: "",
       cuit: "",
+      country: "Argentina",
+      website: "",
     });
     setShowModal(true);
   };
@@ -261,28 +271,43 @@ export default function SuppliersPage() {
                         </span>
                       </div>
                     )}
-
                     {supplier.phone && (
                       <div className="flex items-center text-sm text-gray-600">
                         <Phone className="w-4 h-4 mr-2" />
                         {supplier.phone}
                       </div>
                     )}
-
                     {supplier.email && (
                       <div className="flex items-center text-sm text-gray-600">
                         <Mail className="w-4 h-4 mr-2" />
                         {supplier.email}
                       </div>
-                    )}
-
+                    )}{" "}
                     {supplier.address && (
                       <div className="flex items-center text-sm text-gray-600">
                         <MapPin className="w-4 h-4 mr-2" />
                         {supplier.address}
                       </div>
                     )}
-
+                    {supplier.country && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Flag className="w-4 h-4 mr-2" />
+                        {supplier.country}
+                      </div>
+                    )}
+                    {supplier.website && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Globe className="w-4 h-4 mr-2" />
+                        <a
+                          href={supplier.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          {supplier.website}
+                        </a>
+                      </div>
+                    )}
                     <div className="flex items-center text-sm text-gray-500 pt-2 border-t">
                       <Package className="w-4 h-4 mr-1" />
                       {supplier.products?.length || 0} productos
@@ -428,6 +453,36 @@ export default function SuppliersPage() {
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Dirección completa"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    País
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.country}
+                    onChange={(e) =>
+                      setFormData({ ...formData, country: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="País del proveedor"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sitio Web
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.website}
+                    onChange={(e) =>
+                      setFormData({ ...formData, website: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://www.proveedor.com"
                   />
                 </div>
 

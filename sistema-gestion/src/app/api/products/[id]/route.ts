@@ -7,22 +7,25 @@ const productUpdateSchema = z.object({
   description: z.string().optional(),
   sku: z.string().optional(),
   barcode: z.string().optional(),
-  cost: z.coerce.number().min(0, "El costo debe ser mayor o igual a 0").optional(),
-  wholesalePrice: z
-    .coerce.number()
+  cost: z.coerce
+    .number()
+    .min(0, "El costo debe ser mayor o igual a 0")
+    .optional(),
+  wholesalePrice: z.coerce
+    .number()
     .min(0, "El precio mayorista debe ser mayor o igual a 0")
     .optional(),
-  retailPrice: z
-    .coerce.number()
+  retailPrice: z.coerce
+    .number()
     .min(0, "El precio minorista debe ser mayor o igual a 0")
     .optional(),
-  stock: z
-    .coerce.number()
+  stock: z.coerce
+    .number()
     .int()
     .min(0, "El stock debe ser mayor o igual a 0")
     .optional(),
-  minStock: z
-    .coerce.number()
+  minStock: z.coerce
+    .number()
     .int()
     .min(0, "El stock mínimo debe ser mayor o igual a 0")
     .optional(),
