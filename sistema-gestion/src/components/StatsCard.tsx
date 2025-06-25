@@ -30,16 +30,19 @@ export default function StatsCard({
   const displayValue = isCurrency
     ? formatCurrency(value)
     : value.toLocaleString("es-AR");
-
   return (
     <div className="card hover:shadow-lg transition-shadow duration-200">
       <div className="flex items-center">
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-          <Icon className="h-6 w-6" />
+        <div className={`p-2 md:p-3 rounded-lg ${colorClasses[color]}`}>
+          <Icon className="h-4 w-4 md:h-6 md:w-6" />
         </div>
-        <div className="ml-4">
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{displayValue}</p>
+        <div className="ml-2 md:ml-4 min-w-0 flex-1">
+          <p className="text-xs md:text-sm font-medium text-gray-600 truncate">
+            {title}
+          </p>
+          <p className="text-lg md:text-2xl font-bold text-gray-900 truncate">
+            {displayValue}
+          </p>
         </div>
       </div>
     </div>

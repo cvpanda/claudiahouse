@@ -41,7 +41,8 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { name, contact, phone, email, address, cuit } = body;
+    const { name, contact, phone, email, address, cuit, country, website } =
+      body;
 
     if (!name) {
       return NextResponse.json(
@@ -59,6 +60,8 @@ export async function PUT(
         email: email || null,
         address: address || null,
         cuit: cuit || null,
+        country: country || "Argentina",
+        website: website || null,
       },
     });
 
