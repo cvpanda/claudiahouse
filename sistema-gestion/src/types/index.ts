@@ -11,6 +11,7 @@ export interface Product {
   minStock: number;
   maxStock?: number;
   unit: string;
+  imageUrl?: string;
   isActive: boolean;
   supplierId: string;
   categoryId: string;

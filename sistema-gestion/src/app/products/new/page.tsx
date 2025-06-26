@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import Layout from "@/components/Layout";
+import ImagePreview from "@/components/ImagePreview";
 import Link from "next/link";
 
 interface Category {
@@ -33,6 +34,7 @@ export default function NewProductPage() {
     minStock: "",
     maxStock: "",
     unit: "unidad",
+    imageUrl: "",
     supplierId: "",
     categoryId: "",
   });
@@ -186,6 +188,39 @@ export default function NewProductPage() {
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
+              </div>
+
+              <div className="md:col-span-2">
+                <label
+                  htmlFor="imageUrl"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  URL de Imagen
+                </label>
+                <input
+                  type="url"
+                  id="imageUrl"
+                  name="imageUrl"
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  value={formData.imageUrl}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Puedes usar URLs de Google Drive, Dropbox o cualquier servicio
+                  de imágenes. Las URLs de Google Drive se convertirán
+                  automáticamente.
+                </p>
+                {formData.imageUrl && (
+                  <div className="mt-2">
+                    <ImagePreview
+                      url={formData.imageUrl}
+                      alt="Vista previa del producto"
+                      className="h-32 w-32 object-cover rounded-md border"
+                      showInstructions={true}
+                    />
+                  </div>
+                )}
               </div>
 
               <div>
