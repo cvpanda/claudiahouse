@@ -31,6 +31,7 @@ const productUpdateSchema = z.object({
     .optional(),
   maxStock: z.coerce.number().int().nullable().optional(),
   unit: z.string().optional(),
+  imageUrl: z.string().url().optional().or(z.literal("")),
   supplierId: z.string().optional(),
   categoryId: z.string().optional(),
   isActive: z.boolean().optional(),

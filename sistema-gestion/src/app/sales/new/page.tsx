@@ -78,18 +78,29 @@ export default function NewSalePage() {
     fetchCustomers();
   }, []);
 
+  // Función helper para filtrar productos de forma segura
+  const filterProducts = (searchTerm: string, productList: Product[]) => {
+    if (!searchTerm.trim()) return [];
+
+    const search = searchTerm.toLowerCase().trim();
+
+    return productList.filter((product) => {
+      // Buscar en el nombre (siempre existe)
+      const nameMatch = product.name.toLowerCase().includes(search);
+
+      // Buscar en SKU (puede ser null/undefined)
+      const skuMatch = product.sku?.toLowerCase().includes(search) || false;
+
+      // Buscar en código de barras (puede ser null/undefined)
+      const barcodeMatch =
+        product.barcode?.toLowerCase().includes(search) || false;
+
+      return nameMatch || skuMatch || barcodeMatch;
+    });
+  };
+
   useEffect(() => {
-    if (productSearch) {
-      const filtered = products.filter(
-        (product) =>
-          product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-          product.sku.toLowerCase().includes(productSearch.toLowerCase()) ||
-          product.barcode.includes(productSearch)
-      );
-      setFilteredProducts(filtered);
-    } else {
-      setFilteredProducts([]);
-    }
+    setFilteredProducts(filterProducts(productSearch, products));
   }, [productSearch, products]);
 
   const fetchProducts = async () => {
@@ -290,8 +301,8 @@ export default function NewSalePage() {
                             <div>
                               <p className="font-medium">{product.name}</p>
                               <p className="text-sm text-gray-500">
-                                SKU: {product.sku} | Stock: {product.stock}{" "}
-                                {product.unit}
+                                SKU: {product.sku || "N/A"} | Stock:{" "}
+                                {product.stock} {product.unit}
                               </p>
                               {product.category && (
                                 <p className="text-xs text-gray-400">
@@ -353,7 +364,7 @@ export default function NewSalePage() {
                           <div className="flex-1">
                             <p className="font-medium">{item.product.name}</p>
                             <p className="text-sm text-gray-500">
-                              SKU: {item.product.sku} | Stock:{" "}
+                              SKU: {item.product.sku || "N/A"} | Stock:{" "}
                               {item.product.stock} {item.product.unit}
                             </p>
                           </div>

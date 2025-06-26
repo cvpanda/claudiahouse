@@ -21,6 +21,7 @@ const productSchema = z.object({
     .min(0, "El stock mínimo debe ser mayor o igual a 0"),
   maxStock: z.coerce.number().int().nullable().optional(),
   unit: z.string().default("unidad"),
+  imageUrl: z.string().url().optional().or(z.literal("")),
   supplierId: z.string().min(1, "El proveedor es requerido"),
   categoryId: z.string().min(1, "La categoría es requerida"),
 });
@@ -178,6 +179,7 @@ export async function POST(request: NextRequest) {
         minStock: validatedData.minStock,
         maxStock: validatedData.maxStock || null,
         unit: validatedData.unit,
+        imageUrl: validatedData.imageUrl || null,
         supplierId: validatedData.supplierId,
         categoryId: validatedData.categoryId,
         isActive: true,

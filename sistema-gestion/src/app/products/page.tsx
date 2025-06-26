@@ -10,6 +10,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import Layout from "@/components/Layout";
+import ImagePreview from "@/components/ImagePreview";
 import Link from "next/link";
 
 interface Product {
@@ -23,6 +24,7 @@ interface Product {
   stock: number;
   minStock: number;
   unit: string;
+  imageUrl?: string;
   isActive: boolean;
   supplier: {
     id: string;
@@ -244,15 +246,27 @@ export default function ProductsPage() {
                 {filteredProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {product.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          SKU: {product.sku || "N/A"}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {product.supplier.name}
+                      <div className="flex items-center">
+                        {product.imageUrl && (
+                          <div className="flex-shrink-0 h-12 w-12 mr-4">
+                            <ImagePreview
+                              url={product.imageUrl}
+                              alt={product.name}
+                              className="h-12 w-12 rounded-md object-cover border"
+                              showInstructions={false}
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {product.name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            SKU: {product.sku || "N/A"}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {product.supplier.name}
+                          </div>
                         </div>
                       </div>
                     </td>

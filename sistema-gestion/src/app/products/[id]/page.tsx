@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save, Package } from "lucide-react";
 import Layout from "@/components/Layout";
+import ImagePreview from "@/components/ImagePreview";
 import Link from "next/link";
 
 interface Category {
@@ -29,6 +30,7 @@ interface Product {
   minStock: number;
   maxStock?: number;
   unit: string;
+  imageUrl?: string;
   isActive: boolean;
   supplierId: string;
   categoryId: string;
@@ -56,6 +58,7 @@ export default function EditProductPage() {
     minStock: "",
     maxStock: "",
     unit: "unidad",
+    imageUrl: "",
     supplierId: "",
     categoryId: "",
     isActive: true,
@@ -87,6 +90,7 @@ export default function EditProductPage() {
           minStock: productData.minStock.toString(),
           maxStock: productData.maxStock?.toString() || "",
           unit: productData.unit,
+          imageUrl: productData.imageUrl || "",
           supplierId: productData.supplierId,
           categoryId: productData.categoryId,
           isActive: productData.isActive,
@@ -230,6 +234,23 @@ export default function EditProductPage() {
           </p>
         </div>
 
+        {/* Product Image Preview */}
+        {product.imageUrl && (
+          <div className="bg-white shadow-sm rounded-lg border p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">
+              Imagen del Producto
+            </h2>
+            <div className="flex justify-center">
+              <ImagePreview
+                url={product.imageUrl}
+                alt={product.name}
+                className="max-w-md max-h-64 object-cover rounded-lg border shadow-sm"
+                showInstructions={true}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white shadow-sm rounded-lg border p-6">
@@ -271,6 +292,38 @@ export default function EditProductPage() {
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
+              </div>
+
+              <div className="md:col-span-2">
+                <label
+                  htmlFor="imageUrl"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  URL de Imagen
+                </label>
+                <input
+                  type="url"
+                  id="imageUrl"
+                  name="imageUrl"
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  value={formData.imageUrl}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Puedes usar URLs de Google Drive, Dropbox o cualquier servicio
+                  de imágenes
+                </p>
+                {formData.imageUrl && (
+                  <div className="mt-2">
+                    <ImagePreview
+                      url={formData.imageUrl}
+                      alt="Vista previa"
+                      className="h-32 w-32 object-cover rounded-md border"
+                      showInstructions={true}
+                    />
+                  </div>
+                )}
               </div>
 
               <div>
