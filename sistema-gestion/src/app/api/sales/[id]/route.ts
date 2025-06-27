@@ -153,10 +153,12 @@ export async function PUT(
 
         // Prepare update data excluding items
         const { items, ...saleUpdateData } = validatedData;
-        
+
         // Filter out undefined values to avoid Prisma issues
         const cleanUpdateData = Object.fromEntries(
-          Object.entries(saleUpdateData).filter(([_, value]) => value !== undefined)
+          Object.entries(saleUpdateData).filter(
+            ([_, value]) => value !== undefined
+          )
         );
 
         // Actualizar la venta
@@ -201,12 +203,14 @@ export async function PUT(
         // Solo actualizar campos de la venta (sin items)
         // Prepare update data excluding items
         const { items, ...saleUpdateData } = validatedData;
-        
+
         // Filter out undefined values to avoid Prisma issues
         const cleanUpdateData = Object.fromEntries(
-          Object.entries(saleUpdateData).filter(([_, value]) => value !== undefined)
+          Object.entries(saleUpdateData).filter(
+            ([_, value]) => value !== undefined
+          )
         );
-        
+
         const updatedSale = await tx.sale.update({
           where: { id: saleId },
           data: {
