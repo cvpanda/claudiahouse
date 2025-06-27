@@ -329,7 +329,7 @@ export default function SaleDetailPage() {
       };
 
       // Debug: Log the data being sent
-      console.log('Sending update data:', updateData);
+      console.log("Sending update data:", updateData);
 
       const response = await fetch(`/api/sales/${params.id}`, {
         method: "PUT",
@@ -349,10 +349,10 @@ export default function SaleDetailPage() {
         setTimeout(() => setSuccessMessage(null), 5000);
       } else {
         const errorData = await response.json();
-        console.error('Error response:', errorData);
+        console.error("Error response:", errorData);
         setError(`Error: ${errorData.error || "Error al actualizar la venta"}`);
         if (errorData.details) {
-          console.error('Validation details:', errorData.details);
+          console.error("Validation details:", errorData.details);
         }
         setTimeout(() => setError(null), 5000);
       }
@@ -589,7 +589,9 @@ export default function SaleDetailPage() {
               <div className="ml-3">
                 <p className="text-sm font-medium text-red-800">{error}</p>
                 <button
-                  onClick={() => console.log('Check browser console for more details')}
+                  onClick={() =>
+                    console.log("Check browser console for more details")
+                  }
                   className="text-xs text-red-600 underline mt-1"
                 >
                   Ver detalles en consola
