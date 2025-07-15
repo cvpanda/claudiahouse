@@ -1,9 +1,13 @@
 {
   "dependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.10",
-    "bcryptjs": "^3.0.2",
-    "jsonwebtoken": "^9.0.2",
-    "next-auth": "^4.24.11"
+    "@types/bcryptjs": "*",
+    "@types/jsonwebtoken": "*",
+    "bcryptjs": "*",
+    "jsonwebtoken": "*",
+    "next-auth": "*"
+  },
+  "devDependencies": {
+    "eslint": "*",
+    "eslint-config-next": "*"
   }
 }
