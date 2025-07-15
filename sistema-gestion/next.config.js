@@ -4,7 +4,7 @@ const nextConfig = {
     domains: ["localhost"],
   },
   env: {
-    DATABASE_URL: process.env.DATABASE_URL,
+    DATABASE_URL: process.env.DATABASE_DATABASE_URL,
   },
 };
 
