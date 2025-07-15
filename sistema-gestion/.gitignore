@@ -2,6 +2,7 @@
 /node_modules
 /.pnp
 .pnp.js
+<<<<<<< HEAD
 **/node_modules/
 */node_modules/
 ../node_modules/
@@ -14,10 +15,16 @@ pnpm-debug.log*
 # Testing
 /coverage
 *.lcov
+=======
+
+# Testing
+/coverage
+>>>>>>> 88a49718b84847c4c301ed51fe9d4b604c186df3
 
 # Next.js
 /.next/
 /out/
+<<<<<<< HEAD
 next-env.d.ts
 
 # Production
@@ -25,11 +32,28 @@ next-env.d.ts
 /dist
 
 # Environment variables
+=======
+
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+>>>>>>> 88a49718b84847c4c301ed51fe9d4b604c186df3
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+<<<<<<< HEAD
 .env.*.local
 
 # Vercel
@@ -49,10 +73,26 @@ tsconfig.tsbuildinfo
 *.db
 
 # IDE and editors
+=======
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Database
+/prisma/dev.db
+/prisma/dev.db-journal
+
+# IDE
+>>>>>>> 88a49718b84847c4c301ed51fe9d4b604c186df3
 .vscode/
 .idea/
 *.swp
 *.swo
+<<<<<<< HEAD
 *~
 .project
 .classpath
@@ -69,11 +109,16 @@ tsconfig.tsbuildinfo
 .Spotlight-V100
 .Trashes
 ehthumbs.db
+=======
+
+# OS
+>>>>>>> 88a49718b84847c4c301ed51fe9d4b604c186df3
 Thumbs.db
 
 # Logs
 logs
 *.log
+<<<<<<< HEAD
 lerna-debug.log*
 .npm
 .eslintcache
@@ -134,3 +179,5 @@ storybook-static
 prisma/dev.db*
 prisma/*.db
 prisma/*.db-journal
+=======
+>>>>>>> 88a49718b84847c4c301ed51fe9d4b604c186df3
