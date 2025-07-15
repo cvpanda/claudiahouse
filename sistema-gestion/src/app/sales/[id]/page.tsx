@@ -17,6 +17,9 @@ import {
   Trash2,
   Plus,
   Minus,
+  Printer,
+  Eye,
+  Download,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
@@ -55,6 +58,8 @@ interface Sale {
   subtotal: number;
   tax: number;
   discount: number;
+  shippingCost: number;
+  shippingType?: string;
   paymentMethod: string;
   status: string;
   notes?: string;
@@ -84,6 +89,8 @@ export default function SaleDetailPage() {
     paymentMethod: "",
     discount: 0,
     tax: 0,
+    shippingCost: 0,
+    shippingType: "",
     notes: "",
     status: "",
   });
@@ -165,6 +172,8 @@ export default function SaleDetailPage() {
           paymentMethod: normalizePaymentMethod(data.data.paymentMethod || ""),
           discount: data.data.discount || 0,
           tax: data.data.tax || 0,
+          shippingCost: data.data.shippingCost || 0,
+          shippingType: data.data.shippingType || "",
           notes: data.data.notes || "",
           status: data.data.status || "",
         });
@@ -190,6 +199,8 @@ export default function SaleDetailPage() {
         paymentMethod: normalizePaymentMethod(sale.paymentMethod || ""),
         discount: sale.discount || 0,
         tax: sale.tax || 0,
+        shippingCost: sale.shippingCost || 0,
+        shippingType: sale.shippingType || "",
         notes: sale.notes || "",
         status: sale.status || "",
       });
@@ -206,9 +217,10 @@ export default function SaleDetailPage() {
     );
     const discountAmount = subtotal * (editForm.discount / 100);
     const taxAmount = (subtotal - discountAmount) * (editForm.tax / 100);
-    const total = subtotal - discountAmount + taxAmount;
+    const shippingCost = editForm.shippingCost || 0;
+    const total = subtotal - discountAmount + taxAmount + shippingCost;
 
-    return { subtotal, discountAmount, taxAmount, total };
+    return { subtotal, discountAmount, taxAmount, shippingCost, total };
   };
 
   const handleProductQuantityChange = (itemId: string, newQuantity: number) => {
@@ -480,6 +492,575 @@ export default function SaleDetailPage() {
     }
   };
 
+  const handlePrintRemito = () => {
+    if (!sale) return;
+
+    // Create a new window for printing with better dimensions
+    const printWindow = window.open(
+      "",
+      "_blank",
+      "width=800,height=900,scrollbars=yes"
+    );
+    if (!printWindow) {
+      alert(
+        "No se pudo abrir la ventana de impresión. Verifique que no esté bloqueada por el navegador."
+      );
+      return;
+    }
+
+    // Generate the remito HTML
+    const remitoHTML = generateRemitoHTML(sale);
+
+    printWindow.document.write(remitoHTML);
+    printWindow.document.close();
+
+    // Wait for content to load, then print automatically
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+        // Close window after print dialog
+        setTimeout(() => {
+          printWindow.close();
+        }, 100);
+      }, 500);
+    };
+
+    printWindow.focus();
+  };
+
+  const handlePreviewRemito = () => {
+    if (!sale) return;
+
+    // Create a new window for preview
+    const previewWindow = window.open(
+      "",
+      "_blank",
+      "width=800,height=900,scrollbars=yes"
+    );
+    if (!previewWindow) {
+      alert(
+        "No se pudo abrir la ventana de vista previa. Verifique que no esté bloqueada por el navegador."
+      );
+      return;
+    }
+
+    // Generate the remito HTML
+    const remitoHTML = generateRemitoHTML(sale);
+
+    // Add preview-specific styles and controls
+    const previewHTML = remitoHTML
+      .replace(
+        "</head>",
+        `
+      <style>
+        .preview-controls {
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          z-index: 1000;
+          background: white;
+          padding: 10px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          border: 1px solid #e5e7eb;
+        }
+        .preview-btn {
+          background: #3b82f6;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 6px;
+          cursor: pointer;
+          margin-right: 8px;
+          font-size: 14px;
+        }
+        .preview-btn:hover {
+          background: #2563eb;
+        }
+        .preview-btn.secondary {
+          background: #6b7280;
+        }
+        .preview-btn.secondary:hover {
+          background: #4b5563;
+        }
+        @media print {
+          .preview-controls { display: none !important; }
+        }
+      </style>
+      </head>`
+      )
+      .replace(
+        "<body>",
+        `<body>
+      <div class="preview-controls">
+        <button class="preview-btn" onclick="window.print()">🖨️ Imprimir</button>
+        <button class="preview-btn secondary" onclick="window.close()">✕ Cerrar</button>
+      </div>`
+      );
+
+    previewWindow.document.write(previewHTML);
+    previewWindow.document.close();
+    previewWindow.focus();
+  };
+
+  const generateRemitoHTML = (sale: Sale): string => {
+    const currentDate = new Date().toLocaleDateString("es-AR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const currentTime = new Date().toLocaleTimeString("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const productRows = sale.saleItems
+      .map(
+        (item) => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">
+          <div style="font-weight: 500;">${item.product.name}</div>
+          ${
+            item.product.sku
+              ? `<div style="font-size: 12px; color: #666;">SKU: ${item.product.sku}</div>`
+              : ""
+          }
+        </td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${
+          item.quantity
+        } ${item.product.unit || "unid"}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">${formatPrice(
+          item.unitPrice
+        )}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 500;">${formatPrice(
+          item.totalPrice
+        )}</td>
+      </tr>
+    `
+      )
+      .join("");
+
+    const subtotalProducts = sale.saleItems.reduce(
+      (sum, item) => sum + item.totalPrice,
+      0
+    );
+
+    // Calcular totales paso a paso para mostrar claramente
+    const discountAmount = sale.discount || 0;
+    const taxAmount = sale.tax || 0;
+    const shippingAmount = sale.shippingCost || 0;
+
+    // Determinar el método de pago
+    const getPaymentMethodDisplay = (method: string) => {
+      const methods: { [key: string]: string } = {
+        efectivo: "Efectivo",
+        tarjeta: "Tarjeta",
+        transferencia: "Transferencia",
+        cheque: "Cheque",
+        cuenta_corriente: "Cuenta Corriente",
+      };
+      return methods[method] || method;
+    };
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Remito - Venta ${sale.saleNumber}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+            color: #333;
+        }
+        .page-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 25px;
+        }
+        .company-name {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #1e40af;
+            letter-spacing: 2px;
+        }
+        .document-title {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #374151;
+            font-weight: 600;
+        }
+        .sale-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .info-section {
+            margin-bottom: 35px;
+            background: #f8fafc;
+            padding: 20px;
+            border-left: 4px solid #3b82f6;
+        }
+        .section-title {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #1f2937;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .info-item {
+            margin-bottom: 8px;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #374151;
+        }
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 35px;
+            border: 1px solid #e5e7eb;
+        }
+        .products-table th {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        .products-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .products-table tbody tr:hover {
+            background-color: #f9fafb;
+        }
+        .totals-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 40px;
+        }
+        .totals {
+            width: 350px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .totals-header {
+            background: #f3f4f6;
+            padding: 12px 20px;
+            font-weight: bold;
+            color: #374151;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+        .totals-body {
+            padding: 20px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px 0;
+        }
+        .total-row.subtotal {
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+        .total-row.final {
+            border-top: 2px solid #2563eb;
+            padding-top: 15px;
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 18px;
+            color: #1e40af;
+        }
+        .payment-info {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 30px;
+        }
+        .payment-title {
+            font-weight: bold;
+            color: #92400e;
+            margin-bottom: 8px;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            padding-top: 25px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .signature-section {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature-box {
+            width: 200px;
+            text-align: center;
+            border-top: 1px solid #9ca3af;
+            padding-top: 10px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        @media print {
+            body { margin: 0; padding: 15px; }
+            .page-container { max-width: none; }
+            .products-table tbody tr:hover { background-color: transparent !important; }
+            .signature-section { page-break-inside: avoid; }
+            .totals-container { page-break-inside: avoid; }
+            .info-section { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <div class="header">
+            <div class="company-name">CLAUDIA HOUSE</div>
+            <div class="document-title">REMITO DE VENTA</div>
+            <div class="sale-info">
+                <span><strong>Nº:</strong> ${sale.saleNumber}</span>
+                <span><strong>Fecha:</strong> ${currentDate}</span>
+                <span><strong>Hora:</strong> ${currentTime}</span>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="section-title">Información del Cliente</div>
+            ${
+              sale.customer
+                ? `
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Nombre:</span> ${
+                          sale.customer.name
+                        }
+                    </div>
+                    ${
+                      sale.customer.phone
+                        ? `<div class="info-item"><span class="info-label">Teléfono:</span> ${sale.customer.phone}</div>`
+                        : ""
+                    }
+                    ${
+                      sale.customer.email
+                        ? `<div class="info-item"><span class="info-label">Email:</span> ${sale.customer.email}</div>`
+                        : ""
+                    }
+                </div>
+                `
+                : `
+                <div class="info-item">Cliente sin registrar</div>
+                `
+            }
+        </div>
+
+        <table class="products-table">
+            <thead>
+                <tr>
+                    <th style="width: 50%;">Producto</th>
+                    <th style="text-align: center; width: 15%;">Cantidad</th>
+                    <th style="text-align: right; width: 17.5%;">Precio Unit.</th>
+                    <th style="text-align: right; width: 17.5%;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${productRows}
+            </tbody>
+        </table>
+
+        ${
+          sale.paymentMethod
+            ? `
+        <div class="payment-info">
+            <div class="payment-title">Método de Pago</div>
+            <div>${getPaymentMethodDisplay(sale.paymentMethod)}</div>
+        </div>
+        `
+            : ""
+        }
+
+        <div class="totals-container">
+            <div class="totals">
+                <div class="totals-header">Resumen de Totales</div>
+                <div class="totals-body">
+                    <div class="total-row subtotal">
+                        <span>Subtotal productos:</span>
+                        <span>${formatPrice(subtotalProducts)}</span>
+                    </div>
+                    ${
+                      discountAmount > 0
+                        ? `
+                    <div class="total-row">
+                        <span>Descuento:</span>
+                        <span style="color: #dc2626;">-${formatPrice(
+                          discountAmount
+                        )}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      taxAmount > 0
+                        ? `
+                    <div class="total-row">
+                        <span>Impuestos:</span>
+                        <span>${formatPrice(taxAmount)}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      shippingAmount > 0
+                        ? `
+                    <div class="total-row">
+                        <span>Envío (${
+                          sale.shippingType || "Sin especificar"
+                        }):</span>
+                        <span style="color: #2563eb;">${formatPrice(
+                          shippingAmount
+                        )}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    <div class="total-row final">
+                        <span>TOTAL A PAGAR:</span>
+                        <span>${formatPrice(sale.total)}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="signature-section">
+            <div class="signature-box">
+                <div>Firma del Cliente</div>
+            </div>
+            <div class="signature-box">
+                <div>Firma del Vendedor</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>¡Gracias por su compra!</strong></p>
+            <p>Remito generado el ${new Date().toLocaleDateString(
+              "es-AR"
+            )} a las ${new Date().toLocaleTimeString("es-AR")}</p>
+            <p style="margin-top: 10px; font-size: 10px;">
+                Este documento no tiene valor fiscal • Conserve este remito como comprobante de entrega
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+  };
+
+  const handleExportPDF = async () => {
+    if (!sale) return;
+
+    try {
+      // Importar jsPDF dinámicamente
+      const { jsPDF } = await import("jspdf");
+      const html2canvas = (await import("html2canvas")).default;
+
+      // Crear un elemento temporal con el HTML del remito
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = generateRemitoHTML(sale);
+      tempDiv.style.position = "absolute";
+      tempDiv.style.left = "-9999px";
+      tempDiv.style.top = "0";
+      tempDiv.style.width = "800px";
+      tempDiv.style.background = "white";
+      document.body.appendChild(tempDiv);
+
+      // Esperar un momento para que se renderice
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Obtener el contenido del remito (sin los controles de preview)
+      const remitoContent = tempDiv.querySelector(".page-container");
+      if (!remitoContent) {
+        throw new Error("No se pudo encontrar el contenido del remito");
+      }
+
+      // Convertir a canvas
+      const canvas = await html2canvas(remitoContent as HTMLElement, {
+        scale: 2, // Mayor resolución
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        width: 800,
+        height: remitoContent.scrollHeight,
+      });
+
+      // Limpiar el elemento temporal
+      document.body.removeChild(tempDiv);
+
+      // Crear el PDF
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      // Calcular dimensiones para ajustar al A4
+      const imgWidth = 190; // Ancho en mm (A4 tiene 210mm, dejamos 10mm de margen a cada lado)
+      const pageHeight = 297; // Alto de página A4 en mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 10; // Margen superior
+
+      // Agregar la imagen al PDF
+      const imgData = canvas.toDataURL("image/png");
+      pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight - 20; // Restar margen superior e inferior
+
+      // Si el contenido es más alto que una página, agregar páginas adicionales
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight + 10; // Nuevo position para la siguiente página
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // Descargar el PDF
+      pdf.save(`remito-${sale.saleNumber}.pdf`);
+
+      alert("Remito exportado exitosamente como PDF.");
+    } catch (error) {
+      console.error("Error al exportar PDF:", error);
+      alert(
+        "Error al exportar el remito como PDF. Intente con el botón de Vista Previa e imprima desde allí usando Ctrl+P."
+      );
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -529,6 +1110,27 @@ export default function SaleDetailPage() {
           <div className="flex items-center space-x-3">
             {sale.status !== "cancelled" && !editing && (
               <>
+                <button
+                  onClick={handlePreviewRemito}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Vista Previa
+                </button>
+                <button
+                  onClick={handlePrintRemito}
+                  className="inline-flex items-center px-4 py-2 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-white hover:bg-blue-50"
+                >
+                  <Printer className="w-4 h-4 mr-2" />
+                  Imprimir Remito
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-green-700 bg-white hover:bg-green-50"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar PDF
+                </button>
                 <button
                   onClick={handleEdit}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -601,9 +1203,54 @@ export default function SaleDetailPage() {
           </div>
         )}
 
+        {/* Remito Options Info */}
+        {sale.status !== "cancelled" && !editing && (
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+            <div className="flex">
+              <Receipt className="h-5 w-5 text-blue-400" />
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">
+                  Opciones de Remito
+                </h3>
+                <div className="mt-2 text-sm text-blue-700">
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>
+                      <strong>Vista Previa:</strong> Ver el remito antes de
+                      imprimir
+                    </li>
+                    <li>
+                      <strong>Imprimir Remito:</strong> Imprimir directamente
+                      desde el navegador
+                    </li>
+                    <li>
+                      <strong>Exportar PDF:</strong> Descargar el remito como
+                      archivo PDF
+                    </li>
+                  </ul>
+                  <p className="mt-2 text-xs text-blue-600">
+                    💡 El remito incluye solo nombre, teléfono y email del
+                    cliente (si están disponibles)
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Keyboard Shortcuts Hint */}
         {!editing && sale && sale.status !== "cancelled" && (
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+            <p className="text-xs text-blue-600 mb-1">
+              📄 <strong>Opciones de Remito:</strong>
+              <kbd className="bg-blue-100 px-1 rounded mx-1">
+                Vista Previa
+              </kbd>{" "}
+              para revisar •
+              <kbd className="bg-blue-100 px-1 rounded mx-1">Imprimir</kbd> para
+              imprimir directo •
+              <kbd className="bg-blue-100 px-1 rounded mx-1">Exportar</kbd> para
+              descargar HTML
+            </p>
             <p className="text-xs text-blue-600">
               💡 Atajos de teclado:{" "}
               <kbd className="bg-blue-100 px-1 rounded">Ctrl+E</kbd> para editar
@@ -789,6 +1436,58 @@ export default function SaleDetailPage() {
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     placeholder="0.0"
                   />
+                </div>
+              </div>
+
+              {/* Shipping Information */}
+              <div className="mt-4">
+                <h4 className="text-md font-medium text-gray-900 mb-3">
+                  Información de Envío
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tipo de Envío
+                    </label>
+                    <select
+                      value={editForm.shippingType}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          shippingType: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      <option value="">Sin envío</option>
+                      <option value="retiro_local">Retiro en local</option>
+                      <option value="envio_domicilio">Envío a domicilio</option>
+                      <option value="correo_argentino">Correo Argentino</option>
+                      <option value="oca">OCA</option>
+                      <option value="andreani">Andreani</option>
+                      <option value="mercado_envios">Mercado Envíos</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Costo de Envío ($)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editForm.shippingCost}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          shippingCost: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -990,6 +1689,16 @@ export default function SaleDetailPage() {
                         </span>
                       </div>
                     )}
+                    {editForm.shippingCost > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">
+                          Envío ({editForm.shippingType || "Sin especificar"}):
+                        </span>
+                        <span className="font-medium text-blue-600">
+                          {formatPrice(calculateTotals().shippingCost)}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-lg font-bold border-t pt-2">
                       <span>Total:</span>
                       <span className="text-blue-600">
@@ -1018,6 +1727,16 @@ export default function SaleDetailPage() {
                         <span className="text-gray-600">Impuestos:</span>
                         <span className="font-medium">
                           {formatPrice(sale.tax)}
+                        </span>
+                      </div>
+                    )}
+                    {sale.shippingCost > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">
+                          Envío ({sale.shippingType || "Sin especificar"}):
+                        </span>
+                        <span className="font-medium text-blue-600">
+                          {formatPrice(sale.shippingCost)}
                         </span>
                       </div>
                     )}

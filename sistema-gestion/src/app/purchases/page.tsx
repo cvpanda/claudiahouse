@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Layout from "@/components/Layout";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Plus,
   Search,
@@ -74,6 +75,32 @@ const statusLabels: Record<string, string> = {
 
 const PurchasesPage = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const { hasPermission } = useAuth();
+
+  // Verificar permisos
+  const canView = hasPermission("purchases", "view");
+  const canCreate = hasPermission("purchases", "create");
+  const canUpdate = hasPermission("purchases", "update");
+  const canDelete = hasPermission("purchases", "delete");
+
+  if (!canView) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <div className="mx-auto max-w-md">
+            <Package className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              Sin permisos
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              No tienes permisos para ver las compras.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   const [stats, setStats] = useState<PurchaseStats>({
     totalPurchases: 0,
     totalAmount: 0,
@@ -250,7 +277,12 @@ const PurchasesPage = () => {
             </div>
             <Link
               href="/purchases/new"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors"
+              className={`px-6 py-3 rounded-lg flex items-center gap-2 transition-colors ${
+                canCreate
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-gray-400 text-gray-200 cursor-not-allowed"
+              }`}
+              onClick={(e) => !canCreate && e.preventDefault()}
             >
               <Plus className="h-5 w-5" />
               Nueva Compra
@@ -451,34 +483,41 @@ const PurchasesPage = () => {
                         <div className="flex items-center space-x-2">
                           <Link
                             href={`/purchases/${purchase.id}`}
-                            className="text-blue-600 hover:text-blue-900"
+                            className={`${
+                              canView
+                                ? "text-blue-600 hover:text-blue-900"
+                                : "text-gray-400 cursor-not-allowed"
+                            }`}
                             title="Ver detalles"
+                            onClick={(e) => !canView && e.preventDefault()}
                           >
                             <Eye className="h-4 w-4" />
                           </Link>
 
-                          {(purchase.status === "RECEIVED" ||
-                            purchase.status === "PENDING") && (
-                            <button
-                              onClick={() => completePurchase(purchase.id)}
-                              className="text-green-600 hover:text-green-900"
-                              title="Completar compra"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                          )}
+                          {canUpdate &&
+                            (purchase.status === "RECEIVED" ||
+                              purchase.status === "PENDING") && (
+                              <button
+                                onClick={() => completePurchase(purchase.id)}
+                                className="text-green-600 hover:text-green-900"
+                                title="Completar compra"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </button>
+                            )}
 
-                          {["PENDING", "CANCELLED"].includes(
-                            purchase.status
-                          ) && (
-                            <button
-                              onClick={() => deletePurchase(purchase.id)}
-                              className="text-red-600 hover:text-red-900"
-                              title="Eliminar"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
+                          {canDelete &&
+                            ["PENDING", "CANCELLED"].includes(
+                              purchase.status
+                            ) && (
+                              <button
+                                onClick={() => deletePurchase(purchase.id)}
+                                className="text-red-600 hover:text-red-900"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
                         </div>
                       </td>
                     </tr>

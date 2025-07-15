@@ -63,6 +63,8 @@ export default function NewSalePage() {
     paymentMethod: "efectivo",
     discount: 0,
     tax: 21,
+    shippingCost: 0,
+    shippingType: "",
     notes: "",
   });
 
@@ -71,7 +73,8 @@ export default function NewSalePage() {
   const discountAmount = (subtotal * formData.discount) / 100;
   const taxableAmount = subtotal - discountAmount;
   const taxAmount = (taxableAmount * formData.tax) / 100;
-  const total = taxableAmount + taxAmount;
+  const shippingCost = formData.shippingCost || 0;
+  const total = taxableAmount + taxAmount + shippingCost;
 
   useEffect(() => {
     fetchProducts();
@@ -213,6 +216,8 @@ export default function NewSalePage() {
         paymentMethod: formData.paymentMethod,
         discount: formData.discount,
         tax: formData.tax,
+        shippingCost: formData.shippingCost,
+        shippingType: formData.shippingType,
         notes: formData.notes,
         subtotal: subtotal,
         total: total,
@@ -578,6 +583,51 @@ export default function NewSalePage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tipo de Envío
+                    </label>
+                    <select
+                      value={formData.shippingType}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          shippingType: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Sin envío</option>
+                      <option value="retiro_tienda">Retiro en tienda</option>
+                      <option value="envio_domicilio">Envío a domicilio</option>
+                      <option value="correo_argentino">Correo Argentino</option>
+                      <option value="oca">OCA</option>
+                      <option value="andreani">Andreani</option>
+                      <option value="mercado_envios">Mercado Envíos</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Costo de Envío ($)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.shippingCost}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          shippingCost: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Notas (opcional)
                     </label>
                     <textarea
@@ -614,6 +664,15 @@ export default function NewSalePage() {
                     <div className="flex justify-between text-gray-600">
                       <span>IVA ({formData.tax}%):</span>
                       <span>${taxAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {formData.shippingCost > 0 && (
+                    <div className="flex justify-between text-blue-600">
+                      <span>
+                        Envío ({formData.shippingType || "Sin especificar"}):
+                      </span>
+                      <span>${shippingCost.toFixed(2)}</span>
                     </div>
                   )}
 

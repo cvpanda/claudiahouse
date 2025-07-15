@@ -17,6 +17,7 @@ import {
 import Layout from "@/components/Layout";
 import ExportMenu from "@/components/ExportMenu";
 import { useReportExport } from "@/hooks/useReportExport";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   BarChart,
   Bar,
@@ -78,6 +79,28 @@ export default function ReportsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("7days");
   const [activeTab, setActiveTab] = useState("overview");
   const [exporting, setExporting] = useState(false);
+  const { hasPermission } = useAuth();
+
+  // Verificar permisos
+  const canView = hasPermission("reports", "view");
+
+  if (!canView) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <div className="mx-auto max-w-md">
+            <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              Sin permisos
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              No tienes permisos para ver los reportes.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   const { exportToPDF, exportToExcel, exportToCSV } = useReportExport();
 

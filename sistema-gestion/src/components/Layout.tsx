@@ -16,18 +16,75 @@ import {
   Tag,
   Building2,
   Truck,
+  LogOut,
+  User,
 } from "lucide-react";
+import { useAuth, usePermission } from "@/contexts/AuthContext";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
-  { name: "Productos", href: "/products", icon: Package },
-  { name: "Ventas", href: "/sales", icon: ShoppingCart },
-  { name: "Compras", href: "/purchases", icon: Truck },
-  { name: "Clientes", href: "/customers", icon: Users },
-  { name: "Categorías", href: "/categories", icon: Tag },
-  { name: "Proveedores", href: "/suppliers", icon: Building2 },
-  { name: "Reportes", href: "/reports", icon: BarChart3 },
-  { name: "Configuración", href: "/settings", icon: Settings },
+  {
+    name: "Dashboard",
+    href: "/",
+    icon: Home,
+    module: "dashboard",
+    action: "view",
+  },
+  {
+    name: "Productos",
+    href: "/products",
+    icon: Package,
+    module: "products",
+    action: "view",
+  },
+  {
+    name: "Ventas",
+    href: "/sales",
+    icon: ShoppingCart,
+    module: "sales",
+    action: "view",
+  },
+  {
+    name: "Compras",
+    href: "/purchases",
+    icon: Truck,
+    module: "purchases",
+    action: "view",
+  },
+  {
+    name: "Clientes",
+    href: "/customers",
+    icon: Users,
+    module: "customers",
+    action: "view",
+  },
+  {
+    name: "Categorías",
+    href: "/categories",
+    icon: Tag,
+    module: "categories",
+    action: "view",
+  },
+  {
+    name: "Proveedores",
+    href: "/suppliers",
+    icon: Building2,
+    module: "suppliers",
+    action: "view",
+  },
+  {
+    name: "Reportes",
+    href: "/reports",
+    icon: BarChart3,
+    module: "reports",
+    action: "view",
+  },
+  {
+    name: "Configuración",
+    href: "/settings",
+    icon: Settings,
+    module: "settings",
+    action: "view",
+  },
 ];
 
 interface LayoutProps {
@@ -37,6 +94,33 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const { user, logout, loading } = useAuth();
+
+  // Filtrar navegación basada en permisos
+  const filteredNavigation = navigation.filter((item) => {
+    // Si no hay usuario o está cargando, no mostrar navegación
+    if (!user || loading) return false;
+
+    // Si es administrador, mostrar todo
+    if (user.role.name === "administrador") return true;
+
+    // Verificar permisos específicos
+    return user.role.permissions.some(
+      (p) => p.module === item.module && p.action === item.action && p.granted
+    );
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // El AuthProvider redirigirá a /login
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -65,8 +149,28 @@ export default function Layout({ children }: LayoutProps) {
               <X className="h-6 w-6" />
             </button>
           </div>
-          <nav className="mt-8">
-            {navigation.map((item) => {
+
+          {/* User info mobile */}
+          <div className="px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
+                  <User className="h-4 w-4 text-white" />
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-900">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-xs text-gray-500 capitalize">
+                  {user.role.name.replace("_", " ")}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <nav className="mt-4">
+            {filteredNavigation.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
@@ -84,6 +188,15 @@ export default function Layout({ children }: LayoutProps) {
                 </Link>
               );
             })}
+
+            {/* Logout button mobile */}
+            <button
+              onClick={logout}
+              className="w-full flex items-center px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <LogOut className="mr-3 h-5 w-5" />
+              Cerrar Sesión
+            </button>
           </nav>
         </div>
       </div>
@@ -97,8 +210,28 @@ export default function Layout({ children }: LayoutProps) {
               Claudia House
             </span>
           </div>
-          <nav className="mt-8 flex-1">
-            {navigation.map((item) => {
+
+          {/* User info desktop */}
+          <div className="px-4 py-4 border-b border-gray-200">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center">
+                  <User className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-900">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-xs text-gray-500 capitalize">
+                  {user.role.name.replace("_", " ")}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <nav className="mt-4 flex-1">
+            {filteredNavigation.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
@@ -116,6 +249,17 @@ export default function Layout({ children }: LayoutProps) {
               );
             })}
           </nav>
+
+          {/* Logout button desktop */}
+          <div className="border-t border-gray-200 p-4">
+            <button
+              onClick={logout}
+              className="w-full flex items-center px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors"
+            >
+              <LogOut className="mr-3 h-4 w-4" />
+              Cerrar Sesión
+            </button>
+          </div>
         </div>
       </div>
 

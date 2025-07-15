@@ -15,6 +15,7 @@ import {
   Flag,
 } from "lucide-react";
 import Layout from "@/components/Layout";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Supplier {
   id: string;
@@ -36,6 +37,32 @@ export default function SuppliersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const { hasPermission } = useAuth();
+
+  // Verificar permisos
+  const canView = hasPermission("suppliers", "view");
+  const canCreate = hasPermission("suppliers", "create");
+  const canUpdate = hasPermission("suppliers", "update");
+  const canDelete = hasPermission("suppliers", "delete");
+
+  if (!canView) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <div className="mx-auto max-w-md">
+            <Building2 className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              Sin permisos
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              No tienes permisos para ver los proveedores.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   const [formData, setFormData] = useState({
     name: "",
     contact: "",
@@ -196,7 +223,12 @@ export default function SuppliersPage() {
           </div>
           <button
             onClick={openCreateModal}
-            className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className={`mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+              canCreate
+                ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                : "bg-gray-400 cursor-not-allowed"
+            }`}
+            disabled={!canCreate}
           >
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Proveedor
@@ -316,18 +348,22 @@ export default function SuppliersPage() {
                 </div>
 
                 <div className="flex items-center space-x-2 ml-4">
-                  <button
-                    onClick={() => handleEdit(supplier)}
-                    className="text-blue-600 hover:text-blue-900"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(supplier.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {canUpdate && (
+                    <button
+                      onClick={() => handleEdit(supplier)}
+                      className="text-blue-600 hover:text-blue-900"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(supplier.id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

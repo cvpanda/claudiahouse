@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Sale {
   id: string;
@@ -48,6 +49,31 @@ interface Sale {
 
 export default function SalesPage() {
   const [sales, setSales] = useState<Sale[]>([]);
+  const { hasPermission } = useAuth();
+
+  // Verificar permisos
+  const canView = hasPermission("sales", "view");
+  const canCreate = hasPermission("sales", "create");
+  const canUpdate = hasPermission("sales", "update");
+  const canDelete = hasPermission("sales", "delete");
+
+  if (!canView) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <div className="mx-auto max-w-md">
+            <ShoppingCart className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              Sin permisos
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              No tienes permisos para ver las ventas.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -284,7 +310,12 @@ export default function SalesPage() {
             </button>
             <Link
               href="/sales/new"
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                canCreate
+                  ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  : "bg-gray-400 cursor-not-allowed"
+              }`}
+              onClick={(e) => !canCreate && e.preventDefault()}
             >
               <Plus className="w-4 h-4 mr-2" />
               Nueva Venta
@@ -608,8 +639,13 @@ export default function SalesPage() {
                           </button>
                           <Link
                             href={`/sales/${sale.id}`}
-                            className="text-blue-600 hover:text-blue-900"
+                            className={`${
+                              canView
+                                ? "text-blue-600 hover:text-blue-900"
+                                : "text-gray-400 cursor-not-allowed"
+                            }`}
                             title="Ver detalles completos"
+                            onClick={(e) => !canView && e.preventDefault()}
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
