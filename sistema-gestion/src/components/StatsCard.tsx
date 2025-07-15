@@ -7,7 +7,15 @@ interface StatsCardProps {
   title: string;
   value: number;
   icon: LucideIcon;
-  color: "blue" | "red" | "green" | "purple" | "indigo" | "emerald";
+  color:
+    | "blue"
+    | "red"
+    | "green"
+    | "purple"
+    | "indigo"
+    | "emerald"
+    | "orange"
+    | "yellow";
   isCurrency?: boolean;
 }
 
@@ -18,6 +26,8 @@ const colorClasses = {
   purple: "bg-purple-500 text-purple-100",
   indigo: "bg-indigo-500 text-indigo-100",
   emerald: "bg-emerald-500 text-emerald-100",
+  orange: "bg-orange-500 text-orange-100",
+  yellow: "bg-yellow-500 text-yellow-100",
 };
 
 export default function StatsCard({

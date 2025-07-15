@@ -8,6 +8,8 @@ import {
   AlertTriangle,
   TrendingUp,
   DollarSign,
+  Truck,
+  Clock,
 } from "lucide-react";
 import Layout from "./Layout";
 import StatsCard from "./StatsCard";
@@ -21,6 +23,10 @@ export default function Dashboard() {
     todaySales: 0,
     monthSales: 0,
     totalRevenue: 0,
+    totalPurchases: 0,
+    pendingPurchases: 0,
+    monthPurchases: 0,
+    totalPurchaseAmount: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -63,7 +69,7 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 px-4 md:px-0">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 px-4 md:px-0">
           <StatsCard
             title="Total Productos"
             value={stats.totalProducts}
@@ -100,6 +106,18 @@ export default function Dashboard() {
             icon={DollarSign}
             color="emerald"
             isCurrency
+          />
+          <StatsCard
+            title="Total Compras"
+            value={stats.totalPurchases}
+            icon={Truck}
+            color="orange"
+          />
+          <StatsCard
+            title="Compras Pendientes"
+            value={stats.pendingPurchases}
+            icon={Clock}
+            color="yellow"
           />
         </div>
 

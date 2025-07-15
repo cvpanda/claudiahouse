@@ -21,6 +21,7 @@ model Supplier {
   updatedAt   DateTime @updatedAt
   
   products    Product[]
+  purchases   Purchase[]
   
   @@map("suppliers")
 }
@@ -62,6 +63,7 @@ model Product {
   category          Category @relation(fields: [categoryId], references: [id])
   
   saleItems         SaleItem[]
+  purchaseItems     PurchaseItem[]
   stockMovements    StockMovement[]
   
   @@map("products")
@@ -133,3 +135,71 @@ model StockMovement {
   
   @@map("stock_movements")
 }
+
+model Purchase {
+  id              String   @id @default(cuid())
+  purchaseNumber  String   @unique
+  supplierId      String
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  
+  // Tipo de compra
+  type            String @default("LOCAL") // LOCAL | IMPORT
+  
+  // Datos de importación
+  currency        String?  // ARS | USD | EUR | BRL | CNY
+  exchangeRate    Float?       // Tipo de cambio específico a pesos
+  exchangeType    String?      // "Oficial", "Blue", "MEP", "CCL", etc.
+  
+  // Costos de importación en pesos
+  freightCost     Float?   @default(0)  // Flete
+  customsCost     Float?   @default(0)  // Gastos aduaneros  
+  taxCost         Float?   @default(0)  // Impuestos (DJAI, etc.)
+  insuranceCost   Float?   @default(0)  // Seguro
+  otherCosts      Float?   @default(0)  // Otros gastos
+  
+  // Totales
+  subtotalForeign Float?       // Subtotal en moneda extranjera
+  subtotalPesos   Float        // Subtotal convertido a pesos
+  totalCosts      Float    @default(0)  // Suma de costos adicionales
+  total           Float        // Total final en pesos
+  
+  // Estados y fechas
+  status          String @default("PENDING") // PENDING | ORDERED | SHIPPED | CUSTOMS | RECEIVED | COMPLETED | CANCELLED
+  orderDate       DateTime
+  expectedDate    DateTime?
+  receivedDate    DateTime?
+  
+  // Relaciones
+  items           PurchaseItem[]
+  
+  // Metadatos
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id          String   @id @default(cuid())
+  purchaseId  String
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  
+  quantity    Int
+  unitPriceForeign Float?   // Precio unitario en moneda extranjera
+  unitPricePesos   Float    // Precio unitario en pesos
+  distributedCosts Float @default(0)  // Costos de importación distribuidos
+  finalUnitCost    Float    // Costo unitario final (precio + costos distribuidos)
+  totalCost        Float    // finalUnitCost × quantity
+  
+  // Metadatos
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("purchase_items")
+}
+
+

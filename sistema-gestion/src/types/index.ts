@@ -99,6 +99,10 @@ export interface DashboardStats {
   todaySales: number;
   monthSales: number;
   totalRevenue: number;
+  totalPurchases: number;
+  pendingPurchases: number;
+  monthPurchases: number;
+  totalPurchaseAmount: number;
 }
 
 export interface ProductFormData {

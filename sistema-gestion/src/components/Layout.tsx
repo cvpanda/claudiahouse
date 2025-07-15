@@ -15,12 +15,14 @@ import {
   Store,
   Tag,
   Building2,
+  Truck,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Productos", href: "/products", icon: Package },
   { name: "Ventas", href: "/sales", icon: ShoppingCart },
+  { name: "Compras", href: "/purchases", icon: Truck },
   { name: "Clientes", href: "/customers", icon: Users },
   { name: "Categorías", href: "/categories", icon: Tag },
   { name: "Proveedores", href: "/suppliers", icon: Building2 },
@@ -53,7 +55,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex items-center">
               <Store className="h-8 w-8 text-primary-600" />
               <span className="ml-2 text-xl font-bold text-gray-900">
-                Mi Negocio
+                Claudia House
               </span>
             </div>
             <button
@@ -92,7 +94,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex items-center h-16 px-4 border-b border-gray-200">
             <Store className="h-8 w-8 text-primary-600" />
             <span className="ml-2 text-xl font-bold text-gray-900">
-              Mi Negocio
+              Claudia House
             </span>
           </div>
           <nav className="mt-8 flex-1">
