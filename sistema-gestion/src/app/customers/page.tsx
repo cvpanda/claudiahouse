@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Customer {
   id: string;
@@ -32,6 +33,31 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("");
+  const { hasPermission } = useAuth();
+
+  // Verificar permisos
+  const canView = hasPermission("customers", "view");
+  const canCreate = hasPermission("customers", "create");
+  const canUpdate = hasPermission("customers", "update");
+  const canDelete = hasPermission("customers", "delete");
+
+  if (!canView) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <div className="mx-auto max-w-md">
+            <Users className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              Sin permisos
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              No tienes permisos para ver los clientes.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   useEffect(() => {
     fetchCustomers();
@@ -118,7 +144,12 @@ export default function CustomersPage() {
           </div>
           <Link
             href="/customers/new"
-            className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className={`mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+              canCreate
+                ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                : "bg-gray-400 cursor-not-allowed"
+            }`}
+            onClick={(e) => !canCreate && e.preventDefault()}
           >
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Cliente
@@ -276,16 +307,23 @@ export default function CustomersPage() {
                       <div className="flex items-center justify-end space-x-2">
                         <Link
                           href={`/customers/${customer.id}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className={`${
+                            canUpdate
+                              ? "text-blue-600 hover:text-blue-900"
+                              : "text-gray-400 cursor-not-allowed"
+                          }`}
+                          onClick={(e) => !canUpdate && e.preventDefault()}
                         >
                           <Edit className="w-4 h-4" />
                         </Link>
-                        <button
-                          onClick={() => deleteCustomer(customer.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canDelete && (
+                          <button
+                            onClick={() => deleteCustomer(customer.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

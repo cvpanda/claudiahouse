@@ -23,6 +23,8 @@ const saleSchema = z.object({
     .default("efectivo"),
   discount: z.number().min(0).default(0),
   tax: z.number().min(0).default(0),
+  shippingCost: z.number().min(0).default(0),
+  shippingType: z.string().optional().nullable(),
   notes: z.string().optional(),
   subtotal: z.number().min(0),
   total: z.number().min(0),
@@ -144,7 +146,8 @@ export async function POST(request: NextRequest) {
     const discountAmount = (calculatedSubtotal * validatedData.discount) / 100;
     const taxableAmount = calculatedSubtotal - discountAmount;
     const taxAmount = (taxableAmount * validatedData.tax) / 100;
-    const calculatedTotal = taxableAmount + taxAmount;
+    const shippingCost = validatedData.shippingCost || 0;
+    const calculatedTotal = taxableAmount + taxAmount + shippingCost;
 
     // Crear venta en transacción
     const sale = await prisma.$transaction(async (tx: any) => {
@@ -159,6 +162,8 @@ export async function POST(request: NextRequest) {
           paymentMethod: validatedData.paymentMethod,
           customerId: validatedData.customerId,
           notes: validatedData.notes,
+          shippingCost: validatedData.shippingCost,
+          shippingType: validatedData.shippingType,
           saleItems: {
             create: validatedData.items.map((item) => ({
               productId: item.productId,

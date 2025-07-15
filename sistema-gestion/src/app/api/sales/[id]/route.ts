@@ -14,6 +14,8 @@ const updateSaleSchema = z.object({
     .optional(),
   discount: z.number().min(0).optional(),
   tax: z.number().min(0).optional(),
+  shippingCost: z.number().min(0).optional(),
+  shippingType: z.string().optional(),
   notes: z.string().optional(),
   status: z.enum(["pending", "completed", "cancelled"]).optional(),
   items: z
@@ -149,7 +151,10 @@ export async function PUT(
         // Actualizar totales
         const tax = validatedData.tax ?? existingSale.tax;
         const discount = validatedData.discount ?? existingSale.discount;
-        const total = subtotal + tax - discount;
+        const shippingCost =
+          validatedData.shippingCost ??
+          ((existingSale as any).shippingCost || 0);
+        const total = subtotal + tax - discount + shippingCost;
 
         // Prepare update data excluding items
         const { items, ...saleUpdateData } = validatedData;

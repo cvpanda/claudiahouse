@@ -32,14 +32,14 @@ interface PurchaseItem {
     };
   };
   quantity: number;
-  unitPriceForeign?: number;
+  unitPriceForeign?: number | null;
   unitPricePesos: number;
-  subtotalForeign?: number;
+  subtotalForeign?: number | null;
   subtotalPesos: number;
-  distributedCostForeign?: number;
-  distributedCostPesos?: number;
-  finalCostForeign?: number;
-  finalCostPesos?: number;
+  distributedCostForeign?: number | null;
+  distributedCostPesos?: number | null;
+  finalCostForeign?: number | null;
+  finalCostPesos?: number | null;
 }
 
 interface Purchase {
@@ -56,14 +56,14 @@ interface Purchase {
   };
   type: string;
   currency?: string;
-  exchangeRate?: number;
+  exchangeRate?: number | null;
   exchangeType?: string;
   freightCost: number;
   customsCost: number;
   taxCost: number;
   insuranceCost: number;
   otherCosts: number;
-  subtotalForeign?: number;
+  subtotalForeign?: number | null;
   subtotalPesos: number;
   totalCosts: number;
   total: number;
@@ -201,10 +201,26 @@ export default function PurchaseDetailPage() {
     });
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | undefined | null) => {
+    if (amount === undefined || amount === null || isNaN(amount)) {
+      return "$0,00";
+    }
     return amount.toLocaleString("es-AR", {
       style: "currency",
       currency: "ARS",
+    });
+  };
+
+  const formatForeignCurrency = (
+    amount: number | undefined | null,
+    decimals: number = 2
+  ) => {
+    if (amount === undefined || amount === null || isNaN(amount)) {
+      return "N/A";
+    }
+    return amount.toLocaleString("es-AR", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     });
   };
 
@@ -392,10 +408,7 @@ export default function PurchaseDetailPage() {
                       Tipo de Cambio
                     </label>
                     <p className="mt-1 text-gray-900">
-                      {purchase.exchangeRate?.toLocaleString("es-AR", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 4,
-                      })}
+                      {formatForeignCurrency(purchase.exchangeRate, 4)}
                     </p>
                   </div>
                   <div>
@@ -540,9 +553,7 @@ export default function PurchaseDetailPage() {
                         </td>
                         {purchase.type === "IMPORT" && (
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.unitPriceForeign?.toLocaleString("es-AR", {
-                              minimumFractionDigits: 2,
-                            })}
+                            {formatForeignCurrency(item.unitPriceForeign)}
                           </td>
                         )}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -551,14 +562,14 @@ export default function PurchaseDetailPage() {
                         {purchase.type === "IMPORT" &&
                           purchase.totalCosts > 0 && (
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatCurrency(item.distributedCostPesos || 0)}
+                              {formatCurrency(item.distributedCostPesos ?? 0)}
                             </td>
                           )}
                         {purchase.type === "IMPORT" &&
                           purchase.totalCosts > 0 && (
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {formatCurrency(
-                                item.finalCostPesos || item.unitPricePesos
+                                item.finalCostPesos ?? item.unitPricePesos
                               )}
                             </td>
                           )}
@@ -588,9 +599,7 @@ export default function PurchaseDetailPage() {
                       Subtotal ({purchase.currency}):
                     </span>
                     <span className="font-medium">
-                      {purchase.subtotalForeign.toLocaleString("es-AR", {
-                        minimumFractionDigits: 2,
-                      })}
+                      {formatForeignCurrency(purchase.subtotalForeign)}
                     </span>
                   </div>
                 )}
