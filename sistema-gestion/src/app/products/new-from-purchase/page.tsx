@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
@@ -16,7 +16,7 @@ interface Category {
   name: string;
 }
 
-const NewProductFromPurchasePage = () => {
+const NewProductFromPurchaseComponent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo");
@@ -447,6 +447,14 @@ const NewProductFromPurchasePage = () => {
         </form>
       </div>
     </div>
+  );
+};
+
+const NewProductFromPurchasePage = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <NewProductFromPurchaseComponent />
+    </Suspense>
   );
 };
 
