@@ -62,35 +62,6 @@ export default function LoginPage() {
     });
   };
 
-<<<<<<< HEAD
-=======
-  // Usuarios de ejemplo para mostrar en la UI
-  const exampleUsers = [
-    {
-      role: "Administrador",
-      email: "admin@claudiahouse.com",
-      password: "admin123",
-    },
-    {
-      role: "Vendedor",
-      email: "vendedor@claudiahouse.com",
-      password: "vendedor123",
-    },
-    {
-      role: "Almacenero",
-      email: "almacen@claudiahouse.com",
-      password: "almacen123",
-    },
-  ];
-
-  const fillExample = (user: (typeof exampleUsers)[0]) => {
-    setFormData({
-      email: user.email,
-      password: user.password,
-    });
-  };
-
->>>>>>> 88a49718b84847c4c301ed51fe9d4b604c186df3
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -109,29 +80,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-<<<<<<< HEAD
-=======
-        {/* Usuarios de ejemplo */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-blue-900 mb-3">
-            👤 Usuarios de prueba:
-          </h3>
-          <div className="space-y-2">
-            {exampleUsers.map((user, index) => (
-              <button
-                key={index}
-                onClick={() => fillExample(user)}
-                className="w-full text-left p-2 text-xs bg-white border border-blue-200 rounded hover:bg-blue-50 transition-colors"
-              >
-                <div className="font-medium text-blue-900">{user.role}</div>
-                <div className="text-blue-700">{user.email}</div>
-                <div className="text-blue-600">Contraseña: {user.password}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
->>>>>>> 88a49718b84847c4c301ed51fe9d4b604c186df3
         {/* Form */}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
