@@ -38,11 +38,29 @@ export default function NewProductPage() {
     supplierId: "",
     categoryId: "",
   });
+  const [wholesaleMargin, setWholesaleMargin] = useState(0);
+  const [retailMargin, setRetailMargin] = useState(0);
 
   useEffect(() => {
     fetchCategories();
     fetchSuppliers();
   }, []);
+
+  useEffect(() => {
+    const cost = parseFloat(formData.cost) || 0;
+    const wholesale = parseFloat(formData.wholesalePrice) || 0;
+    const retail = parseFloat(formData.retailPrice) || 0;
+    setWholesaleMargin(
+      cost > 0 && wholesale > 0
+        ? Math.round((1 - cost / wholesale) * 100 * 100) / 100
+        : 0
+    );
+    setRetailMargin(
+      cost > 0 && retail > 0
+        ? Math.round((1 - cost / retail) * 100 * 100) / 100
+        : 0
+    );
+  }, [formData.cost, formData.wholesalePrice, formData.retailPrice]);
 
   const fetchCategories = async () => {
     try {
@@ -310,15 +328,13 @@ export default function NewProductPage() {
           <div className="bg-white shadow-sm rounded-lg border p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-6">Precios</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label
-                  htmlFor="cost"
-                  className="block text-sm font-medium text-gray-700"
-                >
+            <div className="space-y-6">
+              {/* Costo - Primera línea */}
+              <div className="max-w-xs">
+                <label htmlFor="cost" className="block text-sm font-medium text-gray-700 mb-2">
                   Costo *
                 </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span className="text-gray-500 sm:text-sm">$</span>
                   </div>
@@ -332,57 +348,105 @@ export default function NewProductPage() {
                     value={formData.cost}
                     onChange={handleChange}
                     className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="0.00"
                   />
                 </div>
               </div>
 
-              <div>
-                <label
-                  htmlFor="wholesalePrice"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Precio Mayorista *
-                </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">$</span>
+              {/* Precios de Venta - Segunda línea */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Precio Mayorista */}
+                <div>
+                  <label htmlFor="wholesalePrice" className="block text-sm font-medium text-gray-700 mb-2">
+                    Precio Mayorista *
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1 min-w-0">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-gray-500 sm:text-sm">$</span>
+                        </div>
+                        <input
+                          type="number"
+                          id="wholesalePrice"
+                          name="wholesalePrice"
+                          required
+                          step="0.01"
+                          min="0"
+                          value={formData.wholesalePrice}
+                          onChange={handleChange}
+                          className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div className="w-28 flex-shrink-0">
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={wholesaleMargin}
+                            readOnly
+                            className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-center cursor-not-allowed"
+                            placeholder="0"
+                          />
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <span className="text-gray-500 sm:text-sm">%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Margen: {wholesaleMargin.toFixed(1)}%
+                    </p>
                   </div>
-                  <input
-                    type="number"
-                    id="wholesalePrice"
-                    name="wholesalePrice"
-                    required
-                    step="0.01"
-                    min="0"
-                    value={formData.wholesalePrice}
-                    onChange={handleChange}
-                    className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
                 </div>
-              </div>
 
-              <div>
-                <label
-                  htmlFor="retailPrice"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Precio Minorista *
-                </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">$</span>
+                {/* Precio Minorista */}
+                <div>
+                  <label htmlFor="retailPrice" className="block text-sm font-medium text-gray-700 mb-2">
+                    Precio Minorista *
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1 min-w-0">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-gray-500 sm:text-sm">$</span>
+                        </div>
+                        <input
+                          type="number"
+                          id="retailPrice"
+                          name="retailPrice"
+                          required
+                          step="0.01"
+                          min="0"
+                          value={formData.retailPrice}
+                          onChange={handleChange}
+                          className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div className="w-28 flex-shrink-0">
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={retailMargin}
+                            readOnly
+                            className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-center cursor-not-allowed"
+                            placeholder="0"
+                          />
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <span className="text-gray-500 sm:text-sm">%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Margen: {retailMargin.toFixed(1)}%
+                    </p>
                   </div>
-                  <input
-                    type="number"
-                    id="retailPrice"
-                    name="retailPrice"
-                    required
-                    step="0.01"
-                    min="0"
-                    value={formData.retailPrice}
-                    onChange={handleChange}
-                    className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
                 </div>
               </div>
             </div>
