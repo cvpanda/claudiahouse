@@ -331,7 +331,10 @@ export default function NewProductPage() {
             <div className="space-y-6">
               {/* Costo - Primera línea */}
               <div className="max-w-xs">
-                <label htmlFor="cost" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="cost"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Costo *
                 </label>
                 <div className="relative">
@@ -357,7 +360,10 @@ export default function NewProductPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Precio Mayorista */}
                 <div>
-                  <label htmlFor="wholesalePrice" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="wholesalePrice"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Precio Mayorista *
                   </label>
                   <div className="space-y-2">
@@ -404,7 +410,10 @@ export default function NewProductPage() {
 
                 {/* Precio Minorista */}
                 <div>
-                  <label htmlFor="retailPrice" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="retailPrice"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Precio Minorista *
                   </label>
                   <div className="space-y-2">

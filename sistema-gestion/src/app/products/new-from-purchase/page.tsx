@@ -48,8 +48,16 @@ const NewProductFromPurchaseComponent = () => {
     const cost = formData.cost || 0;
     const wholesale = formData.wholesalePrice || 0;
     const retail = formData.retailPrice || 0;
-    setWholesaleMargin(cost > 0 && wholesale > 0 ? Math.round((1 - cost / wholesale) * 100 * 100) / 100 : 0);
-    setRetailMargin(cost > 0 && retail > 0 ? Math.round((1 - cost / retail) * 100 * 100) / 100 : 0);
+    setWholesaleMargin(
+      cost > 0 && wholesale > 0
+        ? Math.round((1 - cost / wholesale) * 100 * 100) / 100
+        : 0
+    );
+    setRetailMargin(
+      cost > 0 && retail > 0
+        ? Math.round((1 - cost / retail) * 100 * 100) / 100
+        : 0
+    );
   }, [formData.cost, formData.wholesalePrice, formData.retailPrice]);
 
   // Fetch suppliers and categories
@@ -380,7 +388,9 @@ const NewProductFromPurchaseComponent = () => {
                             )
                           }
                           className={`pl-7 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                            errors.wholesalePrice ? "border-red-300" : "border-gray-300"
+                            errors.wholesalePrice
+                              ? "border-red-300"
+                              : "border-gray-300"
                           }`}
                           placeholder="0.00"
                         />
@@ -430,10 +440,15 @@ const NewProductFromPurchaseComponent = () => {
                           min="0"
                           value={formData.retailPrice}
                           onChange={(e) =>
-                            handleChange("retailPrice", parseFloat(e.target.value) || 0)
+                            handleChange(
+                              "retailPrice",
+                              parseFloat(e.target.value) || 0
+                            )
                           }
                           className={`pl-7 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                            errors.retailPrice ? "border-red-300" : "border-gray-300"
+                            errors.retailPrice
+                              ? "border-red-300"
+                              : "border-gray-300"
                           }`}
                           placeholder="0.00"
                         />
