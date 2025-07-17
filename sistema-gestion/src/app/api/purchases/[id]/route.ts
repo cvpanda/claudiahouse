@@ -54,13 +54,21 @@ export async function GET(
         ...item,
         quantity: item.quantity || 0,
         unitPricePesos: item.unitPricePesos || 0,
-        subtotalPesos: item.subtotalPesos || 0,
         unitPriceForeign: item.unitPriceForeign || null,
-        subtotalForeign: item.subtotalForeign || null,
-        distributedCostForeign: item.distributedCostForeign || null,
-        distributedCostPesos: item.distributedCostPesos || null,
-        finalCostForeign: item.finalCostForeign || null,
-        finalCostPesos: item.finalCostPesos || null,
+        distributedCosts: item.distributedCosts || 0,
+        finalUnitCost: item.finalUnitCost || item.unitPricePesos,
+        totalCost: item.totalCost || (item.quantity * item.unitPricePesos),
+        // Calcular subtotales para la vista
+        subtotalPesos: item.totalCost || (item.quantity * item.unitPricePesos),
+        subtotalForeign: item.unitPriceForeign ? (item.quantity * item.unitPriceForeign) : null,
+        distributedCostPesos: item.distributedCosts || 0,
+        distributedCostForeign: (item.unitPriceForeign && purchase.exchangeRate) 
+          ? (item.distributedCosts || 0) / purchase.exchangeRate 
+          : null,
+        finalCostPesos: item.finalUnitCost || item.unitPricePesos,
+        finalCostForeign: (item.unitPriceForeign && purchase.exchangeRate) 
+          ? item.finalUnitCost / purchase.exchangeRate 
+          : null,
       })),
     };
 
