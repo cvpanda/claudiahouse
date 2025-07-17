@@ -318,17 +318,17 @@ export default function PurchaseDetailPage() {
                   <label className="block text-sm font-medium text-gray-700">
                     Nombre
                   </label>
-                  <p className="mt-1 text-gray-900">{purchase.supplier.name}</p>
+                  <p className="mt-1 text-gray-900">{purchase.supplier?.name || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     País
                   </label>
                   <p className="mt-1 text-gray-900">
-                    {purchase.supplier.country}
+                    {purchase.supplier?.country || 'N/A'}
                   </p>
                 </div>
-                {purchase.supplier.email && (
+                {purchase.supplier?.email && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       Email
@@ -342,7 +342,7 @@ export default function PurchaseDetailPage() {
                     </a>
                   </div>
                 )}
-                {purchase.supplier.phone && (
+                {purchase.supplier?.phone && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       Teléfono
@@ -353,7 +353,7 @@ export default function PurchaseDetailPage() {
                     </p>
                   </div>
                 )}
-                {purchase.supplier.website && (
+                {purchase.supplier?.website && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       Sitio web
@@ -369,7 +369,7 @@ export default function PurchaseDetailPage() {
                     </a>
                   </div>
                 )}
-                {purchase.supplier.address && (
+                {purchase.supplier?.address && (
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">
                       Dirección
@@ -396,10 +396,10 @@ export default function PurchaseDetailPage() {
                       Moneda
                     </label>
                     <p className="mt-1 text-gray-900">
-                      {purchase.currency} -{" "}
+                      {purchase.currency || 'N/A'} -{" "}
                       {
                         currencies.find((c) => c.code === purchase.currency)
-                          ?.name
+                          ?.name || 'Desconocida'
                       }
                     </p>
                   </div>
@@ -408,7 +408,7 @@ export default function PurchaseDetailPage() {
                       Tipo de Cambio
                     </label>
                     <p className="mt-1 text-gray-900">
-                      {formatForeignCurrency(purchase.exchangeRate, 4)}
+                      {formatForeignCurrency(purchase.exchangeRate || 0, 4)}
                     </p>
                   </div>
                   <div>
@@ -416,7 +416,7 @@ export default function PurchaseDetailPage() {
                       Tipo
                     </label>
                     <p className="mt-1 text-gray-900">
-                      {purchase.exchangeType}
+                      {purchase.exchangeType || 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -512,7 +512,7 @@ export default function PurchaseDetailPage() {
                       </th>
                       {purchase.type === "IMPORT" && (
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Precio ({purchase.currency})
+                          Precio ({purchase.currency || 'USD'})
                         </th>
                       )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -541,10 +541,10 @@ export default function PurchaseDetailPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900">
-                              {item.product.name}
+                              {item.product?.name || 'Producto sin nombre'}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {item.product.category.name}
+                              {item.product?.category?.name || 'Sin categoría'}
                             </div>
                           </div>
                         </td>
@@ -596,7 +596,7 @@ export default function PurchaseDetailPage() {
                 {purchase.type === "IMPORT" && purchase.subtotalForeign && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">
-                      Subtotal ({purchase.currency}):
+                      Subtotal ({purchase.currency || 'USD'}):
                     </span>
                     <span className="font-medium">
                       {formatForeignCurrency(purchase.subtotalForeign)}

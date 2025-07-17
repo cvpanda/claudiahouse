@@ -97,6 +97,104 @@ const NewPurchasePage = () => {
     otherCosts: 0,
   });
 
+  // Persistencia de datos
+  const STORAGE_KEY = "purchase_draft";
+
+  const saveDraftToStorage = useCallback(() => {
+    const draftData = {
+      supplierId,
+      type,
+      currency,
+      exchangeRate,
+      exchangeType,
+      orderDate,
+      expectedDate,
+      notes,
+      items,
+      importCosts,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(draftData));
+  }, [
+    supplierId,
+    type,
+    currency,
+    exchangeRate,
+    exchangeType,
+    orderDate,
+    expectedDate,
+    notes,
+    items,
+    importCosts,
+  ]);
+
+  const loadDraftFromStorage = useCallback(() => {
+    try {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+        const draftData = JSON.parse(savedData);
+        // Solo cargar si los datos son de las últimas 24 horas
+        if (Date.now() - draftData.timestamp < 24 * 60 * 60 * 1000) {
+          setSupplierId(draftData.supplierId || "");
+          setType(draftData.type || "LOCAL");
+          setCurrency(draftData.currency || "ARS");
+          setExchangeRate(draftData.exchangeRate || 1);
+          setExchangeType(draftData.exchangeType || "Oficial");
+          setOrderDate(
+            draftData.orderDate ||
+              new Date().toISOString().split("T")[0]
+          );
+          setExpectedDate(draftData.expectedDate || "");
+          setNotes(draftData.notes || "");
+          setItems(draftData.items || []);
+          setImportCosts(
+            draftData.importCosts || {
+              freightCost: 0,
+              customsCost: 0,
+              taxCost: 0,
+              insuranceCost: 0,
+              otherCosts: 0,
+            }
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error loading draft:", error);
+    }
+  }, []);
+
+  const clearDraftFromStorage = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+  }, []);
+
+  // Cargar datos al montar el componente
+  useEffect(() => {
+    loadDraftFromStorage();
+  }, [loadDraftFromStorage]);
+
+  // Guardar automáticamente cuando cambian los datos importantes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (supplierId || items.length > 0 || notes.trim()) {
+        saveDraftToStorage();
+      }
+    }, 1000); // Guardar después de 1 segundo de inactividad
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    supplierId,
+    type,
+    currency,
+    exchangeRate,
+    exchangeType,
+    orderDate,
+    expectedDate,
+    notes,
+    items,
+    importCosts,
+    saveDraftToStorage,
+  ]);
+
   // Fetch data
   const fetchSuppliers = async () => {
     try {
@@ -305,6 +403,7 @@ const NewPurchasePage = () => {
 
       if (response.ok) {
         const purchase = await response.json();
+        clearDraftFromStorage(); // Limpiar el borrador al completar exitosamente
         router.push(`/purchases/${purchase.id}`);
       } else {
         const error = await response.json();
@@ -356,6 +455,27 @@ const NewPurchasePage = () => {
                 <ArrowLeft className="h-6 w-6" />
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">Nueva Compra</h1>
+              {localStorage.getItem(STORAGE_KEY) && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-sm">
+                    <Info className="h-4 w-4" />
+                    Borrador guardado
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm('¿Estás seguro de que quieres limpiar el borrador guardado?')) {
+                        clearDraftFromStorage();
+                        window.location.reload();
+                      }
+                    }}
+                    className="text-gray-400 hover:text-gray-600 text-sm"
+                    title="Limpiar borrador"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
             <p className="text-gray-600">
               Complete la información de la compra y agregue los productos

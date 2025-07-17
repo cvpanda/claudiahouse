@@ -31,8 +31,8 @@ const NewProductFromPurchaseComponent = () => {
     description: "",
     sku: "",
     cost: 0,
-    wholesalePrice: 0,
-    retailPrice: 0,
+    wholesalePrice: 0, // Opcional, no requerido
+    retailPrice: 0,    // Opcional, no requerido
     minStock: 1,
     unit: "unit",
     supplierId: "",
@@ -112,12 +112,13 @@ const NewProductFromPurchaseComponent = () => {
       newErrors.cost = "El costo debe ser mayor o igual a 0";
     }
 
-    if (formData.wholesalePrice < 0) {
+    // Los precios de venta son opcionales cuando se crea desde compras
+    if (formData.wholesalePrice && formData.wholesalePrice < 0) {
       newErrors.wholesalePrice =
         "El precio mayorista debe ser mayor o igual a 0";
     }
 
-    if (formData.retailPrice < 0) {
+    if (formData.retailPrice && formData.retailPrice < 0) {
       newErrors.retailPrice = "El precio minorista debe ser mayor o igual a 0";
     }
 
@@ -333,6 +334,12 @@ const NewProductFromPurchaseComponent = () => {
             <h2 className="text-lg font-semibold text-gray-900 mb-6">
               Precios
             </h2>
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Nota:</strong> Al crear un producto desde compras, solo necesitas establecer el costo. 
+                Los precios de venta son opcionales y puedes configurarlos más tarde editando el producto.
+              </p>
+            </div>
 
             <div className="space-y-6">
               {/* Costo - Primera línea */}
@@ -368,7 +375,7 @@ const NewProductFromPurchaseComponent = () => {
                 {/* Precio Mayorista */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Precio Mayorista *
+                    Precio Mayorista (opcional)
                   </label>
                   <div className="space-y-2">
                     <div className="flex gap-2">
@@ -426,7 +433,7 @@ const NewProductFromPurchaseComponent = () => {
                 {/* Precio Minorista */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Precio Minorista *
+                    Precio Minorista (opcional)
                   </label>
                   <div className="space-y-2">
                     <div className="flex gap-2">
