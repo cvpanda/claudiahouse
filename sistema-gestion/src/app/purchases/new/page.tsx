@@ -141,8 +141,7 @@ const NewPurchasePage = () => {
           setExchangeRate(draftData.exchangeRate || 1);
           setExchangeType(draftData.exchangeType || "Oficial");
           setOrderDate(
-            draftData.orderDate ||
-              new Date().toISOString().split("T")[0]
+            draftData.orderDate || new Date().toISOString().split("T")[0]
           );
           setExpectedDate(draftData.expectedDate || "");
           setNotes(draftData.notes || "");
@@ -464,7 +463,11 @@ const NewPurchasePage = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm('¿Estás seguro de que quieres limpiar el borrador guardado?')) {
+                      if (
+                        confirm(
+                          "¿Estás seguro de que quieres limpiar el borrador guardado?"
+                        )
+                      ) {
                         clearDraftFromStorage();
                         window.location.reload();
                       }

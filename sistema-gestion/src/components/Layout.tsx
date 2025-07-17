@@ -110,6 +110,7 @@ export default function Layout({ children }: LayoutProps) {
     );
   });
 
+  // Mostrar loading mientras se autentica
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -118,8 +119,14 @@ export default function Layout({ children }: LayoutProps) {
     );
   }
 
+  // Si no hay usuario, mostrar un contenedor vacío
+  // El AuthProvider se encargará de redirigir a /login
   if (!user) {
-    return null; // El AuthProvider redirigirá a /login
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   return (
