@@ -121,11 +121,6 @@ export default function PurchaseDetailPage() {
         throw new Error("Error al cargar la compra");
       }
       const data = await response.json();
-      console.log("Purchase data:", data);
-      console.log(
-        "First item distributedCostPesos:",
-        data.items?.[0]?.distributedCostPesos
-      );
       setPurchase(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -184,8 +179,8 @@ export default function PurchaseDetailPage() {
           throw new Error("Error al completar la compra");
         }
 
-        const updatedPurchase = await response.json();
-        setPurchase(updatedPurchase);
+        const responseData = await response.json();
+        setPurchase(responseData.purchase);
         alert("Compra completada exitosamente. Stock y costos actualizados.");
       } catch (err) {
         alert(
@@ -502,7 +497,7 @@ export default function PurchaseDetailPage() {
               <div className="px-6 py-4 border-b border-gray-200">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center">
                   <Calculator className="w-5 h-5 mr-2" />
-                  Productos ({purchase.items.length})
+                  Productos ({purchase.items?.length || 0})
                 </h2>
               </div>
               <div className="overflow-x-auto">
@@ -541,7 +536,7 @@ export default function PurchaseDetailPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {purchase.items.map((item) => (
+                    {purchase.items?.map((item) => (
                       <tr key={item.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
@@ -567,22 +562,22 @@ export default function PurchaseDetailPage() {
                         {purchase.type === "IMPORT" &&
                           purchase.totalCosts > 0 && (
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {item.distributedCostPesos || 0} -{" "}
-                              {typeof item.distributedCostPesos}
+                              {formatCurrency(item.distributedCostPesos ?? 0)}
                             </td>
                           )}
                         {purchase.type === "IMPORT" &&
                           purchase.totalCosts > 0 && (
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {item.finalCostPesos || item.unitPricePesos} -{" "}
-                              {typeof item.finalCostPesos}
+                              {formatCurrency(
+                                item.finalCostPesos ?? item.unitPricePesos
+                              )}
                             </td>
                           )}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {formatCurrency(item.subtotalPesos)}
                         </td>
                       </tr>
-                    ))}
+                    )) || []}
                   </tbody>
                 </table>
               </div>
