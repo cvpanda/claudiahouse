@@ -32,7 +32,7 @@ const NewProductFromPurchaseComponent = () => {
     sku: "",
     cost: 0,
     wholesalePrice: 0, // Opcional, no requerido
-    retailPrice: 0,    // Opcional, no requerido
+    retailPrice: 0, // Opcional, no requerido
     minStock: 1,
     unit: "unit",
     supplierId: "",
@@ -336,8 +336,10 @@ const NewProductFromPurchaseComponent = () => {
             </h2>
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Nota:</strong> Al crear un producto desde compras, solo necesitas establecer el costo. 
-                Los precios de venta son opcionales y puedes configurarlos más tarde editando el producto.
+                <strong>Nota:</strong> Al crear un producto desde compras, solo
+                necesitas establecer el costo. Los precios de venta son
+                opcionales y puedes configurarlos más tarde editando el
+                producto.
               </p>
             </div>
 

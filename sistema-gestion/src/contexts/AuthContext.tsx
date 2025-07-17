@@ -33,6 +33,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -40,22 +41,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const publicRoutes = ["/login"];
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    if (!isInitialized) {
+      checkAuth();
+    }
+  }, [isInitialized]);
 
   useEffect(() => {
     // Verificar autenticación en cada cambio de ruta
-    if (!loading && !user && !publicRoutes.includes(pathname)) {
+    if (
+      isInitialized &&
+      !loading &&
+      !user &&
+      !publicRoutes.includes(pathname)
+    ) {
       router.push("/login");
     }
-  }, [user, loading, pathname, router]);
+  }, [user, loading, pathname, isInitialized]);
 
   const checkAuth = async () => {
     try {
       // Verificar si hay datos en localStorage
       const savedUser = localStorage.getItem("user");
       if (savedUser) {
-        setUser(JSON.parse(savedUser));
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+        } catch (e) {
+          localStorage.removeItem("user");
+        }
       }
 
       // Verificar con el servidor
@@ -68,17 +81,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setUser(null);
           localStorage.removeItem("user");
+          if (!publicRoutes.includes(pathname)) {
+            router.push("/login");
+          }
         }
       } else {
         setUser(null);
         localStorage.removeItem("user");
+        if (!publicRoutes.includes(pathname)) {
+          router.push("/login");
+        }
       }
     } catch (error) {
       console.error("Error verificando autenticación:", error);
       setUser(null);
       localStorage.removeItem("user");
+      if (!publicRoutes.includes(pathname)) {
+        router.push("/login");
+      }
     } finally {
       setLoading(false);
+      setIsInitialized(true);
     }
   };
 
@@ -88,15 +111,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    setLoading(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch (error) {
       console.error("Error en logout:", error);
-    } finally {
-      setUser(null);
-      localStorage.removeItem("user");
-      router.push("/login");
     }
+
+    // Limpiar estado local inmediatamente
+    setUser(null);
+    localStorage.removeItem("user");
+
+    // Redirigir después de limpiar el estado
+    setLoading(false);
+    router.push("/login");
   };
 
   const hasPermission = (module: string, action: string): boolean => {
@@ -117,8 +145,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     logout,
     hasPermission,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && isInitialized,
   };
+
+  // No renderizar children hasta que esté inicializado
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -141,12 +178,13 @@ export function usePermission(module: string, action: string) {
 export function useRequireAuth() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && pathname !== "/login") {
       router.push("/login");
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
 
   return { user, loading };
 }

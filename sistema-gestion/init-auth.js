@@ -303,11 +303,11 @@ async function main() {
     // 4. Crear usuario administrador por defecto
     console.log("👤 Creando usuario administrador...");
 
-    const adminPassword = await bcrypt.hash("admin123", 12);
+    const adminPassword = await bcrypt.hash("skato77", 12);
 
     const adminUser = await prisma.user.upsert({
       where: { email: "admin@claudiahouse.com" },
-      update: {},
+      update: { password: adminPassword }, // Actualizar contraseña si ya existe
       create: {
         email: "admin@claudiahouse.com",
         password: adminPassword,
@@ -318,9 +318,9 @@ async function main() {
       },
     });
 
-    console.log("✅ Usuario administrador creado");
+    console.log("✅ Usuario administrador creado/actualizado");
     console.log("📧 Email: admin@claudiahouse.com");
-    console.log("🔐 Contraseña: admin123");
+    console.log("🔐 Contraseña: skato77");
 
     // 5. Crear algunos usuarios de ejemplo
     console.log("👥 Creando usuarios de ejemplo...");
@@ -361,7 +361,7 @@ async function main() {
 
     console.log("\n🎉 ¡Sistema de autenticación inicializado correctamente!");
     console.log("\n📋 Usuarios disponibles:");
-    console.log("  👑 Administrador: admin@claudiahouse.com / admin123");
+    console.log("  👑 Administrador: admin@claudiahouse.com / skato77");
     console.log("  💼 Vendedor: vendedor@claudiahouse.com / vendedor123");
     console.log("  📦 Almacenero: almacen@claudiahouse.com / almacen123");
   } catch (error) {

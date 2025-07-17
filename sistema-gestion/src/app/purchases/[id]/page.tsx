@@ -121,6 +121,11 @@ export default function PurchaseDetailPage() {
         throw new Error("Error al cargar la compra");
       }
       const data = await response.json();
+      console.log("Purchase data:", data);
+      console.log(
+        "First item distributedCostPesos:",
+        data.items?.[0]?.distributedCostPesos
+      );
       setPurchase(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -318,14 +323,16 @@ export default function PurchaseDetailPage() {
                   <label className="block text-sm font-medium text-gray-700">
                     Nombre
                   </label>
-                  <p className="mt-1 text-gray-900">{purchase.supplier?.name || 'N/A'}</p>
+                  <p className="mt-1 text-gray-900">
+                    {purchase.supplier?.name || "N/A"}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     País
                   </label>
                   <p className="mt-1 text-gray-900">
-                    {purchase.supplier?.country || 'N/A'}
+                    {purchase.supplier?.country || "N/A"}
                   </p>
                 </div>
                 {purchase.supplier?.email && (
@@ -396,11 +403,9 @@ export default function PurchaseDetailPage() {
                       Moneda
                     </label>
                     <p className="mt-1 text-gray-900">
-                      {purchase.currency || 'N/A'} -{" "}
-                      {
-                        currencies.find((c) => c.code === purchase.currency)
-                          ?.name || 'Desconocida'
-                      }
+                      {purchase.currency || "N/A"} -{" "}
+                      {currencies.find((c) => c.code === purchase.currency)
+                        ?.name || "Desconocida"}
                     </p>
                   </div>
                   <div>
@@ -416,7 +421,7 @@ export default function PurchaseDetailPage() {
                       Tipo
                     </label>
                     <p className="mt-1 text-gray-900">
-                      {purchase.exchangeType || 'N/A'}
+                      {purchase.exchangeType || "N/A"}
                     </p>
                   </div>
                 </div>
@@ -512,7 +517,7 @@ export default function PurchaseDetailPage() {
                       </th>
                       {purchase.type === "IMPORT" && (
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Precio ({purchase.currency || 'USD'})
+                          Precio ({purchase.currency || "USD"})
                         </th>
                       )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -541,10 +546,10 @@ export default function PurchaseDetailPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900">
-                              {item.product?.name || 'Producto sin nombre'}
+                              {item.product?.name || "Producto sin nombre"}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {item.product?.category?.name || 'Sin categoría'}
+                              {item.product?.category?.name || "Sin categoría"}
                             </div>
                           </div>
                         </td>
@@ -562,15 +567,15 @@ export default function PurchaseDetailPage() {
                         {purchase.type === "IMPORT" &&
                           purchase.totalCosts > 0 && (
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatCurrency(item.distributedCostPesos ?? 0)}
+                              {item.distributedCostPesos || 0} -{" "}
+                              {typeof item.distributedCostPesos}
                             </td>
                           )}
                         {purchase.type === "IMPORT" &&
                           purchase.totalCosts > 0 && (
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatCurrency(
-                                item.finalCostPesos ?? item.unitPricePesos
-                              )}
+                              {item.finalCostPesos || item.unitPricePesos} -{" "}
+                              {typeof item.finalCostPesos}
                             </td>
                           )}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -596,7 +601,7 @@ export default function PurchaseDetailPage() {
                 {purchase.type === "IMPORT" && purchase.subtotalForeign && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">
-                      Subtotal ({purchase.currency || 'USD'}):
+                      Subtotal ({purchase.currency || "USD"}):
                     </span>
                     <span className="font-medium">
                       {formatForeignCurrency(purchase.subtotalForeign)}

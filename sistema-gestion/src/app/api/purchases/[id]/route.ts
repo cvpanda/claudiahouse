@@ -37,6 +37,21 @@ export async function GET(
       );
     }
 
+    // Calcular distribución de costos
+    const totalSubtotalPesos = purchase.items.reduce(
+      (sum: number, item: any) => {
+        return sum + (item.quantity || 0) * (item.unitPricePesos || 0);
+      },
+      0
+    );
+
+    const totalImportCosts =
+      (purchase.freightCost || 0) +
+      (purchase.customsCost || 0) +
+      (purchase.taxCost || 0) +
+      (purchase.insuranceCost || 0) +
+      (purchase.otherCosts || 0);
+
     // Asegurar que todos los valores numéricos sean válidos
     const sanitizedPurchase = {
       ...purchase,
@@ -50,26 +65,70 @@ export async function GET(
       total: purchase.total || 0,
       exchangeRate: purchase.exchangeRate || null,
       subtotalForeign: purchase.subtotalForeign || null,
-      items: purchase.items.map((item: any) => ({
-        ...item,
-        quantity: item.quantity || 0,
-        unitPricePesos: item.unitPricePesos || 0,
-        unitPriceForeign: item.unitPriceForeign || null,
-        distributedCosts: item.distributedCosts || 0,
-        finalUnitCost: item.finalUnitCost || item.unitPricePesos,
-        totalCost: item.totalCost || (item.quantity * item.unitPricePesos),
-        // Calcular subtotales para la vista
-        subtotalPesos: item.totalCost || (item.quantity * item.unitPricePesos),
-        subtotalForeign: item.unitPriceForeign ? (item.quantity * item.unitPriceForeign) : null,
-        distributedCostPesos: item.distributedCosts || 0,
-        distributedCostForeign: (item.unitPriceForeign && purchase.exchangeRate) 
-          ? (item.distributedCosts || 0) / purchase.exchangeRate 
-          : null,
-        finalCostPesos: item.finalUnitCost || item.unitPricePesos,
-        finalCostForeign: (item.unitPriceForeign && purchase.exchangeRate) 
-          ? item.finalUnitCost / purchase.exchangeRate 
-          : null,
-      })),
+      items: purchase.items.map((item: any) => {
+        const itemSubtotalPesos =
+          (item.quantity || 0) * (item.unitPricePesos || 0);
+
+        // Calcular el costo distribuido proporcionalmente
+        const distributedCostPesos =
+          totalSubtotalPesos > 0
+            ? (itemSubtotalPesos / totalSubtotalPesos) * totalImportCosts
+            : 0;
+
+        // Calcular el costo distribuido por unidad
+        const distributedCostPerUnit =
+          (item.quantity || 0) > 0
+            ? distributedCostPesos / (item.quantity || 0)
+            : 0;
+
+        // Costo final por unidad (precio + costo distribuido por unidad)
+        const finalCostPesos =
+          (item.unitPricePesos || 0) + distributedCostPerUnit;
+
+        let distributedCostForeign = null;
+        let finalCostForeign = null;
+
+        if (item.unitPriceForeign && purchase.exchangeRate) {
+          const itemSubtotalForeign =
+            (item.quantity || 0) * item.unitPriceForeign;
+          const totalSubtotalForeign = purchase.subtotalForeign || 0;
+
+          if (totalSubtotalForeign > 0) {
+            const totalImportCostsForeign =
+              totalImportCosts / purchase.exchangeRate;
+            distributedCostForeign =
+              (itemSubtotalForeign / totalSubtotalForeign) *
+              totalImportCostsForeign;
+            const distributedCostPerUnitForeign =
+              distributedCostForeign / (item.quantity || 0);
+            finalCostForeign =
+              item.unitPriceForeign + distributedCostPerUnitForeign;
+          }
+        }
+
+        return {
+          id: item.id,
+          productId: item.productId,
+          product: item.product,
+          quantity: item.quantity || 0,
+          unitPricePesos: item.unitPricePesos || 0,
+          unitPriceForeign: item.unitPriceForeign || null,
+          // Calcular subtotales
+          subtotalPesos: itemSubtotalPesos,
+          subtotalForeign: item.unitPriceForeign
+            ? (item.quantity || 0) * item.unitPriceForeign
+            : null,
+          // Costos distribuidos calculados
+          distributedCostPesos: Math.round(distributedCostPesos * 100) / 100,
+          distributedCostForeign: distributedCostForeign
+            ? Math.round(distributedCostForeign * 100) / 100
+            : null,
+          finalCostPesos: Math.round(finalCostPesos * 100) / 100,
+          finalCostForeign: finalCostForeign
+            ? Math.round(finalCostForeign * 100) / 100
+            : null,
+        };
+      }),
     };
 
     return NextResponse.json(sanitizedPurchase);
