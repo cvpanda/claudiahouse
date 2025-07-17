@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface Category {
   id: string;
   name: string;
+  code: string;
   description?: string;
   createdAt: string;
   products?: { id: string; name: string }[];
@@ -47,6 +48,7 @@ export default function CategoriesPage() {
 
   const [formData, setFormData] = useState({
     name: "",
+    code: "",
     description: "",
   });
 
@@ -95,7 +97,7 @@ export default function CategoriesPage() {
         );
         setShowModal(false);
         setEditingCategory(null);
-        setFormData({ name: "", description: "" });
+        setFormData({ name: "", code: "", description: "" });
         fetchCategories();
       } else {
         const error = await response.json();
@@ -113,6 +115,7 @@ export default function CategoriesPage() {
     setEditingCategory(category);
     setFormData({
       name: category.name,
+      code: category.code,
       description: category.description || "",
     });
     setShowModal(true);
@@ -143,7 +146,7 @@ export default function CategoriesPage() {
 
   const openCreateModal = () => {
     setEditingCategory(null);
-    setFormData({ name: "", description: "" });
+    setFormData({ name: "", code: "", description: "" });
     setShowModal(true);
   };
 
@@ -244,9 +247,14 @@ export default function CategoriesPage() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {category.name}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {category.name}
+                    </h3>
+                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
+                      {category.code}
+                    </span>
+                  </div>
                   {category.description && (
                     <p className="mt-1 text-sm text-gray-600">
                       {category.description}
@@ -325,6 +333,25 @@ export default function CategoriesPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nombre de la categoría"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Código (3 letras) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={3}
+                    value={formData.code}
+                    onChange={(e) =>
+                      setFormData({ ...formData, code: e.target.value.toUpperCase() })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="LAP"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Se usará para generar el SKU de los productos
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

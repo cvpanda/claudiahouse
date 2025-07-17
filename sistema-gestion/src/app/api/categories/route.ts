@@ -28,11 +28,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description } = body;
+    const { name, code, description } = body;
 
-    if (!name) {
+    if (!name || !code) {
       return NextResponse.json(
-        { error: "El nombre es requerido" },
+        { error: "El nombre y código son requeridos" },
+        { status: 400 }
+      );
+    }
+
+    if (code.length !== 3) {
+      return NextResponse.json(
+        { error: "El código debe tener exactamente 3 caracteres" },
         { status: 400 }
       );
     }
@@ -40,6 +47,7 @@ export async function POST(request: NextRequest) {
     const category = await prisma.category.create({
       data: {
         name,
+        code: code.toUpperCase(),
         description: description || null,
       },
     });
