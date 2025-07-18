@@ -12,6 +12,8 @@ import {
   Calculator,
   AlertCircle,
   Info,
+  Trash2,
+  Save,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -49,6 +51,9 @@ interface PurchaseItem {
   distributedCosts?: number;
   finalUnitCost?: number;
   totalCost?: number;
+  subtotalForeign?: number;
+  subtotalPesos?: number;
+  isNew?: boolean;
 }
 
 interface ImportCosts {
@@ -75,6 +80,7 @@ const NewPurchasePage = () => {
   const [loading, setLoading] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [showProductModal, setShowProductModal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Form data
   const [supplierId, setSupplierId] = useState("");
@@ -96,6 +102,61 @@ const NewPurchasePage = () => {
     insuranceCost: 0,
     otherCosts: 0,
   });
+
+  // Función para formatear números con puntos de miles y coma decimal
+  const formatNumber = (value: number): string => {
+    return value.toLocaleString("es-AR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  // Función para parsear números del formato argentino
+  const parseNumber = (value: string): number => {
+    return parseFloat(value.replace(/\./g, "").replace(",", ".")) || 0;
+  };
+
+  // Función para auto-calcular precio ARS cuando cambia precio USD
+  const updateItemWithAutoCalculation = (
+    productId: string,
+    field: keyof PurchaseItem,
+    value: any
+  ) => {
+    const newItems = [...items];
+    const itemIndex = newItems.findIndex(
+      (item) => item.productId === productId
+    );
+
+    if (itemIndex !== -1) {
+      newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
+
+      // Auto-calcular precio ARS cuando cambia precio USD
+      if (field === "unitPriceForeign" && currency !== "ARS") {
+        const foreignPrice = parseFloat(value) || 0;
+        const arsPrice = foreignPrice * exchangeRate;
+        newItems[itemIndex].unitPricePesos = Math.round(arsPrice * 100) / 100;
+      }
+
+      setItems(newItems);
+    }
+  };
+
+  // Efecto para recalcular precios ARS cuando cambia el tipo de cambio
+  useEffect(() => {
+    if (currency !== "ARS" && exchangeRate > 0) {
+      const updatedItems = items.map((item) => {
+        if (item.unitPriceForeign && item.unitPriceForeign > 0) {
+          return {
+            ...item,
+            unitPricePesos:
+              Math.round(item.unitPriceForeign * exchangeRate * 100) / 100,
+          };
+        }
+        return item;
+      });
+      setItems(updatedItems);
+    }
+  }, [exchangeRate, currency]);
 
   // Persistencia de datos
   const STORAGE_KEY = "purchase_draft";
@@ -248,28 +309,17 @@ const NewPurchasePage = () => {
     setFilteredProducts(filtered);
   }, [productSearch, products]);
 
-  // Add product to purchase
+  // Add product to purchase - mejorado como en edición
   const addProduct = (product: Product) => {
-    const existingItem = items.find((item) => item.productId === product.id);
-
-    if (existingItem) {
-      setItems(
-        items.map((item) =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
-    } else {
-      const newItem: PurchaseItem = {
-        productId: product.id,
-        product,
-        quantity: 1,
-        unitPriceForeign: type === "IMPORT" ? undefined : undefined,
-        unitPricePesos: product.cost,
-      };
-      setItems([...items, newItem]);
-    }
+    const newItem: PurchaseItem = {
+      productId: product.id,
+      product,
+      quantity: 1,
+      unitPriceForeign: currency !== "ARS" ? undefined : undefined,
+      unitPricePesos: product.cost,
+      isNew: true,
+    };
+    setItems([...items, newItem]);
     setShowProductModal(false);
   };
 
@@ -303,89 +353,147 @@ const NewPurchasePage = () => {
     setItems(items.filter((item) => item.productId !== productId));
   };
 
-  // Calculate totals
+  // Calculate totals - mejorado con la misma lógica de edición
   const calculateTotals = () => {
-    const subtotalForeign =
-      type === "IMPORT"
-        ? items.reduce(
-            (sum, item) => sum + (item.unitPriceForeign || 0) * item.quantity,
-            0
-          )
-        : 0;
+    const subtotalPesos = items.reduce((sum, item) => {
+      return sum + item.quantity * item.unitPricePesos;
+    }, 0);
 
-    const subtotalPesos = items.reduce(
-      (sum, item) => sum + item.unitPricePesos * item.quantity,
+    const subtotalForeign =
+      currency !== "ARS"
+        ? items.reduce((sum, item) => {
+            const foreignPrice = item.unitPriceForeign || 0;
+            return sum + item.quantity * foreignPrice;
+          }, 0)
+        : null;
+
+    // Separar costos por moneda de forma más clara
+    const costsForeign =
+      currency !== "ARS"
+        ? {
+            freight: importCosts.freightCost,
+            customs: importCosts.customsCost,
+            insurance: importCosts.insuranceCost,
+            other: importCosts.otherCosts,
+          }
+        : {
+            freight: 0,
+            customs: 0,
+            insurance: 0,
+            other: 0,
+          };
+
+    const costsLocal = {
+      // Impuestos SIEMPRE en pesos (IIBB, IVA, etc. son locales)
+      tax: importCosts.taxCost,
+      // Si es compra local (ARS), todos los costos van en pesos
+      ...(currency === "ARS"
+        ? {
+            freight: importCosts.freightCost,
+            customs: importCosts.customsCost,
+            insurance: importCosts.insuranceCost,
+            other: importCosts.otherCosts,
+          }
+        : {
+            // Si es importación, solo algunos costos pueden estar en pesos
+            // Por ejemplo: algunos impuestos, algunos seguros locales, etc.
+            // Por ahora dejamos solo tax, pero se podría expandir
+          }),
+    };
+
+    const totalCostsForeign = Object.values(costsForeign).reduce(
+      (sum, cost) => sum + cost,
+      0
+    );
+    const totalCostsLocal = Object.values(costsLocal).reduce(
+      (sum, cost) => sum + cost,
       0
     );
 
-    const totalCosts =
-      importCosts.freightCost +
-      importCosts.customsCost +
-      importCosts.taxCost +
-      importCosts.insuranceCost +
-      importCosts.otherCosts;
+    // Convertir costos extranjeros a pesos usando el tipo de cambio
+    const totalCostsForeignInPesos = totalCostsForeign * exchangeRate;
+    const totalCostsInPesos = totalCostsForeignInPesos + totalCostsLocal;
 
-    const total = subtotalPesos + totalCosts;
+    const total = subtotalPesos + totalCostsInPesos;
 
-    return { subtotalForeign, subtotalPesos, totalCosts, total };
-  };
-
-  // Calculate distributed costs for imports
-  const calculateDistributedCosts = () => {
-    const { subtotalPesos, totalCosts } = calculateTotals();
-
-    if (type !== "IMPORT" || totalCosts === 0 || subtotalPesos === 0) {
-      return items.map((item) => ({
-        ...item,
-        distributedCosts: 0,
-        finalUnitCost: item.unitPricePesos,
-        totalCost: item.unitPricePesos * item.quantity,
-      }));
-    }
-
-    return items.map((item) => {
-      const itemTotal = item.unitPricePesos * item.quantity;
-      const proportion = itemTotal / subtotalPesos;
-      const distributedCosts = totalCosts * proportion;
+    // Calcular costos distribuidos por item
+    const itemsWithDistributedCosts = items.map((item) => {
+      const itemSubtotalPesos = item.quantity * item.unitPricePesos;
+      const distributedCosts =
+        subtotalPesos > 0
+          ? (itemSubtotalPesos / subtotalPesos) * totalCostsInPesos
+          : 0;
       const finalUnitCost =
         item.unitPricePesos + distributedCosts / item.quantity;
+      const finalTotalCost = finalUnitCost * item.quantity;
 
       return {
         ...item,
         distributedCosts,
         finalUnitCost,
-        totalCost: finalUnitCost * item.quantity,
+        finalTotalCost,
       };
     });
+
+    return {
+      subtotalPesos,
+      subtotalForeign,
+      totalCosts: totalCostsInPesos,
+      totalCostsForeign,
+      totalCostsLocal,
+      totalCostsForeignInPesos,
+      costsForeign,
+      costsLocal,
+      total,
+      itemsWithDistributedCosts,
+    };
   };
 
-  // Submit form
+  // Calculate distributed costs for imports - ya no necesitamos esta función, se incluye en calculateTotals
+  // Mantenemos por compatibilidad pero no se usa
+  const calculateDistributedCosts = () => {
+    return calculateTotals().itemsWithDistributedCosts;
+  };
+
+  // Submit form - mejorado con la misma lógica de edición
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!supplierId || items.length === 0) {
-      alert("Por favor complete todos los campos requeridos");
+    if (items.length === 0) {
+      setError("Debe agregar al menos un producto a la compra");
+      return;
+    }
+
+    if (!supplierId) {
+      setError("Debe seleccionar un proveedor");
       return;
     }
 
     setLoading(true);
+    setError(null);
 
     try {
+      const totalsData = calculateTotals();
+
       const purchaseData = {
         supplierId,
         type,
-        currency: type === "IMPORT" ? currency : undefined,
-        exchangeRate: type === "IMPORT" ? exchangeRate : undefined,
-        exchangeType: type === "IMPORT" ? exchangeType : undefined,
-        freightCost: type === "IMPORT" ? importCosts.freightCost : undefined,
-        customsCost: type === "IMPORT" ? importCosts.customsCost : undefined,
-        taxCost: type === "IMPORT" ? importCosts.taxCost : undefined,
-        insuranceCost:
-          type === "IMPORT" ? importCosts.insuranceCost : undefined,
-        otherCosts: type === "IMPORT" ? importCosts.otherCosts : undefined,
+        currency: currency !== "ARS" ? currency : undefined,
+        exchangeRate: currency !== "ARS" ? exchangeRate : undefined,
+        exchangeType: currency !== "ARS" ? exchangeType : undefined,
+        freightCost: importCosts.freightCost,
+        customsCost: importCosts.customsCost,
+        taxCost: importCosts.taxCost,
+        insuranceCost: importCosts.insuranceCost,
+        otherCosts: importCosts.otherCosts,
         orderDate,
         expectedDate: expectedDate || undefined,
         notes: notes || undefined,
+        // Incluir los totales calculados
+        subtotalPesos: totalsData.subtotalPesos,
+        subtotalForeign: totalsData.subtotalForeign,
+        totalCosts: totalsData.totalCosts,
+        total: totalsData.total,
         items: items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -405,12 +513,11 @@ const NewPurchasePage = () => {
         clearDraftFromStorage(); // Limpiar el borrador al completar exitosamente
         router.push(`/purchases/${purchase.id}`);
       } else {
-        const error = await response.json();
-        alert(error.error || "Error al crear la compra");
+        const errorData = await response.json();
+        setError(errorData.error || "Error al crear la compra");
       }
-    } catch (error) {
-      console.error("Error al crear compra:", error);
-      alert("Error al crear la compra");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setLoading(false);
     }
@@ -436,9 +543,8 @@ const NewPurchasePage = () => {
     }
   }, [products, items]);
 
-  const { subtotalForeign, subtotalPesos, totalCosts, total } =
-    calculateTotals();
-  const itemsWithCosts = calculateDistributedCosts();
+  const totals = calculateTotals();
+  // const itemsWithCosts = calculateDistributedCosts(); // Ya no necesitamos esto
 
   return (
     <Layout>
@@ -485,6 +591,18 @@ const NewPurchasePage = () => {
               necesarios
             </p>
           </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="flex">
+                <AlertCircle className="h-5 w-5 text-red-400" />
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">Error</h3>
+                  <p className="mt-1 text-sm text-red-700">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
@@ -569,196 +687,164 @@ const NewPurchasePage = () => {
               </div>
             </div>
 
-            {/* Import Configuration */}
-            {type === "IMPORT" && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Configuración de Importación
-                </h2>
+            {/* Costos Adicionales - mejorado como en edición */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Costos Adicionales
+              </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Moneda *
-                    </label>
-                    <select
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      {currencies.map((curr) => (
-                        <option key={curr.code} value={curr.code}>
-                          {curr.symbol} {curr.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tipo de Compra
+                  </label>
+                  <select
+                    value={type}
+                    onChange={(e) =>
+                      setType(e.target.value as "LOCAL" | "IMPORT")
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="LOCAL">Local/Mayorista</option>
+                    <option value="IMPORT">Importación</option>
+                  </select>
+                </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Moneda
+                  </label>
+                  <select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="ARS">ARS - Peso Argentino</option>
+                    <option value="USD">USD - Dólar</option>
+                    <option value="EUR">EUR - Euro</option>
+                  </select>
+                </div>
+
+                {currency !== "ARS" && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tipo de Cambio *
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tipo de Cambio
                     </label>
                     <input
                       type="number"
                       step="0.01"
+                      min="0"
                       value={exchangeRate}
                       onChange={(e) =>
-                        setExchangeRate(parseFloat(e.target.value) || 0)
+                        setExchangeRate(parseFloat(e.target.value) || 1)
                       }
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="1000.00"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
                   </div>
+                )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tipo de Cambio
-                    </label>
-                    <select
-                      value={exchangeType}
-                      onChange={(e) => setExchangeType(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="Oficial">Oficial</option>
-                      <option value="Blue">Blue</option>
-                      <option value="MEP">MEP</option>
-                      <option value="CCL">CCL</option>
-                      <option value="Turista">Turista</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Costo de Flete{" "}
+                    {currency !== "ARS" ? `(${currency})` : "(ARS)"}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={importCosts.freightCost}
+                    onChange={(e) =>
+                      setImportCosts({
+                        ...importCosts,
+                        freightCost: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
                 </div>
 
                 <div>
-                  <h3 className="text-base font-medium text-gray-900 mb-4">
-                    Costos de Importación (en pesos)
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Flete
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={importCosts.freightCost}
-                        onChange={(e) =>
-                          setImportCosts((prev) => ({
-                            ...prev,
-                            freightCost: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Gastos Aduaneros
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={importCosts.customsCost}
-                        onChange={(e) =>
-                          setImportCosts((prev) => ({
-                            ...prev,
-                            customsCost: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Impuestos (DJAI, etc.)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={importCosts.taxCost}
-                        onChange={(e) =>
-                          setImportCosts((prev) => ({
-                            ...prev,
-                            taxCost: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Seguro
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={importCosts.insuranceCost}
-                        onChange={(e) =>
-                          setImportCosts((prev) => ({
-                            ...prev,
-                            insuranceCost: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Otros Gastos
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={importCosts.otherCosts}
-                        onChange={(e) =>
-                          setImportCosts((prev) => ({
-                            ...prev,
-                            otherCosts: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-sm text-gray-500">
-                          Total Costos
-                        </div>
-                        <div className="text-lg font-semibold text-gray-900">
-                          $
-                          {totalCosts.toLocaleString("es-AR", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Costo de Aduana{" "}
+                    {currency !== "ARS" ? `(${currency})` : "(ARS)"}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={importCosts.customsCost}
+                    onChange={(e) =>
+                      setImportCosts({
+                        ...importCosts,
+                        customsCost: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
                 </div>
 
-                {totalCosts > 0 && (
-                  <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <Info className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div className="text-sm text-blue-800">
-                        Los costos de importación se distribuirán
-                        proporcionalmente entre todos los productos de la
-                        compra.
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Impuestos (ARS)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={importCosts.taxCost}
+                    onChange={(e) =>
+                      setImportCosts({
+                        ...importCosts,
+                        taxCost: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Impuestos locales siempre en pesos
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Seguro {currency !== "ARS" ? `(${currency})` : "(ARS)"}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={importCosts.insuranceCost}
+                    onChange={(e) =>
+                      setImportCosts({
+                        ...importCosts,
+                        insuranceCost: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Otros Costos{" "}
+                    {currency !== "ARS" ? `(${currency})` : "(ARS)"}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={importCosts.otherCosts}
+                    onChange={(e) =>
+                      setImportCosts({
+                        ...importCosts,
+                        otherCosts: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
               </div>
-            )}
+            </div>
 
             {/* Products */}
             <div className="bg-white rounded-lg shadow-sm p-6">
@@ -798,8 +884,8 @@ const NewPurchasePage = () => {
                 <div className="space-y-4">
                   {items.map((item) => {
                     const itemWithCosts =
-                      itemsWithCosts.find(
-                        (i) => i.productId === item.productId
+                      totals.itemsWithDistributedCosts.find(
+                        (i: any) => i.productId === item.productId
                       ) || item;
 
                     return (
@@ -908,37 +994,33 @@ const NewPurchasePage = () => {
                             />
                           </div>
 
-                          {type === "IMPORT" && totalCosts > 0 && (
+                          {type === "IMPORT" && totals.totalCosts > 0 && (
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Costos Dist.
                               </label>
                               <input
                                 type="text"
-                                value={`$${(
+                                value={`$${formatNumber(
                                   itemWithCosts.distributedCosts || 0
-                                ).toLocaleString("es-AR", {
-                                  minimumFractionDigits: 2,
-                                })}`}
+                                )}`}
                                 readOnly
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
                               />
                             </div>
                           )}
 
-                          {type === "IMPORT" && totalCosts > 0 && (
+                          {type === "IMPORT" && totals.totalCosts > 0 && (
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Costo Final Unit.
                               </label>
                               <input
                                 type="text"
-                                value={`$${(
+                                value={`$${formatNumber(
                                   itemWithCosts.finalUnitCost ||
-                                  item.unitPricePesos
-                                ).toLocaleString("es-AR", {
-                                  minimumFractionDigits: 2,
-                                })}`}
+                                    item.unitPricePesos
+                                )}`}
                                 readOnly
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
                               />
@@ -977,55 +1059,205 @@ const NewPurchasePage = () => {
                 </h2>
 
                 <div className="space-y-3">
-                  {type === "IMPORT" && subtotalForeign > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">
-                        Subtotal ({currency}):
-                      </span>
-                      <span className="font-medium">
-                        {currencies.find((c) => c.code === currency)?.symbol}
-                        {subtotalForeign.toLocaleString("es-AR", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Subtotal (ARS):</span>
-                    <span className="font-medium">
-                      $
-                      {subtotalPesos.toLocaleString("es-AR", {
-                        minimumFractionDigits: 2,
-                      })}
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">
+                      Subtotal Productos:
+                    </span>
+                    <span className="text-sm font-medium">
+                      ${formatNumber(totals.subtotalPesos)}
                     </span>
                   </div>
 
-                  {type === "IMPORT" && totalCosts > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">
-                        Costos de Importación:
+                  {totals.subtotalForeign && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">
+                        Subtotal {currency}:
                       </span>
-                      <span className="font-medium">
-                        $
-                        {totalCosts.toLocaleString("es-AR", {
-                          minimumFractionDigits: 2,
-                        })}
+                      <span className="text-sm font-medium">
+                        {currency} {formatNumber(totals.subtotalForeign)}
                       </span>
                     </div>
                   )}
 
+                  {/* Desglose de costos adicionales */}
+                  <div className="border-t pt-2">
+                    <div className="text-sm font-medium text-gray-700 mb-2">
+                      Resumen de Costos:
+                    </div>
+
+                    {/* Costos en moneda extranjera */}
+                    {currency !== "ARS" && totals.totalCostsForeign > 0 && (
+                      <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                        <div className="text-xs font-medium text-blue-800 mb-1">
+                          Costos en {currency}:
+                        </div>
+                        {totals.costsForeign.freight > 0 && (
+                          <div className="flex justify-between text-xs text-blue-700">
+                            <span>• Flete:</span>
+                            <span>
+                              {currency}{" "}
+                              {formatNumber(totals.costsForeign.freight)}
+                            </span>
+                          </div>
+                        )}
+                        {totals.costsForeign.customs > 0 && (
+                          <div className="flex justify-between text-xs text-blue-700">
+                            <span>• Aduana:</span>
+                            <span>
+                              {currency}{" "}
+                              {formatNumber(totals.costsForeign.customs)}
+                            </span>
+                          </div>
+                        )}
+                        {totals.costsForeign.insurance > 0 && (
+                          <div className="flex justify-between text-xs text-blue-700">
+                            <span>• Seguro:</span>
+                            <span>
+                              {currency}{" "}
+                              {formatNumber(totals.costsForeign.insurance)}
+                            </span>
+                          </div>
+                        )}
+                        {totals.costsForeign.other > 0 && (
+                          <div className="flex justify-between text-xs text-blue-700">
+                            <span>• Otros:</span>
+                            <span>
+                              {currency}{" "}
+                              {formatNumber(totals.costsForeign.other)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-xs font-medium text-blue-800 mt-1 pt-1 border-t border-blue-300">
+                          <span>Subtotal {currency}:</span>
+                          <span>
+                            {currency} {formatNumber(totals.totalCostsForeign)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs text-blue-700 mt-1">
+                          <span>
+                            Convertido a ARS (TC: {formatNumber(exchangeRate)}):
+                          </span>
+                          <span>
+                            ARS $
+                            {formatNumber(
+                              totals.totalCostsForeign * exchangeRate
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Costos en pesos argentinos */}
+                    {totals.totalCostsLocal > 0 && (
+                      <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded">
+                        <div className="text-xs font-medium text-green-800 mb-1">
+                          Costos en ARS:
+                        </div>
+                        {totals.costsLocal.tax > 0 && (
+                          <div className="flex justify-between text-xs text-green-700">
+                            <span>• Impuestos:</span>
+                            <span>
+                              ARS ${formatNumber(totals.costsLocal.tax)}
+                            </span>
+                          </div>
+                        )}
+                        {currency === "ARS" && (
+                          <>
+                            {(totals.costsLocal.freight || 0) > 0 && (
+                              <div className="flex justify-between text-xs text-green-700">
+                                <span>• Flete:</span>
+                                <span>
+                                  ARS $
+                                  {formatNumber(totals.costsLocal.freight || 0)}
+                                </span>
+                              </div>
+                            )}
+                            {(totals.costsLocal.customs || 0) > 0 && (
+                              <div className="flex justify-between text-xs text-green-700">
+                                <span>• Aduana:</span>
+                                <span>
+                                  ARS $
+                                  {formatNumber(totals.costsLocal.customs || 0)}
+                                </span>
+                              </div>
+                            )}
+                            {(totals.costsLocal.insurance || 0) > 0 && (
+                              <div className="flex justify-between text-xs text-green-700">
+                                <span>• Seguro:</span>
+                                <span>
+                                  ARS $
+                                  {formatNumber(
+                                    totals.costsLocal.insurance || 0
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                            {(totals.costsLocal.other || 0) > 0 && (
+                              <div className="flex justify-between text-xs text-green-700">
+                                <span>• Otros:</span>
+                                <span>
+                                  ARS $
+                                  {formatNumber(totals.costsLocal.other || 0)}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        <div className="flex justify-between text-xs font-medium text-green-800 mt-1 pt-1 border-t border-green-300">
+                          <span>Subtotal ARS:</span>
+                          <span>
+                            ARS ${formatNumber(totals.totalCostsLocal)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Total general de costos */}
+                    <div className="flex justify-between text-sm font-medium text-gray-700 mt-2 pt-2 border-t">
+                      <span>Total Costos (ARS):</span>
+                      <span>ARS ${formatNumber(totals.totalCosts)}</span>
+                    </div>
+
+                    {currency !== "ARS" && totals.totalCostsForeign > 0 && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Incluye conversión de {currency}{" "}
+                        {formatNumber(totals.totalCostsForeign)} a ARS
+                      </div>
+                    )}
+                  </div>
+
                   <div className="border-t pt-3">
-                    <div className="flex justify-between text-lg font-semibold">
-                      <span className="text-gray-900">Total:</span>
-                      <span className="text-gray-900">
-                        $
-                        {total.toLocaleString("es-AR", {
-                          minimumFractionDigits: 2,
-                        })}
+                    <div className="flex justify-between">
+                      <span className="text-base font-medium text-gray-900">
+                        Total Final:
+                      </span>
+                      <span className="text-base font-bold text-gray-900">
+                        ${formatNumber(totals.total)}
                       </span>
                     </div>
                   </div>
+
+                  {/* Resumen de costos distribuidos */}
+                  {totals.itemsWithDistributedCosts.length > 0 && (
+                    <div className="border-t pt-3">
+                      <div className="text-sm font-medium text-gray-700 mb-2">
+                        Costos Finales por Producto:
+                      </div>
+                      {totals.itemsWithDistributedCosts.map((item, index) => (
+                        <div
+                          key={index}
+                          className="flex justify-between text-xs text-gray-600 mb-1"
+                        >
+                          <span className="truncate mr-2">
+                            {item.product.name}:
+                          </span>
+                          <span className="font-medium">
+                            ${formatNumber(item.finalUnitCost)}/u
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

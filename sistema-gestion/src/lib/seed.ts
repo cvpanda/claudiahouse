@@ -19,24 +19,28 @@ async function main() {
     prisma.category.create({
       data: {
         name: "Electrónicos",
+        code: "ELE",
         description: "Productos electrónicos y tecnológicos",
       },
     }),
     prisma.category.create({
       data: {
         name: "Ropa",
+        code: "ROP",
         description: "Prendas de vestir y accesorios",
       },
     }),
     prisma.category.create({
       data: {
         name: "Hogar",
+        code: "HOG",
         description: "Artículos para el hogar",
       },
     }),
     prisma.category.create({
       data: {
         name: "Alimentos",
+        code: "ALI",
         description: "Productos alimenticios",
       },
     }),

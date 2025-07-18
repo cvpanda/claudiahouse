@@ -7,6 +7,10 @@ const CustomerUpdateSchema = z.object({
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   phone: z.string().optional(),
   address: z.string().optional(),
+  postalCode: z.string().optional(),
+  province: z.string().optional(),
+  city: z.string().optional(),
+  country: z.string().optional(),
   cuit: z.string().optional(),
   customerType: z.enum(["retail", "wholesale"]).optional(),
   isActive: z.boolean().optional(),
@@ -52,6 +56,9 @@ export async function PUT(
       email: validatedData.email || undefined,
       phone: validatedData.phone || undefined,
       address: validatedData.address || undefined,
+      postalCode: validatedData.postalCode || undefined,
+      province: validatedData.province || undefined,
+      city: validatedData.city || undefined,
       cuit: validatedData.cuit || undefined,
     };
 
