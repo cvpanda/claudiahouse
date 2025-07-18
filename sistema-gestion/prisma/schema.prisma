@@ -76,15 +76,39 @@ model Customer {
   email        String?
   phone        String?
   address      String?
+  postalCode   String?
+  province     String?
+  city         String?
+  country      String   @default("Argentina")
   cuit         String?
   customerType String   @default("retail")
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sales Sale[]
+  sales            Sale[]
+  shippingBranches ShippingBranch[]
 
   @@map("customers")
+}
+
+model ShippingBranch {
+  id         String   @id @default(cuid())
+  name       String   // Nombre de la sucursal
+  address    String
+  province   String
+  city       String
+  postalCode String
+  branchCode String?  // Código de la sucursal del correo
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relación con ventas que usan esta sucursal
+  sales Sale[]
+
+  @@map("shipping_branches")
 }
 
 model Sale {
@@ -107,6 +131,10 @@ model Sale {
 
   userId String?
   user   User?   @relation(fields: [userId], references: [id])
+
+  // Sucursal de envío (opcional)
+  shippingBranchId String?
+  shippingBranch   ShippingBranch? @relation(fields: [shippingBranchId], references: [id])
 
   saleItems SaleItem[]
 

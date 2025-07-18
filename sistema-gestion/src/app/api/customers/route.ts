@@ -7,9 +7,22 @@ const CustomerSchema = z.object({
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   phone: z.string().optional(),
   address: z.string().optional(),
+  postalCode: z.string().optional(),
+  province: z.string().optional(),
+  city: z.string().optional(),
+  country: z.string().default("Argentina"),
   cuit: z.string().optional(),
   customerType: z.enum(["retail", "wholesale"]).default("retail"),
   isActive: z.boolean().default(true),
+});
+
+const ShippingBranchSchema = z.object({
+  name: z.string().min(1, "El nombre de la sucursal es requerido"),
+  address: z.string().min(1, "La dirección es requerida"),
+  province: z.string().min(1, "La provincia es requerida"),
+  city: z.string().min(1, "La localidad es requerida"),
+  postalCode: z.string().min(1, "El código postal es requerido"),
+  branchCode: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -73,6 +86,9 @@ export async function POST(request: NextRequest) {
       email: validatedData.email || undefined,
       phone: validatedData.phone || undefined,
       address: validatedData.address || undefined,
+      postalCode: validatedData.postalCode || undefined,
+      province: validatedData.province || undefined,
+      city: validatedData.city || undefined,
       cuit: validatedData.cuit || undefined,
     };
 

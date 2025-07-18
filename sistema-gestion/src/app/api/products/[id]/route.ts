@@ -4,9 +4,9 @@ import { z } from "zod";
 
 const productUpdateSchema = z.object({
   name: z.string().min(1, "El nombre es requerido").optional(),
-  description: z.string().optional(),
-  sku: z.string().optional(),
-  barcode: z.string().optional(),
+  description: z.string().optional().or(z.literal("")).nullable(),
+  sku: z.string().optional().or(z.literal("")).nullable(),
+  barcode: z.string().optional().or(z.literal("")).nullable(),
   cost: z.coerce
     .number()
     .min(0, "El costo debe ser mayor o igual a 0")
@@ -31,7 +31,7 @@ const productUpdateSchema = z.object({
     .optional(),
   maxStock: z.coerce.number().int().nullable().optional(),
   unit: z.string().optional(),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  imageUrl: z.string().url().optional().or(z.literal("")).nullable(),
   supplierId: z.string().optional(),
   categoryId: z.string().optional(),
   isActive: z.boolean().optional(),
@@ -91,30 +91,33 @@ export async function PUT(
       );
     }
 
-    // Verificar unicidad de SKU y código de barras
-    if (validatedData.sku && validatedData.sku !== existingProduct.sku) {
+    // Normalizar datos antes de las validaciones
+    const normalizedSku = validatedData.sku?.trim() || null;
+    const normalizedBarcode = validatedData.barcode?.trim() || null;
+    const existingBarcode = existingProduct.barcode?.trim() || null;
+
+    // Verificar unicidad de SKU
+    if (normalizedSku && normalizedSku !== existingProduct.sku) {
       const existingSku = await prisma.product.findUnique({
-        where: { sku: validatedData.sku },
+        where: { sku: normalizedSku },
       });
-      if (existingSku) {
+      if (existingSku && existingSku.id !== existingProduct.id) {
         return NextResponse.json(
-          { error: "El SKU ya existe" },
-          { status: 400 }
+          { error: "El SKU ya existe", field: "sku" },
+          { status: 409 }
         );
       }
     }
 
-    if (
-      validatedData.barcode &&
-      validatedData.barcode !== existingProduct.barcode
-    ) {
-      const existingBarcode = await prisma.product.findUnique({
-        where: { barcode: validatedData.barcode },
+    // Verificar unicidad de código de barras
+    if (normalizedBarcode && normalizedBarcode !== existingBarcode) {
+      const duplicateBarcode = await prisma.product.findUnique({
+        where: { barcode: normalizedBarcode },
       });
-      if (existingBarcode) {
+      if (duplicateBarcode && duplicateBarcode.id !== existingProduct.id) {
         return NextResponse.json(
-          { error: "El código de barras ya existe" },
-          { status: 400 }
+          { error: "El código de barras ya existe", field: "barcode" },
+          { status: 409 }
         );
       }
     }
@@ -135,9 +138,18 @@ export async function PUT(
       });
     }
 
+    // Preparar datos para la actualización, usando los valores normalizados
+    const updateData = {
+      ...validatedData,
+      sku: normalizedSku,
+      barcode: normalizedBarcode,
+      imageUrl: validatedData.imageUrl?.trim() || null,
+      description: validatedData.description?.trim() || null,
+    };
+
     const updatedProduct = await prisma.product.update({
       where: { id: params.id },
-      data: validatedData,
+      data: updateData,
       include: {
         supplier: true,
         category: true,
@@ -151,6 +163,25 @@ export async function PUT(
         { error: "Datos inválidos", details: error.errors },
         { status: 400 }
       );
+    }
+
+    // Manejar errores específicos de Prisma
+    if (error && typeof error === "object" && "code" in error) {
+      const prismaError = error as any;
+
+      // Error de constraint único (P2002)
+      if (prismaError.code === "P2002") {
+        const field = prismaError.meta?.target?.[0];
+        let message = "Ya existe un producto con estos datos";
+
+        if (field === "sku") {
+          message = "Ya existe un producto con este SKU";
+        } else if (field === "barcode") {
+          message = "Ya existe un producto con este código de barras";
+        }
+
+        return NextResponse.json({ error: message, field }, { status: 409 });
+      }
     }
 
     console.error("Error updating product:", error);

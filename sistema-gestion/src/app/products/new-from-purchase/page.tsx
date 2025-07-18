@@ -14,6 +14,7 @@ interface Supplier {
 interface Category {
   id: string;
   name: string;
+  code: string;
 }
 
 const NewProductFromPurchaseComponent = () => {
@@ -30,35 +31,13 @@ const NewProductFromPurchaseComponent = () => {
     name: "",
     description: "",
     sku: "",
-    cost: 0,
-    wholesalePrice: 0, // Opcional, no requerido
-    retailPrice: 0, // Opcional, no requerido
     minStock: 1,
-    unit: "unit",
+    unit: "unidad",
     supplierId: "",
     categoryId: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [wholesaleMargin, setWholesaleMargin] = useState(0);
-  const [retailMargin, setRetailMargin] = useState(0);
-
-  // Calcular márgenes cuando cambian los precios o el costo
-  useEffect(() => {
-    const cost = formData.cost || 0;
-    const wholesale = formData.wholesalePrice || 0;
-    const retail = formData.retailPrice || 0;
-    setWholesaleMargin(
-      cost > 0 && wholesale > 0
-        ? Math.round((1 - cost / wholesale) * 100 * 100) / 100
-        : 0
-    );
-    setRetailMargin(
-      cost > 0 && retail > 0
-        ? Math.round((1 - cost / retail) * 100 * 100) / 100
-        : 0
-    );
-  }, [formData.cost, formData.wholesalePrice, formData.retailPrice]);
 
   // Fetch suppliers and categories
   useEffect(() => {
@@ -93,6 +72,33 @@ const NewProductFromPurchaseComponent = () => {
     fetchData();
   }, []);
 
+  // Función para generar el próximo SKU automáticamente
+  const generateNextSku = async (categoryId: string) => {
+    if (!categoryId) return;
+
+    try {
+      const response = await fetch(
+        `/api/products/next-sku?categoryId=${categoryId}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setFormData((prev) => ({
+          ...prev,
+          sku: data.nextSku,
+        }));
+      }
+    } catch (error) {
+      console.error("Error generating SKU:", error);
+    }
+  };
+
+  // useEffect para generar SKU automáticamente cuando cambie la categoría
+  useEffect(() => {
+    if (formData.categoryId) {
+      generateNextSku(formData.categoryId);
+    }
+  }, [formData.categoryId]);
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -106,20 +112,6 @@ const NewProductFromPurchaseComponent = () => {
 
     if (!formData.categoryId) {
       newErrors.categoryId = "La categoría es requerida";
-    }
-
-    if (formData.cost < 0) {
-      newErrors.cost = "El costo debe ser mayor o igual a 0";
-    }
-
-    // Los precios de venta son opcionales cuando se crea desde compras
-    if (formData.wholesalePrice && formData.wholesalePrice < 0) {
-      newErrors.wholesalePrice =
-        "El precio mayorista debe ser mayor o igual a 0";
-    }
-
-    if (formData.retailPrice && formData.retailPrice < 0) {
-      newErrors.retailPrice = "El precio minorista debe ser mayor o igual a 0";
     }
 
     if (formData.minStock < 0) {
@@ -145,6 +137,9 @@ const NewProductFromPurchaseComponent = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          cost: 0, // Se definirá en la compra
+          wholesalePrice: 0, // Se definirá opcionalmente después
+          retailPrice: 0, // Se definirá opcionalmente después
           stock: 0, // Los productos nuevos desde compras inician con stock 0
         }),
       });
@@ -247,13 +242,16 @@ const NewProductFromPurchaseComponent = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   SKU
+                  <span className="text-xs text-gray-500 ml-2">
+                    (Se genera automáticamente al seleccionar categoría)
+                  </span>
                 </label>
                 <input
                   type="text"
                   value={formData.sku}
-                  onChange={(e) => handleChange("sku", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Código SKU"
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 cursor-not-allowed"
+                  placeholder="Selecciona una categoría para generar el SKU"
                 />
               </div>
 
@@ -332,171 +330,15 @@ const NewProductFromPurchaseComponent = () => {
 
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">
-              Precios
+              Inventario
             </h2>
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Nota:</strong> Al crear un producto desde compras, solo
-                necesitas establecer el costo. Los precios de venta son
-                opcionales y puedes configurarlos más tarde editando el
-                producto.
+                <strong>Nota:</strong> Los costos y precios se definirán cuando
+                agregues este producto a una compra. Solo necesitas completar la
+                información básica del producto.
               </p>
             </div>
-
-            <div className="space-y-6">
-              {/* Costo - Primera línea */}
-              <div className="max-w-xs">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Costo *
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">$</span>
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.cost}
-                    onChange={(e) =>
-                      handleChange("cost", parseFloat(e.target.value) || 0)
-                    }
-                    className={`pl-7 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.cost ? "border-red-300" : "border-gray-300"
-                    }`}
-                    placeholder="0.00"
-                  />
-                </div>
-                {errors.cost && (
-                  <p className="mt-1 text-sm text-red-600">{errors.cost}</p>
-                )}
-              </div>
-
-              {/* Precios de Venta - Segunda línea */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Precio Mayorista */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Precio Mayorista (opcional)
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <div className="relative flex-1 min-w-0">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span className="text-gray-500 sm:text-sm">$</span>
-                        </div>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.wholesalePrice}
-                          onChange={(e) =>
-                            handleChange(
-                              "wholesalePrice",
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className={`pl-7 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                            errors.wholesalePrice
-                              ? "border-red-300"
-                              : "border-gray-300"
-                          }`}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div className="w-28 flex-shrink-0">
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={wholesaleMargin}
-                            readOnly
-                            className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg bg-gray-50 text-center cursor-not-allowed"
-                            placeholder="0"
-                          />
-                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <span className="text-gray-500 sm:text-sm">%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Margen: {wholesaleMargin.toFixed(1)}%
-                    </p>
-                  </div>
-                  {errors.wholesalePrice && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.wholesalePrice}
-                    </p>
-                  )}
-                </div>
-
-                {/* Precio Minorista */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Precio Minorista (opcional)
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <div className="relative flex-1 min-w-0">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span className="text-gray-500 sm:text-sm">$</span>
-                        </div>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.retailPrice}
-                          onChange={(e) =>
-                            handleChange(
-                              "retailPrice",
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className={`pl-7 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                            errors.retailPrice
-                              ? "border-red-300"
-                              : "border-gray-300"
-                          }`}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div className="w-28 flex-shrink-0">
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={retailMargin}
-                            readOnly
-                            className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg bg-gray-50 text-center cursor-not-allowed"
-                            placeholder="0"
-                          />
-                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <span className="text-gray-500 sm:text-sm">%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Margen: {retailMargin.toFixed(1)}%
-                    </p>
-                  </div>
-                  {errors.retailPrice && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.retailPrice}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">
-              Inventario
-            </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>

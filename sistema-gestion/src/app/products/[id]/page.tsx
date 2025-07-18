@@ -43,6 +43,8 @@ export default function EditProductPage() {
   const params = useParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [product, setProduct] = useState<Product | null>(null);
@@ -83,9 +85,13 @@ export default function EditProductPage() {
           description: productData.description || "",
           sku: productData.sku || "",
           barcode: productData.barcode || "",
-          cost: productData.cost.toString(),
-          wholesalePrice: productData.wholesalePrice.toString(),
-          retailPrice: productData.retailPrice.toString(),
+          cost: formatArgentineNumber(productData.cost.toString()),
+          wholesalePrice: formatArgentineNumber(
+            productData.wholesalePrice.toString()
+          ),
+          retailPrice: formatArgentineNumber(
+            productData.retailPrice.toString()
+          ),
           stock: productData.stock.toString(),
           minStock: productData.minStock.toString(),
           maxStock: productData.maxStock?.toString() || "",
@@ -131,33 +137,122 @@ export default function EditProductPage() {
     }
   };
 
+  // Función para formatear números con separadores argentinos
+  const formatArgentineNumber = (value: string): string => {
+    // Remover todos los caracteres que no sean dígitos o punto decimal
+    const cleanValue = value.replace(/[^\d.]/g, "");
+
+    // Asegurar que solo haya un punto decimal
+    const parts = cleanValue.split(".");
+    if (parts.length > 2) {
+      return parts[0] + "." + parts.slice(1).join("");
+    }
+
+    // Si hay parte entera, formatearla con separadores de miles
+    if (parts[0]) {
+      const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return parts.length > 1 ? `${integerPart},${parts[1]}` : integerPart;
+    }
+
+    return cleanValue;
+  };
+
+  // Función para convertir formato argentino a número
+  const parseArgentineNumber = (value: string): number => {
+    if (!value) return 0;
+    // Remover puntos de miles y reemplazar coma decimal por punto
+    const cleanValue = value.replace(/\./g, "").replace(/,/g, ".");
+    return parseFloat(cleanValue) || 0;
+  };
+
+  // Función helper para clases de input con manejo de errores
+  const getInputClasses = (fieldName: string): string => {
+    const baseClasses =
+      "mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500";
+    const hasError = fieldErrors[fieldName];
+
+    if (hasError) {
+      return `${baseClasses} border-red-300 focus:border-red-500 text-red-900 placeholder-red-300`;
+    }
+
+    return `${baseClasses} border-gray-300 focus:border-blue-500`;
+  };
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
     const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
-    }));
+
+    // Limpiar errores del campo cuando el usuario empieza a escribir
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+
+    if (type === "checkbox") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: (e.target as HTMLInputElement).checked,
+      }));
+    } else if (
+      name === "cost" ||
+      name === "wholesalePrice" ||
+      name === "retailPrice"
+    ) {
+      // Para campos de precio, aplicar formato argentino
+      const formattedValue = formatArgentineNumber(value);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: formattedValue,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setError(null);
+    setFieldErrors({});
 
     try {
       const productData = {
         ...formData,
-        cost: parseFloat(formData.cost) || 0,
-        wholesalePrice: parseFloat(formData.wholesalePrice) || 0,
-        retailPrice: parseFloat(formData.retailPrice) || 0,
+        cost: parseArgentineNumber(formData.cost),
+        wholesalePrice: parseArgentineNumber(formData.wholesalePrice),
+        retailPrice: parseArgentineNumber(formData.retailPrice),
         stock: parseInt(formData.stock) || 0,
         minStock: parseInt(formData.minStock) || 0,
         maxStock: formData.maxStock ? parseInt(formData.maxStock) : null,
       };
+
+      // Validaciones adicionales
+      if (productData.wholesalePrice < productData.cost) {
+        setError("El precio mayorista no puede ser menor al costo");
+        setSaving(false);
+        return;
+      }
+
+      if (productData.retailPrice < productData.wholesalePrice) {
+        setError("El precio minorista no puede ser menor al precio mayorista");
+        setSaving(false);
+        return;
+      }
+
+      if (productData.maxStock && productData.maxStock < productData.minStock) {
+        setError("El stock máximo no puede ser menor al stock mínimo");
+        setSaving(false);
+        return;
+      }
 
       const response = await fetch(`/api/products/${params.id}`, {
         method: "PUT",
@@ -168,15 +263,34 @@ export default function EditProductPage() {
       });
 
       if (response.ok) {
-        alert("Producto actualizado correctamente");
         router.push("/products");
       } else {
-        const error = await response.json();
-        alert(`Error: ${error.error || "Error al actualizar el producto"}`);
+        const errorData = await response.json();
+
+        // Manejar errores específicos
+        if (response.status === 409) {
+          // Error de duplicado
+          if (errorData.field) {
+            setFieldErrors({ [errorData.field]: errorData.error });
+          } else {
+            setError(errorData.error);
+          }
+        } else if (errorData.details) {
+          // Errores de validación de Zod
+          const errors: Record<string, string> = {};
+          errorData.details.forEach((detail: any) => {
+            if (detail.path && detail.path.length > 0) {
+              errors[detail.path[0]] = detail.message;
+            }
+          });
+          setFieldErrors(errors);
+        } else {
+          setError(errorData.error || "Error al actualizar el producto");
+        }
       }
     } catch (error) {
       console.error("Error updating product:", error);
-      alert("Error al actualizar el producto");
+      setError("Error de conexión. Por favor, inténtelo de nuevo.");
     } finally {
       setSaving(false);
     }
@@ -247,6 +361,55 @@ export default function EditProductPage() {
                 className="max-w-md max-h-64 object-cover rounded-lg border shadow-sm"
                 showInstructions={true}
               />
+            </div>
+          </div>
+        )}
+
+        {/* Error Alert */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-red-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                </div>
+              </div>
+              <div className="ml-auto pl-3">
+                <div className="-mx-1.5 -my-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setError(null)}
+                    className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100"
+                  >
+                    <span className="sr-only">Cerrar</span>
+                    <svg
+                      className="w-5 h-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -339,8 +502,11 @@ export default function EditProductPage() {
                   name="sku"
                   value={formData.sku}
                   onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className={getInputClasses("sku")}
                 />
+                {fieldErrors.sku && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.sku}</p>
+                )}
               </div>
 
               <div>
@@ -356,8 +522,13 @@ export default function EditProductPage() {
                   name="barcode"
                   value={formData.barcode}
                   onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className={getInputClasses("barcode")}
                 />
+                {fieldErrors.barcode && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {fieldErrors.barcode}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -431,6 +602,12 @@ export default function EditProductPage() {
 
           <div className="bg-white shadow-sm rounded-lg border p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-6">Precios</h2>
+            <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <strong>Importante:</strong> Los precios deben seguir la lógica:
+                Costo ≤ Precio Mayorista ≤ Precio Minorista
+              </p>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
@@ -445,17 +622,19 @@ export default function EditProductPage() {
                     <span className="text-gray-500 sm:text-sm">$</span>
                   </div>
                   <input
-                    type="number"
+                    type="text"
                     id="cost"
                     name="cost"
                     required
-                    step="0.01"
-                    min="0"
                     value={formData.cost}
                     onChange={handleChange}
+                    placeholder="0"
                     className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Costo base del producto
+                </p>
               </div>
 
               <div>
@@ -470,17 +649,27 @@ export default function EditProductPage() {
                     <span className="text-gray-500 sm:text-sm">$</span>
                   </div>
                   <input
-                    type="number"
+                    type="text"
                     id="wholesalePrice"
                     name="wholesalePrice"
                     required
-                    step="0.01"
-                    min="0"
                     value={formData.wholesalePrice}
                     onChange={handleChange}
+                    placeholder="0"
                     className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Precio para venta al por mayor
+                </p>
+                {formData.cost &&
+                  formData.wholesalePrice &&
+                  parseArgentineNumber(formData.wholesalePrice) <
+                    parseArgentineNumber(formData.cost) && (
+                    <p className="mt-1 text-xs text-red-600">
+                      ⚠️ Precio menor al costo
+                    </p>
+                  )}
               </div>
 
               <div>
@@ -495,19 +684,68 @@ export default function EditProductPage() {
                     <span className="text-gray-500 sm:text-sm">$</span>
                   </div>
                   <input
-                    type="number"
+                    type="text"
                     id="retailPrice"
                     name="retailPrice"
                     required
-                    step="0.01"
-                    min="0"
                     value={formData.retailPrice}
                     onChange={handleChange}
+                    placeholder="0"
                     className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Precio para venta al por menor
+                </p>
+                {formData.wholesalePrice &&
+                  formData.retailPrice &&
+                  parseArgentineNumber(formData.retailPrice) <
+                    parseArgentineNumber(formData.wholesalePrice) && (
+                    <p className="mt-1 text-xs text-red-600">
+                      ⚠️ Precio menor al mayorista
+                    </p>
+                  )}
               </div>
             </div>
+
+            {/* Resumen de márgenes */}
+            {formData.cost &&
+              formData.wholesalePrice &&
+              formData.retailPrice && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">
+                    Márgenes de Ganancia
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Margen Mayorista:</span>
+                      <span className="ml-2 font-medium">
+                        {parseArgentineNumber(formData.cost) > 0
+                          ? `${(
+                              ((parseArgentineNumber(formData.wholesalePrice) -
+                                parseArgentineNumber(formData.cost)) /
+                                parseArgentineNumber(formData.cost)) *
+                              100
+                            ).toFixed(1)}%`
+                          : "0%"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Margen Minorista:</span>
+                      <span className="ml-2 font-medium">
+                        {parseArgentineNumber(formData.cost) > 0
+                          ? `${(
+                              ((parseArgentineNumber(formData.retailPrice) -
+                                parseArgentineNumber(formData.cost)) /
+                                parseArgentineNumber(formData.cost)) *
+                              100
+                            ).toFixed(1)}%`
+                          : "0%"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
           </div>
 
           <div className="bg-white shadow-sm rounded-lg border p-6">

@@ -22,6 +22,10 @@ interface Customer {
   email?: string;
   phone?: string;
   address?: string;
+  postalCode?: string;
+  province?: string;
+  city?: string;
+  country: string;
   cuit?: string;
   customerType: string;
   isActive: boolean;
@@ -275,10 +279,27 @@ export default function CustomersPage() {
                             {customer.phone}
                           </div>
                         )}
-                        {customer.address && (
+                        {(customer.address ||
+                          customer.city ||
+                          customer.province) && (
                           <div className="flex items-center text-sm text-gray-600">
                             <MapPin className="w-4 h-4 mr-2" />
-                            {customer.address}
+                            <div className="flex flex-col">
+                              {customer.address && (
+                                <span>{customer.address}</span>
+                              )}
+                              {(customer.city || customer.province) && (
+                                <span className="text-xs text-gray-500">
+                                  {[
+                                    customer.city,
+                                    customer.province,
+                                    customer.postalCode,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

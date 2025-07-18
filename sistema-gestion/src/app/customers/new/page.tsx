@@ -4,16 +4,25 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, User } from "lucide-react";
 import Layout from "@/components/Layout";
+import ShippingBranchesManager from "@/components/ShippingBranchesManager";
 import Link from "next/link";
+import { ShippingBranch } from "@/types";
 
 export default function NewCustomerPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [shippingBranches, setShippingBranches] = useState<ShippingBranch[]>(
+    []
+  );
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     address: "",
+    postalCode: "",
+    province: "",
+    city: "",
+    country: "Argentina",
     cuit: "",
     customerType: "retail",
     isActive: true,
@@ -89,7 +98,11 @@ export default function NewCustomerPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <form
+            id="customer-form"
+            onSubmit={handleSubmit}
+            className="p-6 space-y-6"
+          >
             {/* Información básica */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -171,26 +184,107 @@ export default function NewCustomerPage() {
               </div>
             </div>
 
-            {/* Dirección y CUIT */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label
-                  htmlFor="address"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Dirección
-                </label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="Dirección completa"
-                />
-              </div>
+            {/* Dirección */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-gray-900">
+                Información de Ubicación
+              </h4>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="address"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Dirección
+                  </label>
+                  <input
+                    type="text"
+                    id="address"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Dirección completa"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="city"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Localidad
+                  </label>
+                  <input
+                    type="text"
+                    id="city"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Ciudad o localidad"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="province"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Provincia
+                  </label>
+                  <input
+                    type="text"
+                    id="province"
+                    name="province"
+                    value={formData.province}
+                    onChange={handleChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Provincia"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="postalCode"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Código Postal
+                  </label>
+                  <input
+                    type="text"
+                    id="postalCode"
+                    name="postalCode"
+                    value={formData.postalCode}
+                    onChange={handleChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Código postal"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="country"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    País
+                  </label>
+                  <input
+                    type="text"
+                    id="country"
+                    name="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="País"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* CUIT */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label
                   htmlFor="cuit"
@@ -227,9 +321,24 @@ export default function NewCustomerPage() {
                 Cliente activo
               </label>
             </div>
+          </form>
+        </div>
 
-            {/* Botones */}
-            <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+        {/* Sucursales de Envío */}
+        <div className="bg-white shadow-sm rounded-lg border">
+          <div className="p-6">
+            <ShippingBranchesManager
+              branches={shippingBranches}
+              onBranchesChange={setShippingBranches}
+              readOnly={false}
+            />
+          </div>
+        </div>
+
+        {/* Botones de Acción */}
+        <div className="bg-white shadow-sm rounded-lg border">
+          <div className="px-6 py-4">
+            <div className="flex justify-end space-x-3">
               <Link
                 href="/customers"
                 className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -238,6 +347,7 @@ export default function NewCustomerPage() {
               </Link>
               <button
                 type="submit"
+                form="customer-form"
                 disabled={loading}
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
@@ -251,7 +361,7 @@ export default function NewCustomerPage() {
                 )}
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </Layout>

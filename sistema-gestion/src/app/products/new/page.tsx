@@ -10,6 +10,7 @@ import Link from "next/link";
 interface Category {
   id: string;
   name: string;
+  code: string;
 }
 
 interface Supplier {
@@ -85,6 +86,33 @@ export default function NewProductPage() {
       console.error("Error fetching suppliers:", error);
     }
   };
+
+  // Función para generar el próximo SKU automáticamente
+  const generateNextSku = async (categoryId: string) => {
+    if (!categoryId) return;
+
+    try {
+      const response = await fetch(
+        `/api/products/next-sku?categoryId=${categoryId}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setFormData((prev) => ({
+          ...prev,
+          sku: data.nextSku,
+        }));
+      }
+    } catch (error) {
+      console.error("Error generating SKU:", error);
+    }
+  };
+
+  // useEffect para generar SKU automáticamente cuando cambie la categoría
+  useEffect(() => {
+    if (formData.categoryId) {
+      generateNextSku(formData.categoryId);
+    }
+  }, [formData.categoryId]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -247,14 +275,18 @@ export default function NewProductPage() {
                   className="block text-sm font-medium text-gray-700"
                 >
                   SKU
+                  <span className="text-xs text-gray-500 ml-2">
+                    (Se genera automáticamente al seleccionar categoría)
+                  </span>
                 </label>
                 <input
                   type="text"
                   id="sku"
                   name="sku"
                   value={formData.sku}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  readOnly
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-50 cursor-not-allowed"
+                  placeholder="Selecciona una categoría para generar el SKU"
                 />
               </div>
 

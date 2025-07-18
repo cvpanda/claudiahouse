@@ -47,9 +47,28 @@ export interface Customer {
   email?: string;
   phone?: string;
   address?: string;
+  postalCode?: string;
+  province?: string;
+  city?: string;
+  country: string;
   cuit?: string;
   customerType: "retail" | "wholesale";
   isActive: boolean;
+  shippingBranches?: ShippingBranch[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ShippingBranch {
+  id: string;
+  name: string;
+  address: string;
+  province: string;
+  city: string;
+  postalCode: string;
+  branchCode?: string;
+  customerId: string;
+  customer?: Customer;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,11 +80,15 @@ export interface Sale {
   subtotal: number;
   tax: number;
   discount: number;
+  shippingCost: number;
+  shippingType?: string;
   paymentMethod: "cash" | "card" | "transfer" | "credit";
   status: "pending" | "completed" | "cancelled";
   notes?: string;
   customerId?: string;
   customer?: Customer;
+  shippingBranchId?: string;
+  shippingBranch?: ShippingBranch;
   saleItems: SaleItem[];
   createdAt: Date;
   updatedAt: Date;
