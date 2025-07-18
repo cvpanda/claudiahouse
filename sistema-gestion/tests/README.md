@@ -5,6 +5,7 @@ Esta carpeta contiene scripts de desarrollo, pruebas y herramientas de testing u
 ## 📁 Organización de Archivos
 
 ### 🧪 Tests de Funcionalidad
+
 - `test-customer-location-shipping.js` - Test completo de gestión de clientes con ubicación y sucursales de envío
 - `test-shipping-branch-model.js` - Verificación del modelo ShippingBranch en Prisma
 - `test-product-*.js` - Tests relacionados con productos (SKU, edición, validación)
@@ -13,11 +14,13 @@ Esta carpeta contiene scripts de desarrollo, pruebas y herramientas de testing u
 - `test-api.js` - Tests generales de API
 
 ### 🔧 Scripts de Verificación
+
 - `check-*.js` - Scripts para verificar permisos, usuarios y estado del sistema
 - `debug-*.js` - Scripts de debugging y diagnóstico
 - `get-*.js` - Scripts para obtener información específica del sistema
 
 ### 🏗️ Scripts de Creación de Datos de Prueba
+
 - `create-test-*.js` - Scripts para crear datos de prueba (productos, compras, ventas)
 - `init-*.js` - Scripts de inicialización
 
@@ -30,6 +33,7 @@ node tests/nombre-del-archivo.js
 ```
 
 ### Ejemplos:
+
 ```bash
 # Test completo de clientes y sucursales
 node tests/test-customer-location-shipping.js
