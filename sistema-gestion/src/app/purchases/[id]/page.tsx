@@ -39,9 +39,9 @@ interface PurchaseItem {
   subtotalForeign?: number | null;
   subtotalPesos: number;
   distributedCostForeign?: number | null;
-  distributedCostPesos?: number | null;
+  distributedCosts?: number | null; // Costo distribuido total
   finalCostForeign?: number | null;
-  finalCostPesos?: number | null;
+  finalUnitCost?: number | null; // Costo unitario final
 }
 
 interface Purchase {
@@ -535,13 +535,13 @@ export default function PurchaseDetailPage() {
                       {purchase.type === "IMPORT" &&
                         purchase.totalCosts > 0 && (
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Costo Distribuido
+                            Costo Dist. Unit.
                           </th>
                         )}
                       {purchase.type === "IMPORT" &&
                         purchase.totalCosts > 0 && (
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Costo Final
+                            Costo Final Unit.
                           </th>
                         )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -576,14 +576,16 @@ export default function PurchaseDetailPage() {
                         {purchase.type === "IMPORT" &&
                           purchase.totalCosts > 0 && (
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatCurrency(item.distributedCostPesos ?? 0)}
+                              {formatCurrency(
+                                (item.distributedCosts ?? 0) / item.quantity
+                              )}
                             </td>
                           )}
                         {purchase.type === "IMPORT" &&
                           purchase.totalCosts > 0 && (
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {formatCurrency(
-                                item.finalCostPesos ?? item.unitPricePesos
+                                item.finalUnitCost ?? item.unitPricePesos
                               )}
                             </td>
                           )}

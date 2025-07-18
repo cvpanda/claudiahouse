@@ -45,12 +45,18 @@ export async function GET(
       0
     );
 
+    // Calcular total de costos de importación en ARS
+    const freightCostARS =
+      (purchase.freightCost || 0) * (purchase.exchangeRate || 1);
+    const otherCostsARS =
+      (purchase.otherCosts || 0) * (purchase.exchangeRate || 1);
+
     const totalImportCosts =
-      (purchase.freightCost || 0) +
+      freightCostARS +
+      otherCostsARS +
       (purchase.customsCost || 0) +
       (purchase.taxCost || 0) +
-      (purchase.insuranceCost || 0) +
-      (purchase.otherCosts || 0);
+      (purchase.insuranceCost || 0);
 
     // Asegurar que todos los valores numéricos sean válidos
     const sanitizedPurchase = {
@@ -118,11 +124,14 @@ export async function GET(
           subtotalForeign: item.unitPriceForeign
             ? (item.quantity || 0) * item.unitPriceForeign
             : null,
-          // Costos distribuidos calculados
+          // Costos distribuidos calculados (nombres compatibles con la vista)
+          distributedCosts: Math.round(distributedCostPesos * 100) / 100,
           distributedCostPesos: Math.round(distributedCostPesos * 100) / 100,
           distributedCostForeign: distributedCostForeign
             ? Math.round(distributedCostForeign * 100) / 100
             : null,
+          // Costo final unitario (nombres compatibles con la vista)
+          finalUnitCost: Math.round(finalCostPesos * 100) / 100,
           finalCostPesos: Math.round(finalCostPesos * 100) / 100,
           finalCostForeign: finalCostForeign
             ? Math.round(finalCostForeign * 100) / 100
