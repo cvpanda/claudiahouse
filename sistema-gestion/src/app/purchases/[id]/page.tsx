@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Layout from "@/components/Layout";
+import DeletePurchaseModal from "@/components/DeletePurchaseModal";
 import {
   ArrowLeft,
   Edit,
@@ -20,6 +21,7 @@ import {
   Calculator,
   FileText,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 
 interface PurchaseItem {
@@ -106,6 +108,7 @@ export default function PurchaseDetailPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState("");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -190,6 +193,15 @@ export default function PurchaseDetailPage() {
       }
     }
   };
+
+  const handleDeleteSuccess = () => {
+    router.push("/purchases");
+  };
+
+  const canEdit =
+    purchase && ["PENDING", "ORDERED", "SHIPPED"].includes(purchase.status);
+  const canDelete =
+    purchase && !["RECEIVED", "IN_TRANSIT"].includes(purchase.status);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("es-AR", {
@@ -288,6 +300,8 @@ export default function PurchaseDetailPage() {
             >
               {statusLabels[purchase.status] || purchase.status}
             </span>
+
+            {/* Botón de cambiar estado */}
             {purchase.status !== "COMPLETED" &&
               purchase.status !== "CANCELLED" && (
                 <button
@@ -632,13 +646,15 @@ export default function PurchaseDetailPage() {
                 Acciones
               </h3>
               <div className="space-y-3">
-                <Link
-                  href={`/purchases/${purchase.id}/edit`}
-                  className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Editar compra
-                </Link>
+                {canEdit && (
+                  <Link
+                    href={`/purchases/${purchase.id}/edit`}
+                    className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Editar compra
+                  </Link>
+                )}
                 {purchase.status !== "COMPLETED" && (
                   <button
                     onClick={handleCompletePurchase}
@@ -655,6 +671,15 @@ export default function PurchaseDetailPage() {
                   <FileText className="w-4 h-4 mr-2" />
                   Imprimir
                 </button>
+                {canDelete && (
+                  <button
+                    onClick={() => setShowDeleteModal(true)}
+                    className="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Eliminar compra
+                  </button>
+                )}
               </div>
             </div>
 
@@ -737,6 +762,14 @@ export default function PurchaseDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Modales */}
+        <DeletePurchaseModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          purchase={purchase}
+          onDelete={handleDeleteSuccess}
+        />
       </div>
     </Layout>
   );
