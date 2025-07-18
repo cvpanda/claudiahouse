@@ -103,6 +103,56 @@ export default function EditPurchasePage() {
 
   const [editItems, setEditItems] = useState<EditItem[]>([]);
 
+  // Función para formatear números con puntos de miles y coma decimal
+  const formatNumber = (value: number): string => {
+    return value.toLocaleString("es-AR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  // Función para parsear números del formato argentino
+  const parseNumber = (value: string): number => {
+    return parseFloat(value.replace(/\./g, "").replace(",", ".")) || 0;
+  };
+
+  // Función para auto-calcular precio ARS cuando cambia precio USD
+  const updateItemWithAutoCalculation = (
+    index: number,
+    field: keyof EditItem,
+    value: any
+  ) => {
+    const newItems = [...editItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+
+    // Auto-calcular precio ARS cuando cambia precio USD
+    if (field === "unitPriceForeign" && editData.currency !== "ARS") {
+      const foreignPrice = parseFloat(value) || 0;
+      const arsPrice = foreignPrice * editData.exchangeRate;
+      newItems[index].unitPricePesos = Math.round(arsPrice * 100) / 100;
+    }
+
+    setEditItems(newItems);
+  };
+
+  // Efecto para recalcular precios ARS cuando cambia el tipo de cambio
+  useEffect(() => {
+    if (editData.currency !== "ARS" && editData.exchangeRate > 0) {
+      const updatedItems = editItems.map((item) => {
+        if (item.unitPriceForeign && item.unitPriceForeign > 0) {
+          return {
+            ...item,
+            unitPricePesos:
+              Math.round(item.unitPriceForeign * editData.exchangeRate * 100) /
+              100,
+          };
+        }
+        return item;
+      });
+      setEditItems(updatedItems);
+    }
+  }, [editData.exchangeRate, editData.currency]);
+
   useEffect(() => {
     if (params.id) {
       fetchPurchase();
@@ -470,7 +520,7 @@ export default function EditPurchasePage() {
                               min="1"
                               value={item.quantity}
                               onChange={(e) =>
-                                updateItem(
+                                updateItemWithAutoCalculation(
                                   index,
                                   "quantity",
                                   parseInt(e.target.value) || 1
@@ -487,14 +537,22 @@ export default function EditPurchasePage() {
                                 min="0"
                                 value={item.unitPriceForeign || 0}
                                 onChange={(e) =>
-                                  updateItem(
+                                  updateItemWithAutoCalculation(
                                     index,
                                     "unitPriceForeign",
                                     parseFloat(e.target.value) || 0
                                   )
                                 }
                                 className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                                placeholder="0,00"
                               />
+                              <div className="text-xs text-gray-500 mt-1">
+                                ARS: $
+                                {formatNumber(
+                                  editData.exchangeRate *
+                                    (item.unitPriceForeign || 0)
+                                )}
+                              </div>
                             </td>
                           )}
                           <td className="px-4 py-3">
@@ -504,23 +562,33 @@ export default function EditPurchasePage() {
                               min="0"
                               value={item.unitPricePesos}
                               onChange={(e) =>
-                                updateItem(
+                                updateItemWithAutoCalculation(
                                   index,
                                   "unitPricePesos",
                                   parseFloat(e.target.value) || 0
                                 )
                               }
-                              className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                              className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                              placeholder="0,00"
                             />
+                            {editData.currency !== "ARS" && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {editData.currency}:{" "}
+                                {(
+                                  (item.unitPricePesos || 0) /
+                                  editData.exchangeRate
+                                ).toFixed(2)}
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-900">
-                            ${(item.quantity * item.unitPricePesos).toFixed(2)}
+                            ${formatNumber(item.quantity * item.unitPricePesos)}
                           </td>
                           <td className="px-4 py-3 text-sm text-blue-600">
-                            ${item.distributedCosts.toFixed(2)}
+                            ${formatNumber(item.distributedCosts)}
                           </td>
                           <td className="px-4 py-3 text-sm font-medium text-green-600">
-                            ${item.finalUnitCost.toFixed(2)}
+                            ${formatNumber(item.finalUnitCost)}
                           </td>
                           <td className="px-4 py-3">
                             <button
@@ -709,7 +777,7 @@ export default function EditPurchasePage() {
                     Subtotal Productos:
                   </span>
                   <span className="text-sm font-medium">
-                    ${totals.subtotalPesos.toFixed(2)}
+                    ${formatNumber(totals.subtotalPesos)}
                   </span>
                 </div>
 
@@ -719,7 +787,7 @@ export default function EditPurchasePage() {
                       Subtotal {editData.currency}:
                     </span>
                     <span className="text-sm font-medium">
-                      {editData.currency} {totals.subtotalForeign.toFixed(2)}
+                      {editData.currency} {formatNumber(totals.subtotalForeign)}
                     </span>
                   </div>
                 )}
@@ -742,7 +810,7 @@ export default function EditPurchasePage() {
                             <span>• Flete:</span>
                             <span>
                               {editData.currency}{" "}
-                              {totals.costsForeign.freight.toFixed(2)}
+                              {formatNumber(totals.costsForeign.freight)}
                             </span>
                           </div>
                         )}
@@ -751,7 +819,7 @@ export default function EditPurchasePage() {
                             <span>• Aduana:</span>
                             <span>
                               {editData.currency}{" "}
-                              {totals.costsForeign.customs.toFixed(2)}
+                              {formatNumber(totals.costsForeign.customs)}
                             </span>
                           </div>
                         )}
@@ -760,7 +828,7 @@ export default function EditPurchasePage() {
                             <span>• Seguro:</span>
                             <span>
                               {editData.currency}{" "}
-                              {totals.costsForeign.insurance.toFixed(2)}
+                              {formatNumber(totals.costsForeign.insurance)}
                             </span>
                           </div>
                         )}
@@ -769,7 +837,7 @@ export default function EditPurchasePage() {
                             <span>• Otros:</span>
                             <span>
                               {editData.currency}{" "}
-                              {totals.costsForeign.other.toFixed(2)}
+                              {formatNumber(totals.costsForeign.other)}
                             </span>
                           </div>
                         )}
@@ -777,18 +845,19 @@ export default function EditPurchasePage() {
                           <span>Subtotal {editData.currency}:</span>
                           <span>
                             {editData.currency}{" "}
-                            {totals.totalCostsForeign.toFixed(2)}
+                            {formatNumber(totals.totalCostsForeign)}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs text-blue-700 mt-1">
                           <span>
-                            Convertido a ARS (TC: {editData.exchangeRate}):
+                            Convertido a ARS (TC:{" "}
+                            {formatNumber(editData.exchangeRate)}):
                           </span>
                           <span>
                             ARS $
-                            {(
+                            {formatNumber(
                               totals.totalCostsForeign * editData.exchangeRate
-                            ).toFixed(2)}
+                            )}
                           </span>
                         </div>
                       </div>
@@ -803,7 +872,9 @@ export default function EditPurchasePage() {
                       {totals.costsLocal.tax > 0 && (
                         <div className="flex justify-between text-xs text-green-700">
                           <span>• Impuestos:</span>
-                          <span>ARS ${totals.costsLocal.tax.toFixed(2)}</span>
+                          <span>
+                            ARS ${formatNumber(totals.costsLocal.tax)}
+                          </span>
                         </div>
                       )}
                       {editData.currency === "ARS" && (
@@ -813,7 +884,7 @@ export default function EditPurchasePage() {
                               <span>• Flete:</span>
                               <span>
                                 ARS $
-                                {(totals.costsLocal.freight || 0).toFixed(2)}
+                                {formatNumber(totals.costsLocal.freight || 0)}
                               </span>
                             </div>
                           )}
@@ -822,7 +893,7 @@ export default function EditPurchasePage() {
                               <span>• Aduana:</span>
                               <span>
                                 ARS $
-                                {(totals.costsLocal.customs || 0).toFixed(2)}
+                                {formatNumber(totals.costsLocal.customs || 0)}
                               </span>
                             </div>
                           )}
@@ -831,7 +902,7 @@ export default function EditPurchasePage() {
                               <span>• Seguro:</span>
                               <span>
                                 ARS $
-                                {(totals.costsLocal.insurance || 0).toFixed(2)}
+                                {formatNumber(totals.costsLocal.insurance || 0)}
                               </span>
                             </div>
                           )}
@@ -839,7 +910,8 @@ export default function EditPurchasePage() {
                             <div className="flex justify-between text-xs text-green-700">
                               <span>• Otros:</span>
                               <span>
-                                ARS ${(totals.costsLocal.other || 0).toFixed(2)}
+                                ARS $
+                                {formatNumber(totals.costsLocal.other || 0)}
                               </span>
                             </div>
                           )}
@@ -847,7 +919,7 @@ export default function EditPurchasePage() {
                       )}
                       <div className="flex justify-between text-xs font-medium text-green-800 mt-1 pt-1 border-t border-green-300">
                         <span>Subtotal ARS:</span>
-                        <span>ARS ${totals.totalCostsLocal.toFixed(2)}</span>
+                        <span>ARS ${formatNumber(totals.totalCostsLocal)}</span>
                       </div>
                     </div>
                   )}
@@ -855,14 +927,14 @@ export default function EditPurchasePage() {
                   {/* Total general de costos */}
                   <div className="flex justify-between text-sm font-medium text-gray-700 mt-2 pt-2 border-t">
                     <span>Total Costos (ARS):</span>
-                    <span>ARS ${totals.totalCosts.toFixed(2)}</span>
+                    <span>ARS ${formatNumber(totals.totalCosts)}</span>
                   </div>
 
                   {editData.currency !== "ARS" &&
                     totals.totalCostsForeign > 0 && (
                       <div className="text-xs text-gray-500 mt-1">
                         Incluye conversión de {editData.currency}{" "}
-                        {totals.totalCostsForeign.toFixed(2)} a ARS
+                        {formatNumber(totals.totalCostsForeign)} a ARS
                       </div>
                     )}
                 </div>
@@ -873,7 +945,7 @@ export default function EditPurchasePage() {
                       Total Final:
                     </span>
                     <span className="text-base font-bold text-gray-900">
-                      ${totals.total.toFixed(2)}
+                      ${formatNumber(totals.total)}
                     </span>
                   </div>
                 </div>
@@ -893,7 +965,7 @@ export default function EditPurchasePage() {
                           {item.productName}:
                         </span>
                         <span className="font-medium">
-                          ${item.finalUnitCost.toFixed(2)}/u
+                          ${formatNumber(item.finalUnitCost)}/u
                         </span>
                       </div>
                     ))}
