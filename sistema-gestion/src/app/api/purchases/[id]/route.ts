@@ -182,16 +182,23 @@ export async function PUT(
   }
 }
 
-// DELETE /api/purchases/[id] - Eliminar compra (solo si está en estado PENDING o CANCELLED)
+// DELETE /api/purchases/[id] - Eliminar compra con reversión de stock
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verificar que la compra existe y se puede eliminar
+    // Verificar que la compra existe y obtener sus items
     // @ts-ignore - Temporary fix for Prisma client type issue
     const existingPurchase = await prisma.purchase.findUnique({
       where: { id: params.id },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
     });
 
     if (!existingPurchase) {
@@ -201,19 +208,86 @@ export async function DELETE(
       );
     }
 
-    if (!["PENDING", "CANCELLED"].includes(existingPurchase.status)) {
+    // Solo permitir eliminar compras que no estén en estados críticos
+    if (["RECEIVED", "IN_TRANSIT"].includes(existingPurchase.status)) {
       return NextResponse.json(
-        { error: "Solo se pueden eliminar compras pendientes o canceladas" },
+        { error: "No se pueden eliminar compras recibidas o en tránsito" },
         { status: 400 }
       );
     }
 
-    // @ts-ignore - Temporary fix for Prisma client type issue
-    await prisma.purchase.delete({
-      where: { id: params.id },
+    // Usar transacción para garantizar consistencia
+    await prisma.$transaction(async (tx) => {
+      // Si la compra fue completada, revertir el impacto en stock
+      if (existingPurchase.status === "COMPLETED") {
+        for (const item of existingPurchase.items) {
+          // Revertir stock
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: { decrement: item.quantity },
+            },
+          });
+
+          // Crear movimiento de stock (reversión)
+          await tx.stockMovement.create({
+            data: {
+              productId: item.productId,
+              type: "OUT",
+              quantity: item.quantity,
+              reason: "Reversión por eliminación de compra",
+              reference: `Compra ${existingPurchase.purchaseNumber} (eliminada)`,
+            },
+          });
+
+          // Recalcular costo promedio del producto
+          const otherPurchaseItems = await tx.purchaseItem.findMany({
+            where: {
+              productId: item.productId,
+              purchase: {
+                status: "COMPLETED",
+                id: { not: params.id }, // Excluir la compra actual
+              },
+            },
+          });
+
+          if (otherPurchaseItems.length > 0) {
+            const totalCost = otherPurchaseItems.reduce(
+              (sum, otherItem) =>
+                sum + otherItem.finalUnitCost * otherItem.quantity,
+              0
+            );
+            const totalQuantity = otherPurchaseItems.reduce(
+              (sum, otherItem) => sum + otherItem.quantity,
+              0
+            );
+            const averageCost =
+              totalQuantity > 0 ? totalCost / totalQuantity : 0;
+
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { cost: averageCost },
+            });
+          } else {
+            // Si no hay otras compras, resetear el costo
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { cost: 0 },
+            });
+          }
+        }
+      }
+
+      // Eliminar la compra (los items se eliminan automáticamente por onDelete: Cascade)
+      await tx.purchase.delete({
+        where: { id: params.id },
+      });
     });
 
-    return NextResponse.json({ message: "Compra eliminada exitosamente" });
+    return NextResponse.json({
+      message: "Compra eliminada exitosamente",
+      revertedStock: existingPurchase.status === "COMPLETED",
+    });
   } catch (error) {
     console.error("Error deleting purchase:", error);
     return NextResponse.json(

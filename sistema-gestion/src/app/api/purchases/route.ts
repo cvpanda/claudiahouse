@@ -136,7 +136,28 @@ export async function POST(request: NextRequest) {
       const match = lastPurchase.purchaseNumber.match(/PC-(\d+)/);
       nextNumber = match ? parseInt(match[1]) + 1 : 1;
     }
-    const purchaseNumber = `PC-${nextNumber.toString().padStart(6, "0")}`;
+
+    // Verificar que el número no exista ya (por seguridad)
+    let purchaseNumber = `PC-${nextNumber.toString().padStart(6, "0")}`;
+    let attempts = 0;
+    while (attempts < 100) {
+      const existing = await prisma.purchase.findUnique({
+        where: { purchaseNumber },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        break;
+      }
+
+      nextNumber++;
+      purchaseNumber = `PC-${nextNumber.toString().padStart(6, "0")}`;
+      attempts++;
+    }
+
+    if (attempts >= 100) {
+      throw new Error("No se pudo generar un número de compra único");
+    }
 
     // Calcular totales
     const subtotalForeign =
@@ -219,7 +240,7 @@ export async function POST(request: NextRequest) {
           purchaseId: newPurchase.id,
           productId: item.productId,
           quantity: item.quantity,
-          unitPriceForeign: item.unitPriceForeign || 0,
+          unitPriceForeign: item.unitPriceForeign || null,
           unitPricePesos: item.unitPricePesos,
           distributedCosts: item.distributedCosts || 0,
           finalUnitCost: item.finalUnitCost || item.unitPricePesos,
@@ -246,8 +267,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(completePurchase, { status: 201 });
   } catch (error) {
     console.error("Error creating purchase:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    console.error("Error details:", {
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json(
-      { error: "Error al crear la compra" },
+      { error: "Error al crear la compra", details: errorMessage },
       { status: 500 }
     );
   }
