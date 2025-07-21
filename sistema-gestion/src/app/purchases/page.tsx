@@ -270,7 +270,9 @@ const PurchasesPage = () => {
           {/* Header */}
           <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6 sm:mb-8">
             <div>
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Compras</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+                Compras
+              </h1>
               <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
                 Gestión de compras y importaciones
               </p>
@@ -427,14 +429,18 @@ const PurchasesPage = () => {
             ) : (
               <div className="space-y-3">
                 {purchases.map((purchase) => (
-                  <div key={purchase.id} className="bg-white rounded-lg shadow-sm border p-4">
+                  <div
+                    key={purchase.id}
+                    className="bg-white rounded-lg shadow-sm border p-4"
+                  >
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h3 className="text-sm font-medium text-gray-900">
                           {purchase.purchaseNumber}
                         </h3>
                         <p className="text-xs text-gray-500 mt-1">
-                          {purchase.items.length} producto{purchase.items.length !== 1 ? "s" : ""}
+                          {purchase.items.length} producto
+                          {purchase.items.length !== 1 ? "s" : ""}
                         </p>
                       </div>
                       <span
@@ -470,13 +476,17 @@ const PurchasesPage = () => {
                       <div>
                         <p className="text-gray-500">Tipo</p>
                         <p className="font-medium text-gray-900">
-                          {purchase.type === "IMPORT" ? "Importación" : "Local/Mayorista"}
+                          {purchase.type === "IMPORT"
+                            ? "Importación"
+                            : "Local/Mayorista"}
                         </p>
                       </div>
                       <div>
                         <p className="text-gray-500">Fecha</p>
                         <p className="font-medium text-gray-900">
-                          {new Date(purchase.orderDate).toLocaleDateString("es-AR")}
+                          {new Date(purchase.orderDate).toLocaleDateString(
+                            "es-AR"
+                          )}
                         </p>
                       </div>
                     </div>

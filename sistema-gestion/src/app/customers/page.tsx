@@ -141,7 +141,9 @@ export default function CustomersPage() {
         {/* Header */}
         <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Clientes</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              Clientes
+            </h1>
             <p className="mt-1 text-sm text-gray-600">
               Gestiona tu base de clientes
             </p>
@@ -204,7 +206,9 @@ export default function CustomersPage() {
             <div className="flex items-center">
               <User className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
               <div className="ml-2 sm:ml-3">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Mayoristas</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">
+                  Mayoristas
+                </p>
                 <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {
                     customers.filter((c) => c.customerType === "wholesale")
@@ -218,7 +222,9 @@ export default function CustomersPage() {
             <div className="flex items-center">
               <User className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
               <div className="ml-2 sm:ml-3">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Minoristas</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">
+                  Minoristas
+                </p>
                 <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {customers.filter((c) => c.customerType === "retail").length}
                 </p>
@@ -253,7 +259,10 @@ export default function CustomersPage() {
           ) : (
             <div className="space-y-3">
               {filteredCustomers.map((customer) => (
-                <div key={customer.id} className="bg-white rounded-lg shadow-sm border p-4">
+                <div
+                  key={customer.id}
+                  className="bg-white rounded-lg shadow-sm border p-4"
+                >
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <h3 className="text-sm font-medium text-gray-900">
@@ -298,7 +307,9 @@ export default function CustomersPage() {
                         <span>{customer.phone}</span>
                       </div>
                     )}
-                    {(customer.address || customer.city || customer.province) && (
+                    {(customer.address ||
+                      customer.city ||
+                      customer.province) && (
                       <div className="flex items-start text-gray-600">
                         <MapPin className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
                         <div className="flex flex-col">

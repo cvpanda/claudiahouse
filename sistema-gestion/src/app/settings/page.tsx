@@ -335,7 +335,9 @@ export default function SettingsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Configuración</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              Configuración
+            </h1>
             <p className="mt-1 sm:mt-2 text-sm text-gray-600">
               Gestiona usuarios, roles y permisos del sistema
             </p>
@@ -402,7 +404,10 @@ export default function SettingsPage() {
             {/* Mobile View - Cards */}
             <div className="block sm:hidden space-y-3">
               {users.map((user) => (
-                <div key={user.id} className="bg-white rounded-lg shadow-sm border p-4">
+                <div
+                  key={user.id}
+                  className="bg-white rounded-lg shadow-sm border p-4"
+                >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0">
                       <div className="flex-shrink-0 h-10 w-10">
@@ -524,7 +529,10 @@ export default function SettingsPage() {
             {/* Mobile View - Cards */}
             <div className="block sm:hidden space-y-3">
               {roles.map((role) => (
-                <div key={role.id} className="bg-white rounded-lg shadow-sm border p-4">
+                <div
+                  key={role.id}
+                  className="bg-white rounded-lg shadow-sm border p-4"
+                >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0">
                       <div className="flex-shrink-0 h-10 w-10">
@@ -542,7 +550,8 @@ export default function SettingsPage() {
                           </div>
                         )}
                         <div className="text-xs text-gray-400">
-                          {role.permissions.filter((p) => p.granted).length} permisos
+                          {role.permissions.filter((p) => p.granted).length}{" "}
+                          permisos
                         </div>
                       </div>
                     </div>
