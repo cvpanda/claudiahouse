@@ -295,7 +295,9 @@ export default function SalesPage() {
         {/* Header */}
         <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Ventas</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              Ventas
+            </h1>
             <p className="mt-1 text-sm text-gray-600">
               Gestiona las ventas de tu negocio
             </p>
@@ -306,7 +308,9 @@ export default function SalesPage() {
               className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <Download className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Exportar ({filteredStats.total})</span>
+              <span className="hidden sm:inline">
+                Exportar ({filteredStats.total})
+              </span>
               <span className="sm:hidden">Exportar</span>
             </button>
             <Link
@@ -472,7 +476,9 @@ export default function SalesPage() {
             <div className="flex items-center">
               <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
               <div className="ml-2 sm:ml-3">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Hoy</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">
+                  Hoy
+                </p>
                 <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {todaySales.length}
                 </p>
@@ -558,7 +564,10 @@ export default function SalesPage() {
           ) : (
             <div className="space-y-3">
               {filteredSales.map((sale) => (
-                <div key={sale.id} className="bg-white rounded-lg shadow-sm border p-4">
+                <div
+                  key={sale.id}
+                  className="bg-white rounded-lg shadow-sm border p-4"
+                >
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <h3 className="text-sm font-medium text-gray-900">
@@ -704,7 +713,9 @@ export default function SalesPage() {
                             </div>
                           )}
                           <div className="flex justify-between pt-1 border-t border-blue-200">
-                            <span className="text-gray-600 font-medium">Total:</span>
+                            <span className="text-gray-600 font-medium">
+                              Total:
+                            </span>
                             <span className="font-bold text-blue-600">
                               {formatPrice(sale.total)}
                             </span>
