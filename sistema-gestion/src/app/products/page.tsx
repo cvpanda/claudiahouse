@@ -153,18 +153,18 @@ export default function ProductsPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Productos</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Productos</h1>
             <p className="mt-1 text-sm text-gray-600">
               Gestiona tu inventario de productos
             </p>
           </div>
           <Link
             href="/products/new"
-            className={`mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+            className={`inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
               canCreate
                 ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 : "bg-gray-400 cursor-not-allowed"
@@ -177,8 +177,8 @@ export default function ProductsPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
+          <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
@@ -186,13 +186,13 @@ export default function ProductsPage() {
                 placeholder="Buscar productos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
               />
             </div>
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
             >
               <option value="">Todas las categorías</option>
               {categories.map((category) => (
@@ -205,39 +205,39 @@ export default function ProductsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <Package className="w-8 h-8 text-blue-600" />
+              <Package className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">
                   Total Productos
                 </p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {products.length}
                 </p>
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <AlertTriangle className="w-8 h-8 text-orange-600" />
+              <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Stock Bajo</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Stock Bajo</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {products.filter((p) => p.stock <= p.minStock).length}
                 </p>
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <Package className="w-8 h-8 text-green-600" />
+              <Package className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">
                   Valor Total Stock
                 </p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {formatPrice(
                     products.reduce((sum, p) => sum + p.cost * p.stock, 0)
                   )}
@@ -247,9 +247,125 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* Products Table */}
+        {/* Products - Mobile Cards / Desktop Table */}
         <div className="bg-white shadow-sm rounded-lg border overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile View - Cards */}
+          <div className="block md:hidden">
+            <div className="p-3 border-b border-gray-200">
+              <p className="text-sm font-medium text-gray-600">
+                {filteredProducts.length} productos encontrados
+              </p>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {filteredProducts.map((product) => (
+                <div key={product.id} className="p-4 hover:bg-gray-50">
+                  <div className="flex items-start space-x-3">
+                    {/* Product Image */}
+                    <div className="flex-shrink-0">
+                      {product.imageUrl ? (
+                        <ImagePreview
+                          url={product.imageUrl}
+                          alt={product.name}
+                          className="h-16 w-16 rounded-lg object-cover border"
+                          showInstructions={false}
+                        />
+                      ) : (
+                        <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                          <Package className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Product Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="text-sm font-medium text-gray-900 truncate">
+                            {product.name}
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-1">
+                            SKU: {product.sku || "N/A"}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {product.supplier.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {product.category.name}
+                          </p>
+                        </div>
+                        
+                        {/* Status Badge */}
+                        <div className="ml-2">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              product.isActive
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {product.isActive ? "Activo" : "Inactivo"}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Stock and Prices */}
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs text-gray-500">Stock</p>
+                          <p className={`text-sm font-medium ${
+                            product.stock <= product.minStock 
+                              ? "text-red-600" 
+                              : "text-gray-900"
+                          }`}>
+                            {product.stock} {product.unit}
+                            {product.stock <= product.minStock && (
+                              <span className="ml-1 text-red-500">⚠</span>
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Precio Minorista</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatPrice(product.retailPrice)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Actions */}
+                      <div className="mt-3 flex items-center space-x-2">
+                        <Link
+                          href={`/products/${product.id}`}
+                          className={`flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md text-xs font-medium ${
+                            canUpdate
+                              ? "text-gray-700 bg-white hover:bg-gray-50"
+                              : "text-gray-400 cursor-not-allowed"
+                          }`}
+                          onClick={(e) => !canUpdate && e.preventDefault()}
+                        >
+                          <Edit className="w-3 h-3 mr-1" />
+                          Editar
+                        </Link>
+                        <button
+                          onClick={() => deleteProduct(product.id)}
+                          disabled={!canDelete}
+                          className={`px-3 py-2 border border-gray-300 rounded-md text-xs font-medium ${
+                            canDelete
+                              ? "text-red-700 bg-white hover:bg-red-50 border-red-300"
+                              : "text-gray-400 cursor-not-allowed"
+                          }`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
