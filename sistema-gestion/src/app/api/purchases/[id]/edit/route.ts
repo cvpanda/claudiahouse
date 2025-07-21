@@ -16,16 +16,15 @@ interface EditPurchaseData {
   orderDate?: string;
   expectedDate?: string;
   items: {
-    id?: string; // Si existe, es un item a actualizar
+    id?: string; // ID del item existente (si se está editando un item existente)
     productId: string;
     quantity: number;
     unitPriceForeign?: number;
     unitPricePesos: number;
-    _action?: "create" | "update" | "delete"; // Acción a realizar
+    _action?: "create" | "update" | "delete"; // Opcional: acción explícita
   }[];
 }
 
-// PUT /api/purchases/[id]/edit - Editar compra completa
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -46,62 +45,59 @@ export async function PUT(
       );
     }
 
-    // Validar que todos los items tengan los campos requeridos
-    for (const item of data.items) {
-      if (!item.productId) {
-        console.log("ERROR: Missing productId for item:", item);
-        return NextResponse.json(
-          { error: "Todos los productos deben tener un ID válido" },
-          { status: 400 }
-        );
-      }
-      if (!item.quantity || item.quantity <= 0) {
-        console.log("ERROR: Invalid quantity for item:", item);
-        return NextResponse.json(
-          { error: "Todas las cantidades deben ser mayores a 0" },
-          { status: 400 }
-        );
-      }
-      if (!item.unitPricePesos || item.unitPricePesos <= 0) {
-        console.log("ERROR: Invalid unitPricePesos for item:", item);
-        return NextResponse.json(
-          { error: "Todos los precios deben ser mayores a 0" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Verificar que la compra existe y se puede editar
+    // Validar que la compra existe antes de proceder
     const existingPurchase = await prisma.purchase.findUnique({
       where: { id: params.id },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
     });
 
     if (!existingPurchase) {
+      console.log("ERROR: Purchase not found");
       return NextResponse.json(
         { error: "Compra no encontrada" },
         { status: 404 }
       );
     }
 
-    // Solo permitir editar compras pendientes, ordenadas o en tránsito
-    if (!["PENDING", "ORDERED", "SHIPPED"].includes(existingPurchase.status)) {
-      return NextResponse.json(
-        {
-          error:
-            "Solo se pueden editar compras pendientes, ordenadas o en tránsito",
-        },
-        { status: 400 }
-      );
+    console.log("Existing purchase status:", existingPurchase.status);
+
+    // Validar que todos los items tengan los campos requeridos
+    for (const [index, item] of data.items.entries()) {
+      if (!item.productId) {
+        console.log(`ERROR: Item ${index} missing productId`);
+        return NextResponse.json(
+          { error: `Item ${index + 1}: productId es requerido` },
+          { status: 400 }
+        );
+      }
+      if (!item.quantity || item.quantity <= 0) {
+        console.log(`ERROR: Item ${index} invalid quantity`);
+        return NextResponse.json(
+          { error: `Item ${index + 1}: cantidad debe ser mayor a 0` },
+          { status: 400 }
+        );
+      }
+      if (!item.unitPricePesos || item.unitPricePesos <= 0) {
+        console.log(`ERROR: Item ${index} invalid unitPricePesos`);
+        return NextResponse.json(
+          { error: `Item ${index + 1}: precio en pesos debe ser mayor a 0` },
+          { status: 400 }
+        );
+      }
+
+      // Validar que el producto existe
+      const product = await prisma.product.findUnique({
+        where: { id: item.productId },
+      });
+      if (!product) {
+        console.log(`ERROR: Product ${item.productId} not found`);
+        return NextResponse.json(
+          { error: `Producto con ID ${item.productId} no encontrado` },
+          { status: 400 }
+        );
+      }
     }
 
-    // Calcular nuevos totales con separación por moneda
+    // Calcular nuevos totales
     const subtotalPesos = data.items.reduce(
       (sum, item) => sum + item.quantity * item.unitPricePesos,
       0
@@ -132,9 +128,7 @@ export async function PUT(
           };
 
     const costsLocal = {
-      // Impuestos SIEMPRE en pesos (IIBB, IVA, etc. son locales)
       tax: data.taxCost || 0,
-      // Si es compra local (ARS), todos los costos van en pesos
       ...(data.currency === "ARS"
         ? {
             freight: data.freightCost || 0,
@@ -154,11 +148,9 @@ export async function PUT(
       0
     );
 
-    // Convertir costos extranjeros a pesos usando el tipo de cambio
     const exchangeRate = data.exchangeRate || 1;
     const totalCostsForeignInPesos = totalCostsForeign * exchangeRate;
     const totalCostsInPesos = totalCostsForeignInPesos + totalCostsLocal;
-
     const total = subtotalPesos + totalCostsInPesos;
 
     // Actualizar datos principales de la compra
@@ -189,128 +181,202 @@ export async function PUT(
       updateData.expectedDate = new Date(data.expectedDate);
     if (subtotalForeign !== null) updateData.subtotalForeign = subtotalForeign;
 
+    console.log("Update data:", updateData);
+
     // Usar transacción para garantizar consistencia
-    await prisma.$transaction(async (tx) => {
-      // Actualizar compra
-      await tx.purchase.update({
-        where: { id: params.id },
-        data: updateData,
-      });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        console.log("🔄 Starting transaction...");
 
-      // Eliminar todos los items existentes
-      await tx.purchaseItem.deleteMany({
-        where: { purchaseId: params.id },
-      });
-
-      // Crear nuevos items con cálculos actualizados
-      for (const item of data.items) {
-        const itemSubtotalPesos = item.quantity * item.unitPricePesos;
-
-        // Calcular costos distribuidos
-        const distributedCosts =
-          subtotalPesos > 0
-            ? (itemSubtotalPesos / subtotalPesos) * totalCostsInPesos
-            : 0;
-
-        const finalUnitCost =
-          item.unitPricePesos + distributedCosts / item.quantity;
-        const totalCost = finalUnitCost * item.quantity;
-
-        await tx.purchaseItem.create({
-          data: {
-            purchaseId: params.id,
-            productId: item.productId,
-            quantity: item.quantity,
-            unitPriceForeign: item.unitPriceForeign,
-            unitPricePesos: item.unitPricePesos,
-            distributedCosts,
-            finalUnitCost,
-            totalCost,
-          },
+        const existingPurchase = await tx.purchase.findUnique({
+          where: { id: params.id },
         });
-      }
-    });
 
-    // Obtener la compra actualizada con cálculos
-    const updatedPurchase = await prisma.purchase.findUnique({
-      where: { id: params.id },
-      include: {
-        supplier: true,
-        items: {
+        if (!existingPurchase) {
+          throw new Error(`Compra con ID ${params.id} no encontrada`);
+        }
+
+        console.log("📝 Updating purchase...");
+        const updatedPurchase = await tx.purchase.update({
+          where: { id: params.id },
+          data: updateData,
+        });
+
+        console.log("� Processing items changes...");
+
+        // Obtener items existentes
+        const existingItems = await tx.purchaseItem.findMany({
+          where: { purchaseId: params.id },
+        });
+
+        console.log(`Found ${existingItems.length} existing items`);
+
+        // Separar items en tres categorías
+        const itemsToUpdate = [];
+        const itemsToCreate = [];
+        const existingItemIds = new Set();
+
+        for (const newItem of data.items) {
+          if (newItem.id) {
+            // Item existente - actualizar
+            itemsToUpdate.push(newItem);
+            existingItemIds.add(newItem.id);
+          } else {
+            // Item nuevo - crear
+            itemsToCreate.push(newItem);
+          }
+        }
+
+        // Items a eliminar (existían pero ya no están en la lista)
+        const itemsToDelete = existingItems.filter(
+          (existing) => !existingItemIds.has(existing.id)
+        );
+
+        console.log(`Items to update: ${itemsToUpdate.length}`);
+        console.log(`Items to create: ${itemsToCreate.length}`);
+        console.log(`Items to delete: ${itemsToDelete.length}`);
+
+        // 1. ACTUALIZAR items existentes
+        for (const item of itemsToUpdate) {
+          console.log(`Updating item ${item.id}`);
+
+          const itemSubtotalPesos = item.quantity * item.unitPricePesos;
+          const distributedCosts =
+            subtotalPesos > 0
+              ? (itemSubtotalPesos / subtotalPesos) * totalCostsInPesos
+              : 0;
+          const finalUnitCost =
+            item.unitPricePesos + distributedCosts / item.quantity;
+          const totalCost = finalUnitCost * item.quantity;
+
+          await tx.purchaseItem.update({
+            where: { id: item.id },
+            data: {
+              quantity: item.quantity,
+              unitPriceForeign: item.unitPriceForeign || null,
+              unitPricePesos: item.unitPricePesos,
+              distributedCosts,
+              finalUnitCost,
+              totalCost,
+            },
+          });
+        }
+
+        // 2. CREAR items nuevos
+        for (const item of itemsToCreate) {
+          console.log(`Creating new item for product ${item.productId}`);
+
+          const itemSubtotalPesos = item.quantity * item.unitPricePesos;
+          const distributedCosts =
+            subtotalPesos > 0
+              ? (itemSubtotalPesos / subtotalPesos) * totalCostsInPesos
+              : 0;
+          const finalUnitCost =
+            item.unitPricePesos + distributedCosts / item.quantity;
+          const totalCost = finalUnitCost * item.quantity;
+
+          await tx.purchaseItem.create({
+            data: {
+              purchaseId: params.id,
+              productId: item.productId,
+              quantity: item.quantity,
+              unitPriceForeign: item.unitPriceForeign || null,
+              unitPricePesos: item.unitPricePesos,
+              distributedCosts,
+              finalUnitCost,
+              totalCost,
+            },
+          });
+        }
+
+        // 3. ELIMINAR items que ya no están
+        if (itemsToDelete.length > 0) {
+          console.log(`Deleting ${itemsToDelete.length} removed items`);
+          const idsToDelete = itemsToDelete.map((item) => item.id);
+          await tx.purchaseItem.deleteMany({
+            where: { id: { in: idsToDelete } },
+          });
+        }
+
+        console.log("✅ Items processing completed");
+
+        const updatedPurchaseWithItems = await tx.purchase.findUnique({
+          where: { id: params.id },
           include: {
-            product: {
+            supplier: true,
+            items: {
               include: {
-                category: true,
+                product: {
+                  include: {
+                    category: true,
+                  },
+                },
               },
             },
           },
-        },
-      },
-    });
+        });
 
-    if (!updatedPurchase) {
+        return updatedPurchaseWithItems;
+      },
+      {
+        timeout: 30000,
+        maxWait: 5000,
+      }
+    );
+
+    if (!result) {
       throw new Error("Compra no encontrada después de la actualización");
     }
 
-    // Calcular distribución de costos (igual que en GET)
-    const totalSubtotalPesos = updatedPurchase.items.reduce(
-      (sum: number, item: any) => {
-        return sum + (item.quantity || 0) * (item.unitPricePesos || 0);
-      },
-      0
-    );
+    console.log("🧮 Calculating final costs...");
+    const totalSubtotalPesos = result.items.reduce((sum: number, item: any) => {
+      return sum + (item.quantity || 0) * (item.unitPricePesos || 0);
+    }, 0);
 
     const totalImportCosts =
-      (updatedPurchase.freightCost || 0) +
-      (updatedPurchase.customsCost || 0) +
-      (updatedPurchase.taxCost || 0) +
-      (updatedPurchase.insuranceCost || 0) +
-      (updatedPurchase.otherCosts || 0);
+      (result.freightCost || 0) +
+      (result.customsCost || 0) +
+      (result.taxCost || 0) +
+      (result.insuranceCost || 0) +
+      (result.otherCosts || 0);
 
-    // Asegurar que todos los valores numéricos sean válidos y calcular costos distribuidos
     const sanitizedPurchase = {
-      ...updatedPurchase,
-      freightCost: updatedPurchase.freightCost || 0,
-      customsCost: updatedPurchase.customsCost || 0,
-      taxCost: updatedPurchase.taxCost || 0,
-      insuranceCost: updatedPurchase.insuranceCost || 0,
-      otherCosts: updatedPurchase.otherCosts || 0,
-      subtotalPesos: updatedPurchase.subtotalPesos || 0,
-      totalCosts: updatedPurchase.totalCosts || 0,
-      total: updatedPurchase.total || 0,
-      exchangeRate: updatedPurchase.exchangeRate || null,
-      subtotalForeign: updatedPurchase.subtotalForeign || null,
-      items: updatedPurchase.items.map((item: any) => {
+      ...result,
+      freightCost: result.freightCost || 0,
+      customsCost: result.customsCost || 0,
+      taxCost: result.taxCost || 0,
+      insuranceCost: result.insuranceCost || 0,
+      otherCosts: result.otherCosts || 0,
+      subtotalPesos: result.subtotalPesos || 0,
+      totalCosts: result.totalCosts || 0,
+      total: result.total || 0,
+      exchangeRate: result.exchangeRate || null,
+      subtotalForeign: result.subtotalForeign || null,
+      items: result.items.map((item: any) => {
         const itemSubtotalPesos =
           (item.quantity || 0) * (item.unitPricePesos || 0);
-
-        // Calcular el costo distribuido proporcionalmente
         const distributedCostPesos =
           totalSubtotalPesos > 0
             ? (itemSubtotalPesos / totalSubtotalPesos) * totalImportCosts
             : 0;
-
-        // Calcular el costo distribuido por unidad
         const distributedCostPerUnit =
           (item.quantity || 0) > 0
             ? distributedCostPesos / (item.quantity || 0)
             : 0;
-
-        // Costo final por unidad (precio + costo distribuido por unidad)
         const finalCostPesos =
           (item.unitPricePesos || 0) + distributedCostPerUnit;
 
         let distributedCostForeign = null;
         let finalCostForeign = null;
 
-        if (item.unitPriceForeign && updatedPurchase.exchangeRate) {
+        if (item.unitPriceForeign && result.exchangeRate) {
           const itemSubtotalForeign =
             (item.quantity || 0) * item.unitPriceForeign;
-          const totalSubtotalForeign = updatedPurchase.subtotalForeign || 0;
+          const totalSubtotalForeign = result.subtotalForeign || 0;
 
           if (totalSubtotalForeign > 0) {
             const totalImportCostsForeign =
-              totalImportCosts / updatedPurchase.exchangeRate;
+              totalImportCosts / result.exchangeRate;
             distributedCostForeign =
               (itemSubtotalForeign / totalSubtotalForeign) *
               totalImportCostsForeign;
@@ -328,12 +394,10 @@ export async function PUT(
           quantity: item.quantity || 0,
           unitPricePesos: item.unitPricePesos || 0,
           unitPriceForeign: item.unitPriceForeign || null,
-          // Calcular subtotales
           subtotalPesos: itemSubtotalPesos,
           subtotalForeign: item.unitPriceForeign
             ? (item.quantity || 0) * item.unitPriceForeign
             : null,
-          // Costos distribuidos calculados
           distributedCostPesos: Math.round(distributedCostPesos * 100) / 100,
           distributedCostForeign: distributedCostForeign
             ? Math.round(distributedCostForeign * 100) / 100
@@ -354,6 +418,31 @@ export async function PUT(
       "Error details:",
       error instanceof Error ? error.message : String(error)
     );
+
+    if (error instanceof Error) {
+      if (error.message.includes("Transaction")) {
+        return NextResponse.json(
+          {
+            error: "Error de transacción en la base de datos",
+            details: "Por favor, intenta de nuevo en unos momentos",
+            technical: error.message,
+          },
+          { status: 500 }
+        );
+      }
+
+      if (error.message.includes("Foreign key constraint")) {
+        return NextResponse.json(
+          {
+            error: "Error de referencia en la base de datos",
+            details: "Uno o más productos referenciados no existen",
+            technical: error.message,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     return NextResponse.json(
       {
         error: "Error al editar la compra",
