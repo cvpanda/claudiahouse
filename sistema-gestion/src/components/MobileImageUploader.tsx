@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Camera, Image as ImageIcon, Upload, X, Check, AlertCircle } from "lucide-react";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import FileInputWrapper from "@/components/FileInputWrapper";
 
 interface MobileImageUploaderProps {
   onImageUploaded: (imageUrl: string) => void;
@@ -24,13 +25,39 @@ export default function MobileImageUploader({
     uploadProgress,
     uploadToGoogleDrive,
     captureFromCamera,
-    selectFromGallery,
     compressImage,
   } = useImageUpload();
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentImageUrl || null);
   const [error, setError] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(true);
+
+  // Prevenir navegación accidental cuando el modal está abierto
+  useEffect(() => {
+    if (isOpen) {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        if (isUploading) {
+          e.preventDefault();
+          e.returnValue = 'Hay una subida en progreso. ¿Estás seguro de que quieres salir?';
+        }
+      };
+
+      const handlePopState = (e: PopStateEvent) => {
+        if (isOpen && !isUploading) {
+          e.preventDefault();
+          handleCancel();
+        }
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      window.addEventListener('popstate', handlePopState);
+
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [isOpen, isUploading]);
 
   const handleFileSelection = async (file: File) => {
     try {
@@ -76,14 +103,10 @@ export default function MobileImageUploader({
     }
   };
 
-  const handleGallerySelection = async () => {
+  const handleGallerySelection = async (file: File) => {
     try {
       setError(null);
-      const file = await selectFromGallery();
-      
-      if (file) {
-        await handleFileSelection(file);
-      }
+      await handleFileSelection(file);
     } catch (error) {
       console.error("Error selecting from gallery:", error);
       setError("Error al seleccionar la imagen");
@@ -172,27 +195,33 @@ export default function MobileImageUploader({
                   </button>
 
                   {/* Opción Galería */}
-                  <button
-                    onClick={handleGallerySelection}
-                    className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors"
+                  <FileInputWrapper
+                    onFileSelect={handleGallerySelection}
+                    disabled={isUploading}
+                    accept="image/*"
                   >
-                    <ImageIcon className="h-6 w-6 text-green-600" />
-                    <span className="text-green-700 font-medium">
-                      Seleccionar de Galería
-                    </span>
-                  </button>
+                    <div className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors">
+                      <ImageIcon className="h-6 w-6 text-green-600" />
+                      <span className="text-green-700 font-medium">
+                        Seleccionar de Galería
+                      </span>
+                    </div>
+                  </FileInputWrapper>
                 </>
               ) : (
                 /* Opción Desktop - Solo seleccionar archivo */
-                <button
-                  onClick={handleGallerySelection}
-                  className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                <FileInputWrapper
+                  onFileSelect={handleGallerySelection}
+                  disabled={isUploading}
+                  accept="image/*"
                 >
-                  <Upload className="h-6 w-6 text-blue-600" />
-                  <span className="text-blue-700 font-medium">
-                    Seleccionar Archivo
-                  </span>
-                </button>
+                  <div className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                    <Upload className="h-6 w-6 text-blue-600" />
+                    <span className="text-blue-700 font-medium">
+                      Seleccionar Archivo
+                    </span>
+                  </div>
+                </FileInputWrapper>
               )}
 
               <div className="text-xs text-gray-500 text-center">
