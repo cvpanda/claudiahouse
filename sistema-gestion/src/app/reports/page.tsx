@@ -180,30 +180,30 @@ export default function ReportsPage() {
 
   return (
     <Layout>
-      <div className="p-6">
+      <div className="p-3 sm:p-6">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                <BarChart3 className="h-8 w-8 text-primary-600" />
+              <h1 className="text-xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+                <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-primary-600" />
                 Reportes y Analytics
               </h1>
-              <p className="mt-2 text-gray-600">
+              <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">
                 Analiza el rendimiento de tu negocio con datos detallados
               </p>
             </div>
-            <div className="mt-4 sm:mt-0 flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
               <select
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                className="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-base"
               >
                 <option value="7days">Últimos 7 días</option>
                 <option value="30days">Últimos 30 días</option>
                 <option value="90days">Últimos 90 días</option>
                 <option value="1year">Último año</option>
-              </select>{" "}
+              </select>
               <ExportMenu
                 onExportPDF={handleExportPDF}
                 onExportExcel={handleExportExcel}
@@ -211,7 +211,7 @@ export default function ReportsPage() {
                 disabled={exporting}
               />
               {exporting && (
-                <div className="ml-2 inline-flex items-center text-sm text-gray-500">
+                <div className="inline-flex items-center text-sm text-gray-500 justify-center sm:justify-start">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 mr-2"></div>
                   Exportando...
                 </div>
@@ -276,20 +276,19 @@ function OverviewTab({ reportData }: { reportData: ReportData | null }) {
   if (!reportData) return <div>No hay datos disponibles</div>;
 
   return (
-    <div className="space-y-8">
-      {" "}
+    <div className="space-y-6 sm:space-y-8">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-        <div className="bg-white rounded-lg shadow p-4 md:p-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <DollarSign className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
+              <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-green-600" />
             </div>
-            <div className="ml-3 md:ml-4 min-w-0 flex-1">
-              <p className="text-xs md:text-sm font-medium text-gray-500 truncate">
+            <div className="ml-2 sm:ml-3 md:ml-4 min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-500 truncate">
                 Ingresos
               </p>
-              <p className="text-lg md:text-2xl font-semibold text-gray-900 truncate">
+              <p className="text-sm sm:text-lg md:text-2xl font-semibold text-gray-900 truncate">
                 $
                 {reportData.salesByDay
                   .reduce((sum, day) => sum + day.revenue, 0)
@@ -299,63 +298,63 @@ function OverviewTab({ reportData }: { reportData: ReportData | null }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 md:p-6">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <ShoppingCart className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
+              <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-blue-600" />
             </div>
-            <div className="ml-3 md:ml-4 min-w-0 flex-1">
-              <p className="text-xs md:text-sm font-medium text-gray-500 truncate">
+            <div className="ml-2 sm:ml-3 md:ml-4 min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-500 truncate">
                 Ventas
               </p>
-              <p className="text-lg md:text-2xl font-semibold text-gray-900">
+              <p className="text-sm sm:text-lg md:text-2xl font-semibold text-gray-900">
                 {reportData.salesByDay.reduce((sum, day) => sum + day.sales, 0)}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 md:p-6">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Users className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
+              <Users className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-purple-600" />
             </div>
-            <div className="ml-3 md:ml-4 min-w-0 flex-1">
-              <p className="text-xs md:text-sm font-medium text-gray-500 truncate">
+            <div className="ml-2 sm:ml-3 md:ml-4 min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-500 truncate">
                 Clientes
               </p>
-              <p className="text-lg md:text-2xl font-semibold text-gray-900">
+              <p className="text-sm sm:text-lg md:text-2xl font-semibold text-gray-900">
                 {reportData.customerStats.totalCustomers}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 md:p-6">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <AlertTriangle className="h-6 w-6 md:h-8 md:w-8 text-yellow-600" />
+              <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-yellow-600" />
             </div>
-            <div className="ml-3 md:ml-4 min-w-0 flex-1">
-              <p className="text-xs md:text-sm font-medium text-gray-500 truncate">
+            <div className="ml-2 sm:ml-3 md:ml-4 min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-500 truncate">
                 Stock Bajo
               </p>
-              <p className="text-lg md:text-2xl font-semibold text-gray-900">
+              <p className="text-sm sm:text-lg md:text-2xl font-semibold text-gray-900">
                 {reportData.lowStockProducts.length}
               </p>
             </div>
           </div>
         </div>
-      </div>{" "}
+      </div>
+
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
-        {" "}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
         {/* Sales by Day */}
-        <div className="bg-white rounded-lg shadow p-4 md:p-6">
-          <h3 className="text-base md:text-lg font-medium text-gray-900 mb-4">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
+          <h3 className="text-base md:text-lg font-medium text-gray-900 mb-3 sm:mb-4">
             Ventas por Día
           </h3>
-          <div id="sales-chart" className="h-64 md:h-80">
+          <div id="sales-chart" className="h-48 sm:h-64 md:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={reportData.salesByDay}>
                 <CartesianGrid strokeDasharray="3 3" />
