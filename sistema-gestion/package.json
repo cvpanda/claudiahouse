@@ -4,7 +4,8 @@
   "description": "Sistema de gestión integral para emprendimiento con inventario, ventas y clientes",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/validate-google-drive.js && next dev",
+    "dev:skip-validation": "next dev",
     "build": "next build",
     "build:vercel": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
@@ -16,7 +17,9 @@
     "db:seed": "tsx src/lib/seed.ts",
     "db:seed-sales": "tsx src/lib/seed-sales.ts",
     "db:deploy": "prisma migrate deploy",
-    "db:init": "node scripts/init-production.js"
+    "db:init": "node scripts/init-production.js",
+    "google-drive:validate": "node scripts/validate-google-drive.js",
+    "google-drive:test": "node scripts/test-google-drive.js"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.0",

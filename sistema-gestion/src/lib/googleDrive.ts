@@ -1,24 +1,21 @@
 // src/lib/googleDrive.ts
 import { google } from 'googleapis';
+import { loadGoogleCredentials } from './loadGoogleCredentials';
 
 const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
 export async function initializeGoogleDrive() {
   try {
-    // Configurar autenticación usando variables de entorno
+    // Cargar credenciales desde archivo local o variables de entorno
+    const credentials = loadGoogleCredentials();
+    
+    if (!credentials) {
+      throw new Error('No se pudieron cargar las credenciales de Google Drive');
+    }
+
+    // Configurar autenticación
     const auth = new google.auth.GoogleAuth({
-      credentials: {
-        type: 'service_account',
-        project_id: process.env.GOOGLE_CLOUD_PROJECT_ID,
-        private_key_id: process.env.GOOGLE_CLOUD_PRIVATE_KEY_ID,
-        private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL,
-        client_id: process.env.GOOGLE_CLOUD_CLIENT_ID,
-        auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-        token_uri: 'https://oauth2.googleapis.com/token',
-        auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
-        client_x509_cert_url: process.env.GOOGLE_CLOUD_CLIENT_X509_CERT_URL,
-      },
+      credentials,
       scopes: ['https://www.googleapis.com/auth/drive.file'],
     });
 
@@ -37,6 +34,12 @@ export async function uploadFileToGoogleDrive(
 ) {
   try {
     const drive = await initializeGoogleDrive();
+    const { Readable } = require('stream');
+
+    // Convertir buffer a stream
+    const stream = new Readable();
+    stream.push(buffer);
+    stream.push(null);
 
     // Subir archivo
     const response = await drive.files.create({
@@ -46,7 +49,7 @@ export async function uploadFileToGoogleDrive(
       },
       media: {
         mimeType,
-        body: Buffer.from(buffer),
+        body: stream,
       },
     });
 

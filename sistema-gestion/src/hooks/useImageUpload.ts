@@ -99,21 +99,62 @@ export function useImageUpload() {
 
   const selectFromGallery = useCallback((): Promise<File | null> => {
     return new Promise((resolve) => {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/*";
-      input.capture = "environment"; // Sugerir cámara trasera
+      // Verificar si el navegador soporta File System Access API (más moderno)
+      if ('showOpenFilePicker' in window) {
+        // Usar API moderna para evitar problemas de navegación
+        (window as any).showOpenFilePicker({
+          types: [{
+            description: 'Imágenes',
+            accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }
+          }],
+          multiple: false
+        }).then((fileHandles: any[]) => {
+          if (fileHandles.length > 0) {
+            return fileHandles[0].getFile();
+          }
+          return null;
+        }).then((file: File | null) => {
+          resolve(file);
+        }).catch(() => {
+          resolve(null);
+        });
+      } else {
+        // Fallback para navegadores más antiguos
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.style.display = "none";
+        
+        // Agregar al DOM temporalmente
+        document.body.appendChild(input);
 
-      input.onchange = (event) => {
-        const file = (event.target as HTMLInputElement).files?.[0];
-        resolve(file || null);
-      };
+        input.onchange = (event) => {
+          const file = (event.target as HTMLInputElement).files?.[0];
+          // Limpiar el DOM
+          if (document.body.contains(input)) {
+            document.body.removeChild(input);
+          }
+          resolve(file || null);
+        };
 
-      input.oncancel = () => {
-        resolve(null);
-      };
+        // También manejar el caso de cancelación
+        const handleFocus = () => {
+          setTimeout(() => {
+            if (document.body.contains(input)) {
+              document.body.removeChild(input);
+              resolve(null);
+            }
+          }, 300);
+          window.removeEventListener('focus', handleFocus);
+        };
 
-      input.click();
+        window.addEventListener('focus', handleFocus);
+
+        // Usar timeout para evitar problemas de navegación
+        setTimeout(() => {
+          input.click();
+        }, 100);
+      }
     });
   }, []);
 
