@@ -268,98 +268,98 @@ const PurchasesPage = () => {
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6 sm:mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Compras</h1>
-              <p className="text-gray-600 mt-2">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Compras</h1>
+              <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
                 Gestión de compras y importaciones
               </p>
             </div>
             <Link
               href="/purchases/new"
-              className={`px-6 py-3 rounded-lg flex items-center gap-2 transition-colors ${
+              className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm sm:text-base ${
                 canCreate
                   ? "bg-blue-600 hover:bg-blue-700 text-white"
                   : "bg-gray-400 text-gray-200 cursor-not-allowed"
               }`}
               onClick={(e) => !canCreate && e.preventDefault()}
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
               Nueva Compra
             </Link>
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">
                     Total Compras
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
                     {stats.totalPurchases}
                   </p>
                 </div>
-                <Package className="h-8 w-8 text-blue-600" />
+                <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">
                     Monto Total
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
                     {formatCurrency(stats.totalAmount)}
                   </p>
                 </div>
-                <DollarSign className="h-8 w-8 text-green-600" />
+                <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">
                     Pendientes
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
                     {stats.pendingPurchases}
                   </p>
                 </div>
-                <Clock className="h-8 w-8 text-yellow-600" />
+                <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-600" />
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">
                     Completadas este mes
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
                     {stats.completedThisMonth}
                   </p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-purple-600" />
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
               </div>
             </div>
           </div>
 
           {/* Filters */}
-          <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-            <div className="flex flex-wrap gap-4">
-              <div className="flex-1 min-w-64">
+          <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm mb-4 sm:mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="sm:col-span-2 lg:col-span-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
                   <input
                     type="text"
-                    placeholder="Buscar por número, proveedor o notas..."
+                    placeholder="Buscar compras..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -367,7 +367,7 @@ const PurchasesPage = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Todos los estados</option>
                 <option value="PENDING">Pendiente</option>
@@ -382,17 +382,141 @@ const PurchasesPage = () => {
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Todos los tipos</option>
                 <option value="LOCAL">Local/Mayorista</option>
                 <option value="IMPORT">Importación</option>
               </select>
+
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("");
+                  setTypeFilter("");
+                }}
+                className="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                <span className="hidden sm:inline">Limpiar</span>
+              </button>
             </div>
           </div>
 
-          {/* Purchases Table */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          {/* Mobile Cards View */}
+          <div className="block md:hidden">
+            {purchases.length === 0 && !loading ? (
+              <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+                <Package className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  No hay compras
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 px-4">
+                  Comienza creando tu primera compra.
+                </p>
+                <div className="mt-6 px-4">
+                  <Link
+                    href="/purchases/new"
+                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nueva Compra
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {purchases.map((purchase) => (
+                  <div key={purchase.id} className="bg-white rounded-lg shadow-sm border p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900">
+                          {purchase.purchaseNumber}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {purchase.items.length} producto{purchase.items.length !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          statusColors[purchase.status]
+                        }`}
+                      >
+                        {statusLabels[purchase.status]}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-gray-500">Proveedor</p>
+                        <p className="font-medium text-gray-900">
+                          {purchase.supplier.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {purchase.supplier.country}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Total</p>
+                        <p className="font-bold text-lg text-gray-900">
+                          {formatCurrency(purchase.total)}
+                        </p>
+                        {purchase.currency && purchase.currency !== "ARS" && (
+                          <p className="text-xs text-gray-500">
+                            {purchase.currency}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Tipo</p>
+                        <p className="font-medium text-gray-900">
+                          {purchase.type === "IMPORT" ? "Importación" : "Local/Mayorista"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Fecha</p>
+                        <p className="font-medium text-gray-900">
+                          {new Date(purchase.orderDate).toLocaleDateString("es-AR")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex justify-between items-center">
+                      <div className="flex space-x-2">
+                        <Link
+                          href={`/purchases/${purchase.id}`}
+                          className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md ${
+                            canView
+                              ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
+                              : "text-gray-400 bg-gray-50 cursor-not-allowed"
+                          }`}
+                          onClick={(e) => !canView && e.preventDefault()}
+                        >
+                          <Eye className="w-3 h-3 mr-1" />
+                          Ver
+                        </Link>
+                        <Link
+                          href={`/purchases/${purchase.id}/edit`}
+                          className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md ${
+                            canUpdate
+                              ? "text-green-600 bg-green-50 hover:bg-green-100"
+                              : "text-gray-400 bg-gray-50 cursor-not-allowed"
+                          }`}
+                          onClick={(e) => !canUpdate && e.preventDefault()}
+                        >
+                          <Edit className="w-3 h-3 mr-1" />
+                          Editar
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
