@@ -1,23 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { uploadFileToGoogleDrive } from '@/lib/googleDrive';
-import sharp from 'sharp';
+import { NextRequest, NextResponse } from "next/server";
+import { uploadFileToGoogleDrive } from "@/lib/googleDrive";
+import sharp from "sharp";
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get("file") as File;
 
     if (!file) {
       return NextResponse.json(
-        { error: 'No se proporcionó ningún archivo' },
+        { error: "No se proporcionó ningún archivo" },
         { status: 400 }
       );
     }
 
     // Validar tipo de archivo
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       return NextResponse.json(
-        { error: 'El archivo debe ser una imagen' },
+        { error: "El archivo debe ser una imagen" },
         { status: 400 }
       );
     }
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Validar tamaño (máximo 10MB)
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json(
-        { error: 'El archivo es demasiado grande. Máximo 10MB' },
+        { error: "El archivo es demasiado grande. Máximo 10MB" },
         { status: 400 }
       );
     }
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     try {
       const optimizedBuffer = await sharp(buffer)
         .resize(1920, 1920, {
-          fit: 'inside',
+          fit: "inside",
           withoutEnlargement: true,
         })
         .jpeg({
@@ -46,30 +46,30 @@ export async function POST(request: NextRequest) {
           progressive: true,
         })
         .toBuffer();
-      
+
       buffer = Buffer.from(optimizedBuffer);
     } catch (sharpError) {
-      console.warn('Error optimizing image with Sharp:', sharpError);
+      console.warn("Error optimizing image with Sharp:", sharpError);
       // Si falla la optimización, usar el buffer original
     }
 
     // Generar nombre único
     const timestamp = Date.now();
-    const extension = file.name.split('.').pop() || 'jpg';
+    const extension = file.name.split(".").pop() || "jpg";
     const fileName = `product-image-${timestamp}.${extension}`;
 
     // Subir a Google Drive
     const result = await uploadFileToGoogleDrive(
       buffer,
       fileName,
-      'image/jpeg'
+      "image/jpeg"
     );
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error in upload API:', error);
+    console.error("Error in upload API:", error);
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: "Error interno del servidor" },
       { status: 500 }
     );
   }
@@ -78,11 +78,11 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const fileId = searchParams.get('fileId');
+    const fileId = searchParams.get("fileId");
 
     if (!fileId) {
       return NextResponse.json(
-        { error: 'Se requiere el ID del archivo' },
+        { error: "Se requiere el ID del archivo" },
         { status: 400 }
       );
     }
@@ -90,14 +90,14 @@ export async function DELETE(request: NextRequest) {
     // Aquí podrías agregar validación de permisos
     // Verificar que el usuario tenga permisos para eliminar la imagen
 
-    const { deleteFileFromGoogleDrive } = await import('@/lib/googleDrive');
+    const { deleteFileFromGoogleDrive } = await import("@/lib/googleDrive");
     await deleteFileFromGoogleDrive(fileId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting file:', error);
+    console.error("Error deleting file:", error);
     return NextResponse.json(
-      { error: 'Error al eliminar el archivo' },
+      { error: "Error al eliminar el archivo" },
       { status: 500 }
     );
   }

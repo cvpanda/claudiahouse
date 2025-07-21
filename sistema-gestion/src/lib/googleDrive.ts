@@ -1,6 +1,6 @@
 // src/lib/googleDrive.ts
-import { google } from 'googleapis';
-import { loadGoogleCredentials } from './loadGoogleCredentials';
+import { google } from "googleapis";
+import { loadGoogleCredentials } from "./loadGoogleCredentials";
 
 const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
@@ -8,21 +8,21 @@ export async function initializeGoogleDrive() {
   try {
     // Cargar credenciales desde archivo local o variables de entorno
     const credentials = loadGoogleCredentials();
-    
+
     if (!credentials) {
-      throw new Error('No se pudieron cargar las credenciales de Google Drive');
+      throw new Error("No se pudieron cargar las credenciales de Google Drive");
     }
 
     // Configurar autenticación
     const auth = new google.auth.GoogleAuth({
       credentials,
-      scopes: ['https://www.googleapis.com/auth/drive.file'],
+      scopes: ["https://www.googleapis.com/auth/drive.file"],
     });
 
-    const drive = google.drive({ version: 'v3', auth });
+    const drive = google.drive({ version: "v3", auth });
     return drive;
   } catch (error) {
-    console.error('Error initializing Google Drive:', error);
+    console.error("Error initializing Google Drive:", error);
     throw error;
   }
 }
@@ -34,7 +34,7 @@ export async function uploadFileToGoogleDrive(
 ) {
   try {
     const drive = await initializeGoogleDrive();
-    const { Readable } = require('stream');
+    const { Readable } = require("stream");
 
     // Convertir buffer a stream
     const stream = new Readable();
@@ -56,15 +56,15 @@ export async function uploadFileToGoogleDrive(
     const fileId = response.data.id;
 
     if (!fileId) {
-      throw new Error('No se pudo obtener el ID del archivo');
+      throw new Error("No se pudo obtener el ID del archivo");
     }
 
     // Hacer el archivo público
     await drive.permissions.create({
       fileId,
       requestBody: {
-        role: 'reader',
-        type: 'anyone',
+        role: "reader",
+        type: "anyone",
       },
     });
 
@@ -77,7 +77,7 @@ export async function uploadFileToGoogleDrive(
       fileName,
     };
   } catch (error) {
-    console.error('Error uploading to Google Drive:', error);
+    console.error("Error uploading to Google Drive:", error);
     throw error;
   }
 }
@@ -85,14 +85,14 @@ export async function uploadFileToGoogleDrive(
 export async function deleteFileFromGoogleDrive(fileId: string) {
   try {
     const drive = await initializeGoogleDrive();
-    
+
     await drive.files.delete({
       fileId,
     });
 
     return true;
   } catch (error) {
-    console.error('Error deleting from Google Drive:', error);
+    console.error("Error deleting from Google Drive:", error);
     throw error;
   }
 }

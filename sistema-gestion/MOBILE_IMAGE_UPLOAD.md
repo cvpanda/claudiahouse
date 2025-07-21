@@ -76,12 +76,14 @@ GOOGLE_DRIVE_FOLDER_ID=your-folder-id
 El componente `ProductImageUploader` detecta automáticamente si el usuario está en móvil y muestra las opciones correspondientes:
 
 **En móvil:**
+
 - Botón "Cargar desde Móvil" que abre modal con opciones de cámara/galería
 - Captura directa desde la cámara con preview
 - Selección desde galería del dispositivo
 - Compresión automática antes de subir
 
 **En desktop:**
+
 - Campo de URL manual (funcionalidad existente)
 - Mensaje informativo sobre la funcionalidad móvil
 
@@ -98,19 +100,24 @@ El componente `ProductImageUploader` detecta automáticamente si el usuario est�
 ## 📱 Componentes principales
 
 ### `useIsMobile.ts`
+
 Hook para detectar dispositivos móviles basado en user agent y ancho de pantalla.
 
 ### `useImageUpload.ts`
+
 Hook que maneja toda la lógica de:
+
 - Captura desde cámara
 - Selección desde galería
 - Compresión de imágenes
 - Subida a Google Drive
 
 ### `MobileImageUploader.tsx`
+
 Modal responsivo con opciones de carga de imagen optimizado para móvil.
 
 ### `ProductImageUploader.tsx`
+
 Componente híbrido que combina la funcionalidad existente (URL manual) con la nueva funcionalidad móvil.
 
 ## 🔒 Seguridad
@@ -123,16 +130,19 @@ Componente híbrido que combina la funcionalidad existente (URL manual) con la n
 ## 🐛 Troubleshooting
 
 ### Error: "La cámara no está disponible"
+
 - Verifica que estés usando HTTPS (requerido para acceso a cámara)
 - Comprueba que el dispositivo tenga cámara disponible
 - Asegúrate de dar permisos de cámara al navegador
 
 ### Error: "Error al subir la imagen"
+
 - Verifica que las variables de entorno estén configuradas correctamente
 - Comprueba que la cuenta de servicio tenga permisos en Google Drive
 - Asegúrate de que Google Drive API esté habilitada
 
 ### Error: "Archivo demasiado grande"
+
 - Las imágenes se comprimen automáticamente, pero el límite es 10MB
 - Si persiste, ajusta la configuración de compresión en `useImageUpload.ts`
 

@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Camera, Image as ImageIcon, Upload, X, Check, AlertCircle } from "lucide-react";
+import {
+  Camera,
+  Image as ImageIcon,
+  Upload,
+  X,
+  Check,
+  AlertCircle,
+} from "lucide-react";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import FileInputWrapper from "@/components/FileInputWrapper";
@@ -28,7 +35,9 @@ export default function MobileImageUploader({
     compressImage,
   } = useImageUpload();
 
-  const [previewUrl, setPreviewUrl] = useState<string | null>(currentImageUrl || null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    currentImageUrl || null
+  );
   const [error, setError] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(true);
 
@@ -38,7 +47,8 @@ export default function MobileImageUploader({
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
         if (isUploading) {
           e.preventDefault();
-          e.returnValue = 'Hay una subida en progreso. ¿Estás seguro de que quieres salir?';
+          e.returnValue =
+            "Hay una subida en progreso. ¿Estás seguro de que quieres salir?";
         }
       };
 
@@ -49,12 +59,12 @@ export default function MobileImageUploader({
         }
       };
 
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      window.addEventListener('popstate', handlePopState);
+      window.addEventListener("beforeunload", handleBeforeUnload);
+      window.addEventListener("popstate", handlePopState);
 
       return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        window.removeEventListener('popstate', handlePopState);
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+        window.removeEventListener("popstate", handlePopState);
       };
     }
   }, [isOpen, isUploading]);
@@ -91,7 +101,7 @@ export default function MobileImageUploader({
     try {
       setError(null);
       const file = await captureFromCamera();
-      
+
       if (file) {
         await handleFileSelection(file);
       } else {
@@ -127,9 +137,7 @@ export default function MobileImageUploader({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Cargar Imagen
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900">Cargar Imagen</h3>
           <button
             onClick={handleCancel}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -151,7 +159,9 @@ export default function MobileImageUploader({
             <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center space-x-3 mb-2">
                 <Upload className="h-5 w-5 text-blue-600 animate-pulse" />
-                <span className="text-sm text-blue-700">Subiendo imagen...</span>
+                <span className="text-sm text-blue-700">
+                  Subiendo imagen...
+                </span>
               </div>
               <div className="w-full bg-blue-200 rounded-full h-2">
                 <div

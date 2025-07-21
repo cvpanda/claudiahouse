@@ -8,12 +8,14 @@ export function useIsMobile() {
   useEffect(() => {
     const checkIsMobile = () => {
       // Verificar si es un dispositivo móvil basado en el user agent
-      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-      const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
-      
+      const userAgent =
+        navigator.userAgent || navigator.vendor || (window as any).opera;
+      const mobileRegex =
+        /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
+
       // También verificar el ancho de pantalla
       const screenWidth = window.innerWidth;
-      
+
       const isMobileDevice = mobileRegex.test(userAgent) || screenWidth <= 768;
       setIsMobile(isMobileDevice);
     };
