@@ -26,7 +26,7 @@ export default function FileInputWrapper({
     }
     // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -59,7 +59,7 @@ export default function FileInputWrapper({
 
     if (!disabled) {
       const files = Array.from(event.dataTransfer.files);
-      const imageFile = files.find(file => file.type.startsWith('image/'));
+      const imageFile = files.find((file) => file.type.startsWith("image/"));
       if (imageFile) {
         onFileSelect(imageFile);
       }
@@ -74,8 +74,8 @@ export default function FileInputWrapper({
       onDrop={handleDrop}
       className={`
         cursor-pointer transition-all duration-200
-        ${isDragging ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}
-        ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}
+        ${isDragging ? "ring-2 ring-blue-500 ring-opacity-50" : ""}
+        ${disabled ? "opacity-50 cursor-not-allowed" : "hover:opacity-80"}
       `}
     >
       <input
@@ -85,7 +85,7 @@ export default function FileInputWrapper({
         onChange={handleFileChange}
         disabled={disabled}
         className="hidden"
-        style={{ display: 'none' }}
+        style={{ display: "none" }}
       />
       {children}
     </div>

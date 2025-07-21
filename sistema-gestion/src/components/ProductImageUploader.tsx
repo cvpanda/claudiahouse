@@ -46,7 +46,8 @@ export default function ProductImageUploader({
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
         <p className="mt-1 text-sm text-gray-500">
-          Ingresa una URL de imagen o usa las opciones de carga {isMobile ? "móvil" : ""} a continuación.
+          Ingresa una URL de imagen o usa las opciones de carga{" "}
+          {isMobile ? "móvil" : ""} a continuación.
         </p>
       </div>
 
@@ -68,7 +69,9 @@ export default function ProductImageUploader({
             </button>
             <div className="flex items-center space-x-2 text-xs text-gray-500 justify-center">
               <Camera className="h-4 w-4" />
-              <span>Cámara o galería • Sube automáticamente a Google Drive</span>
+              <span>
+                Cámara o galería • Sube automáticamente a Google Drive
+              </span>
             </div>
           </div>
         ) : (

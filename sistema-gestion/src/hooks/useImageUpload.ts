@@ -12,35 +12,38 @@ export function useImageUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const uploadToGoogleDrive = useCallback(async (file: File): Promise<ImageUploadResult> => {
-    setIsUploading(true);
-    setUploadProgress(0);
+  const uploadToGoogleDrive = useCallback(
+    async (file: File): Promise<ImageUploadResult> => {
+      setIsUploading(true);
+      setUploadProgress(0);
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
 
-      const response = await fetch("/api/upload/google-drive", {
-        method: "POST",
-        body: formData,
-      });
+        const response = await fetch("/api/upload/google-drive", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (!response.ok) {
-        throw new Error("Error al subir la imagen");
+        if (!response.ok) {
+          throw new Error("Error al subir la imagen");
+        }
+
+        const result = await response.json();
+        setUploadProgress(100);
+
+        return result;
+      } catch (error) {
+        console.error("Error uploading to Google Drive:", error);
+        throw error;
+      } finally {
+        setIsUploading(false);
+        setTimeout(() => setUploadProgress(0), 1000);
       }
-
-      const result = await response.json();
-      setUploadProgress(100);
-      
-      return result;
-    } catch (error) {
-      console.error("Error uploading to Google Drive:", error);
-      throw error;
-    } finally {
-      setIsUploading(false);
-      setTimeout(() => setUploadProgress(0), 1000);
-    }
-  }, []);
+    },
+    []
+  );
 
   const captureFromCamera = useCallback(async (): Promise<File | null> => {
     try {
@@ -53,8 +56,8 @@ export function useImageUpload() {
         video: {
           facingMode: "environment", // Cámara trasera por defecto
           width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
+          height: { ideal: 1080 },
+        },
       });
 
       return new Promise((resolve) => {
@@ -75,19 +78,23 @@ export function useImageUpload() {
             context.drawImage(video, 0, 0);
 
             // Convertir a blob
-            canvas.toBlob((blob) => {
-              // Detener el stream
-              stream.getTracks().forEach(track => track.stop());
+            canvas.toBlob(
+              (blob) => {
+                // Detener el stream
+                stream.getTracks().forEach((track) => track.stop());
 
-              if (blob) {
-                const file = new File([blob], `photo-${Date.now()}.jpg`, {
-                  type: "image/jpeg",
-                });
-                resolve(file);
-              } else {
-                resolve(null);
-              }
-            }, "image/jpeg", 0.9);
+                if (blob) {
+                  const file = new File([blob], `photo-${Date.now()}.jpg`, {
+                    type: "image/jpeg",
+                  });
+                  resolve(file);
+                } else {
+                  resolve(null);
+                }
+              },
+              "image/jpeg",
+              0.9
+            );
           }
         };
       });
@@ -100,31 +107,39 @@ export function useImageUpload() {
   const selectFromGallery = useCallback((): Promise<File | null> => {
     return new Promise((resolve) => {
       // Verificar si el navegador soporta File System Access API (más moderno)
-      if ('showOpenFilePicker' in window) {
+      if ("showOpenFilePicker" in window) {
         // Usar API moderna para evitar problemas de navegación
-        (window as any).showOpenFilePicker({
-          types: [{
-            description: 'Imágenes',
-            accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }
-          }],
-          multiple: false
-        }).then((fileHandles: any[]) => {
-          if (fileHandles.length > 0) {
-            return fileHandles[0].getFile();
-          }
-          return null;
-        }).then((file: File | null) => {
-          resolve(file);
-        }).catch(() => {
-          resolve(null);
-        });
+        (window as any)
+          .showOpenFilePicker({
+            types: [
+              {
+                description: "Imágenes",
+                accept: {
+                  "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"],
+                },
+              },
+            ],
+            multiple: false,
+          })
+          .then((fileHandles: any[]) => {
+            if (fileHandles.length > 0) {
+              return fileHandles[0].getFile();
+            }
+            return null;
+          })
+          .then((file: File | null) => {
+            resolve(file);
+          })
+          .catch(() => {
+            resolve(null);
+          });
       } else {
         // Fallback para navegadores más antiguos
         const input = document.createElement("input");
         input.type = "file";
         input.accept = "image/*";
         input.style.display = "none";
-        
+
         // Agregar al DOM temporalmente
         document.body.appendChild(input);
 
@@ -145,10 +160,10 @@ export function useImageUpload() {
               resolve(null);
             }
           }, 300);
-          window.removeEventListener('focus', handleFocus);
+          window.removeEventListener("focus", handleFocus);
         };
 
-        window.addEventListener('focus', handleFocus);
+        window.addEventListener("focus", handleFocus);
 
         // Usar timeout para evitar problemas de navegación
         setTimeout(() => {
@@ -158,48 +173,55 @@ export function useImageUpload() {
     });
   }, []);
 
-  const compressImage = useCallback(async (file: File, maxWidth = 1920, quality = 0.8): Promise<File> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-      const img = new Image();
+  const compressImage = useCallback(
+    async (file: File, maxWidth = 1920, quality = 0.8): Promise<File> => {
+      return new Promise((resolve) => {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        const img = new Image();
 
-      img.onload = () => {
-        // Calcular dimensiones manteniendo aspecto
-        let { width, height } = img;
-        
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
+        img.onload = () => {
+          // Calcular dimensiones manteniendo aspecto
+          let { width, height } = img;
 
-        canvas.width = width;
-        canvas.height = height;
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
 
-        if (context) {
-          // Dibujar imagen redimensionada
-          context.fillStyle = "white";
-          context.fillRect(0, 0, width, height);
-          context.drawImage(img, 0, 0, width, height);
+          canvas.width = width;
+          canvas.height = height;
 
-          // Convertir a blob comprimido
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const compressedFile = new File([blob], file.name, {
-                type: "image/jpeg",
-                lastModified: Date.now(),
-              });
-              resolve(compressedFile);
-            } else {
-              resolve(file);
-            }
-          }, "image/jpeg", quality);
-        }
-      };
+          if (context) {
+            // Dibujar imagen redimensionada
+            context.fillStyle = "white";
+            context.fillRect(0, 0, width, height);
+            context.drawImage(img, 0, 0, width, height);
 
-      img.src = URL.createObjectURL(file);
-    });
-  }, []);
+            // Convertir a blob comprimido
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  const compressedFile = new File([blob], file.name, {
+                    type: "image/jpeg",
+                    lastModified: Date.now(),
+                  });
+                  resolve(compressedFile);
+                } else {
+                  resolve(file);
+                }
+              },
+              "image/jpeg",
+              quality
+            );
+          }
+        };
+
+        img.src = URL.createObjectURL(file);
+      });
+    },
+    []
+  );
 
   return {
     isUploading,
