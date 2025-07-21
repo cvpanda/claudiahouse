@@ -333,23 +333,25 @@ export default function SettingsPage() {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Configuración</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Gestiona usuarios, roles y permisos del sistema
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Configuración</h1>
+            <p className="mt-1 sm:mt-2 text-sm text-gray-600">
+              Gestiona usuarios, roles y permisos del sistema
+            </p>
+          </div>
         </div>
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex flex-col sm:flex-row sm:space-x-8 space-y-2 sm:space-y-0">
             {canManageUsers && (
               <button
                 onClick={() => setActiveTab("users")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-3 sm:px-1 border-b-2 sm:border-b-2 font-medium text-sm rounded-t-lg sm:rounded-none ${
                   activeTab === "users"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "border-blue-500 text-blue-600 bg-blue-50 sm:bg-transparent"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 sm:hover:bg-transparent"
                 }`}
               >
                 <Users className="w-4 h-4 inline mr-2" />
@@ -359,10 +361,10 @@ export default function SettingsPage() {
             {canManageRoles && (
               <button
                 onClick={() => setActiveTab("roles")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-3 sm:px-1 border-b-2 sm:border-b-2 font-medium text-sm rounded-t-lg sm:rounded-none ${
                   activeTab === "roles"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "border-blue-500 text-blue-600 bg-blue-50 sm:bg-transparent"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 sm:hover:bg-transparent"
                 }`}
               >
                 <Shield className="w-4 h-4 inline mr-2" />
@@ -371,10 +373,10 @@ export default function SettingsPage() {
             )}
             <button
               onClick={() => setActiveTab("permissions")}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-3 sm:px-1 border-b-2 sm:border-b-2 font-medium text-sm rounded-t-lg sm:rounded-none ${
                 activeTab === "permissions"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-blue-500 text-blue-600 bg-blue-50 sm:bg-transparent"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 sm:hover:bg-transparent"
               }`}
             >
               <Key className="w-4 h-4 inline mr-2" />
@@ -385,19 +387,73 @@ export default function SettingsPage() {
 
         {/* Users Tab */}
         {activeTab === "users" && canManageUsers && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 className="text-lg font-medium text-gray-900">Usuarios</h2>
               <button
                 onClick={openCreateUserModal}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Nuevo Usuario
               </button>
             </div>
 
-            <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            {/* Mobile View - Cards */}
+            <div className="block sm:hidden space-y-3">
+              {users.map((user) => (
+                <div key={user.id} className="bg-white rounded-lg shadow-sm border p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center flex-1 min-w-0">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-gray-600" />
+                        </div>
+                      </div>
+                      <div className="ml-3 flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 truncate">
+                          {user.firstName} {user.lastName}
+                        </div>
+                        <div className="text-sm text-gray-500 truncate">
+                          {user.email}
+                        </div>
+                        <div className="text-xs text-gray-400 capitalize">
+                          {user.role.name.replace("_", " ")}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2 ml-3">
+                      <button
+                        onClick={() => openEditUserModal(user)}
+                        className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-full transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteUser(user.id)}
+                        className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-full transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        user.isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {user.isActive ? "Activo" : "Inactivo"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View - List */}
+            <div className="hidden sm:block bg-white shadow overflow-hidden sm:rounded-md">
               <ul className="divide-y divide-gray-200">
                 {users.map((user) => (
                   <li key={user.id}>
@@ -432,13 +488,13 @@ export default function SettingsPage() {
                         </span>
                         <button
                           onClick={() => openEditUserModal(user)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => deleteUser(user.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -453,19 +509,64 @@ export default function SettingsPage() {
 
         {/* Roles Tab */}
         {activeTab === "roles" && canManageRoles && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 className="text-lg font-medium text-gray-900">Roles</h2>
               <button
                 onClick={openCreateRoleModal}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Nuevo Rol
               </button>
             </div>
 
-            <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            {/* Mobile View - Cards */}
+            <div className="block sm:hidden space-y-3">
+              {roles.map((role) => (
+                <div key={role.id} className="bg-white rounded-lg shadow-sm border p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center flex-1 min-w-0">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                          <Shield className="h-5 w-5 text-gray-600" />
+                        </div>
+                      </div>
+                      <div className="ml-3 flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 capitalize truncate">
+                          {role.name.replace("_", " ")}
+                        </div>
+                        {role.description && (
+                          <div className="text-sm text-gray-500 line-clamp-2">
+                            {role.description}
+                          </div>
+                        )}
+                        <div className="text-xs text-gray-400">
+                          {role.permissions.filter((p) => p.granted).length} permisos
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2 ml-3">
+                      <button
+                        onClick={() => openEditRoleModal(role)}
+                        className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-full transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteRole(role.id)}
+                        className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-full transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View - List */}
+            <div className="hidden sm:block bg-white shadow overflow-hidden sm:rounded-md">
               <ul className="divide-y divide-gray-200">
                 {roles.map((role) => (
                   <li key={role.id}>
@@ -494,13 +595,13 @@ export default function SettingsPage() {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => openEditRoleModal(role)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => deleteRole(role.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -515,30 +616,30 @@ export default function SettingsPage() {
 
         {/* Permissions Tab */}
         {activeTab === "permissions" && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <h2 className="text-lg font-medium text-gray-900">
               Permisos del Sistema
             </h2>
 
             <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="space-y-6">
+              <div className="px-3 py-4 sm:px-4 sm:py-5 sm:p-6">
+                <div className="space-y-4 sm:space-y-6">
                   {permissions.map((perm) => (
                     <div
                       key={perm.module}
                       className="border-b border-gray-200 pb-4"
                     >
-                      <h3 className="text-lg font-medium text-gray-900 capitalize mb-3">
+                      <h3 className="text-base sm:text-lg font-medium text-gray-900 capitalize mb-3">
                         {perm.module}
                       </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                         {perm.actions.map((action) => (
                           <div
                             key={action}
-                            className="flex items-center p-2 bg-gray-50 rounded"
+                            className="flex items-center p-2 sm:p-3 bg-gray-50 rounded-lg"
                           >
-                            <Key className="w-4 h-4 text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-700 capitalize">
+                            <Key className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
+                            <span className="text-sm text-gray-700 capitalize truncate">
                               {action}
                             </span>
                           </div>
@@ -556,14 +657,14 @@ export default function SettingsPage() {
       {/* User Modal */}
       {showUserModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleUserSubmit}>
-              <div className="px-6 py-4 border-b border-gray-200">
+              <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900">
                   {editingUser ? "Editar Usuario" : "Nuevo Usuario"}
                 </h3>
               </div>
-              <div className="px-6 py-4 space-y-4">
+              <div className="px-4 py-4 sm:px-6 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Email
@@ -571,7 +672,7 @@ export default function SettingsPage() {
                   <input
                     type="email"
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
                     value={userFormData.email}
                     onChange={(e) =>
                       setUserFormData({
@@ -588,7 +689,7 @@ export default function SettingsPage() {
                   <input
                     type="text"
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
                     value={userFormData.firstName}
                     onChange={(e) =>
                       setUserFormData({
@@ -605,7 +706,7 @@ export default function SettingsPage() {
                   <input
                     type="text"
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
                     value={userFormData.lastName}
                     onChange={(e) =>
                       setUserFormData({
@@ -623,7 +724,7 @@ export default function SettingsPage() {
                     <input
                       type={showPassword ? "text" : "password"}
                       required={!editingUser}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-10"
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-10 text-base"
                       value={userFormData.password}
                       onChange={(e) =>
                         setUserFormData({
@@ -651,7 +752,7 @@ export default function SettingsPage() {
                   </label>
                   <select
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
                     value={userFormData.roleId}
                     onChange={(e) =>
                       setUserFormData({
@@ -669,17 +770,17 @@ export default function SettingsPage() {
                   </select>
                 </div>
               </div>
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+              <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
                   type="button"
                   onClick={() => setShowUserModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                  className="w-full sm:w-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
                 >
                   {editingUser ? "Actualizar" : "Crear"}
                 </button>
@@ -694,12 +795,12 @@ export default function SettingsPage() {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleRoleSubmit}>
-              <div className="px-6 py-4 border-b border-gray-200">
+              <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900">
                   {editingRole ? "Editar Rol" : "Nuevo Rol"}
                 </h3>
               </div>
-              <div className="px-6 py-4 space-y-6">
+              <div className="px-4 py-4 sm:px-6 space-y-4 sm:space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
@@ -708,7 +809,7 @@ export default function SettingsPage() {
                     <input
                       type="text"
                       required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
                       value={roleFormData.name}
                       onChange={(e) =>
                         setRoleFormData({
@@ -724,7 +825,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="text"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
                       value={roleFormData.description}
                       onChange={(e) =>
                         setRoleFormData({
