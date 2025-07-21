@@ -650,9 +650,54 @@ const PurchasesPage = () => {
               </table>
             </div>
 
-            {/* Pagination */}
+            {/* Desktop empty state */}
+            {purchases.length === 0 && !loading && (
+              <div className="p-12 text-center">
+                <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No hay compras
+                </h3>
+                <p className="text-gray-500 mb-6">
+                  {search || statusFilter || typeFilter
+                    ? "No se encontraron compras que coincidan con los filtros aplicados."
+                    : "Comience creando su primera compra."}
+                </p>
+                <Link
+                  href="/purchases/new"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg inline-flex items-center gap-2 transition-colors"
+                >
+                  <Plus className="h-5 w-5" />
+                  Nueva Compra
+                </Link>
+              </div>
+            )}
+
+            {/* Mobile Pagination */}
             {pagination.pages > 1 && (
-              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
+              <div className="md:hidden px-4 py-3 flex items-center justify-between border-t border-gray-200">
+                <button
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1}
+                  className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <span className="text-sm text-gray-700">
+                  {page} de {pagination.pages}
+                </span>
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={page === pagination.pages}
+                  className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Siguiente
+                </button>
+              </div>
+            )}
+
+            {/* Desktop Pagination */}
+            {pagination.pages > 1 && (
+              <div className="hidden md:block bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
                 <div className="flex-1 flex justify-between sm:hidden">
                   <button
                     onClick={() => setPage(page - 1)}
@@ -733,24 +778,35 @@ const PurchasesPage = () => {
             )}
           </div>
 
-          {purchases.length === 0 && !loading && (
-            <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No hay compras
-              </h3>
-              <p className="text-gray-500 mb-6">
-                {search || statusFilter || typeFilter
-                  ? "No se encontraron compras que coincidan con los filtros aplicados."
-                  : "Comience creando su primera compra."}
-              </p>
-              <Link
-                href="/purchases/new"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg inline-flex items-center gap-2 transition-colors"
-              >
-                <Plus className="h-5 w-5" />
-                Nueva Compra
-              </Link>
+          {/* Mobile Pagination for when there are results */}
+          {purchases.length > 0 && pagination.pages > 1 && (
+            <div className="block md:hidden mt-4 bg-white rounded-lg shadow-sm p-4">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1}
+                  className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <span className="text-sm text-gray-700">
+                  Página {page} de {pagination.pages}
+                </span>
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={page === pagination.pages}
+                  className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Siguiente
+                </button>
+              </div>
+              <div className="mt-2 text-center">
+                <p className="text-xs text-gray-500">
+                  {(page - 1) * pagination.limit + 1} -{" "}
+                  {Math.min(page * pagination.limit, pagination.total)} de{" "}
+                  {pagination.total} resultados
+                </p>
+              </div>
             </div>
           )}
         </div>
