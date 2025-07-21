@@ -293,24 +293,25 @@ export default function SalesPage() {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Ventas</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Ventas</h1>
             <p className="mt-1 text-sm text-gray-600">
               Gestiona las ventas de tu negocio
             </p>
           </div>
-          <div className="mt-3 sm:mt-0 flex space-x-3">
+          <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-3">
             <button
               onClick={exportToCSV}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <Download className="w-4 h-4 mr-2" />
-              Exportar ({filteredStats.total})
+              <span className="hidden sm:inline">Exportar ({filteredStats.total})</span>
+              <span className="sm:hidden">Exportar</span>
             </button>
             <Link
               href="/sales/new"
-              className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+              className={`inline-flex items-center justify-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
                 canCreate
                   ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   : "bg-gray-400 cursor-not-allowed"
@@ -324,16 +325,16 @@ export default function SalesPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            <div className="relative sm:col-span-2 lg:col-span-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
               <input
                 type="text"
                 placeholder="Buscar ventas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="pl-9 sm:pl-10 w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
 
@@ -347,7 +348,7 @@ export default function SalesPage() {
                 onChange={(e) =>
                   setDateFilter({ ...dateFilter, from: e.target.value })
                 }
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
 
@@ -361,14 +362,14 @@ export default function SalesPage() {
                 onChange={(e) =>
                   setDateFilter({ ...dateFilter, to: e.target.value })
                 }
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
 
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="">Todos los estados</option>
               <option value="completed">Completada</option>
@@ -378,7 +379,7 @@ export default function SalesPage() {
             <select
               value={filterPayment}
               onChange={(e) => setFilterPayment(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="">Todos los métodos</option>
               <option value="cash">Efectivo</option>
@@ -452,27 +453,27 @@ export default function SalesPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <ShoppingCart className="w-8 h-8 text-blue-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">
+              <ShoppingCart className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+              <div className="ml-2 sm:ml-3">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">
                   Ventas Filtradas
                 </p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {filteredStats.completed}/{filteredStats.total}
                 </p>
                 <p className="text-xs text-gray-500">completadas/total</p>
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <Calendar className="w-8 h-8 text-green-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Hoy</p>
-                <p className="text-2xl font-bold text-gray-900">
+              <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
+              <div className="ml-2 sm:ml-3">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Hoy</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {todaySales.length}
                 </p>
                 <p className="text-xs text-gray-500">
@@ -481,17 +482,17 @@ export default function SalesPage() {
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <DollarSign className="w-8 h-8 text-purple-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">
+              <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
+              <div className="ml-2 sm:ml-3">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">
                   Ingresos{" "}
                   {filteredStats.total !== sales.length
                     ? "Filtrados"
                     : "Totales"}
                 </p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-base sm:text-xl font-bold text-gray-900">
                   {formatPrice(filteredStats.revenue)}
                 </p>
                 {filteredStats.total !== sales.length && (
@@ -502,14 +503,14 @@ export default function SalesPage() {
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <DollarSign className="w-8 h-8 text-orange-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">
+              <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
+              <div className="ml-2 sm:ml-3">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">
                   Promedio por Venta
                 </p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-base sm:text-xl font-bold text-gray-900">
                   {completedSales.length > 0
                     ? formatPrice(totalRevenue / completedSales.length)
                     : formatPrice(0)}
@@ -519,8 +520,207 @@ export default function SalesPage() {
           </div>
         </div>
 
-        {/* Sales Table */}
-        <div className="bg-white shadow-sm rounded-lg border overflow-hidden">
+        {/* Mobile Cards View */}
+        <div className="block md:hidden">
+          {filteredSales.length === 0 && !loading ? (
+            <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
+              <ShoppingCart className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                {sales.length === 0
+                  ? "No hay ventas"
+                  : "No se encontraron ventas"}
+              </h3>
+              <p className="mt-1 text-sm text-gray-500 px-4">
+                {sales.length === 0
+                  ? "Comienza realizando tu primera venta."
+                  : "Intenta cambiar los filtros para encontrar más resultados."}
+              </p>
+              <div className="mt-6 flex flex-col space-y-2 px-4">
+                {sales.length === 0 ? (
+                  <Link
+                    href="/sales/new"
+                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nueva Venta
+                  </Link>
+                ) : (
+                  <button
+                    onClick={clearAllFilters}
+                    className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    <Filter className="w-4 h-4 mr-2" />
+                    Limpiar Filtros
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredSales.map((sale) => (
+                <div key={sale.id} className="bg-white rounded-lg shadow-sm border p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-900">
+                        {sale.saleNumber}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatDate(sale.createdAt)}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(
+                          sale.status
+                        )}`}
+                      >
+                        {getStatusLabel(sale.status)}
+                      </span>
+                      <button
+                        onClick={() => toggleSaleExpansion(sale.id)}
+                        className="text-gray-400 hover:text-gray-600 p-1"
+                      >
+                        {expandedSales.has(sale.id) ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-gray-500">Cliente</p>
+                      <p className="font-medium text-gray-900">
+                        {sale.customer?.name || "Sin registrar"}
+                      </p>
+                      {sale.customer && (
+                        <p className="text-xs text-gray-500">
+                          {sale.customer.customerType === "retail"
+                            ? "Minorista"
+                            : "Mayorista"}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Total</p>
+                      <p className="font-bold text-lg text-gray-900">
+                        {formatPrice(sale.total)}
+                      </p>
+                      {sale.discount > 0 && (
+                        <p className="text-xs text-red-600">
+                          Desc: {formatPrice(sale.discount)}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Productos</p>
+                      <p className="font-medium text-gray-900">
+                        {sale.saleItems.length}{" "}
+                        {sale.saleItems.length === 1 ? "producto" : "productos"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Pago</p>
+                      <p className="font-medium text-gray-900">
+                        {getPaymentMethodLabel(sale.paymentMethod)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex justify-between items-center">
+                    <button
+                      onClick={() => toggleSaleExpansion(sale.id)}
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      {expandedSales.has(sale.id) ? "Ocultar" : "Ver"} detalles
+                    </button>
+                    <Link
+                      href={`/sales/${sale.id}`}
+                      className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-md ${
+                        canView
+                          ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
+                          : "text-gray-400 bg-gray-50 cursor-not-allowed"
+                      }`}
+                      onClick={(e) => !canView && e.preventDefault()}
+                    >
+                      <Eye className="w-3 h-3 mr-1" />
+                      Ver completo
+                    </Link>
+                  </div>
+
+                  {/* Expanded details for mobile */}
+                  {expandedSales.has(sale.id) && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <h4 className="text-sm font-medium text-gray-900 mb-3">
+                        Productos de la venta:
+                      </h4>
+                      <div className="space-y-2">
+                        {sale.saleItems.map((item, index) => (
+                          <div
+                            key={index}
+                            className="bg-gray-50 p-3 rounded-md flex justify-between items-center"
+                          >
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-gray-900">
+                                {item.product.name}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {item.quantity} {item.product.unit} ×{" "}
+                                {formatPrice(item.unitPrice)}
+                              </div>
+                            </div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {formatPrice(item.totalPrice)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Mobile summary */}
+                      <div className="bg-blue-50 p-3 rounded-md mt-3">
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Subtotal:</span>
+                            <span className="font-medium">
+                              {formatPrice(sale.subtotal)}
+                            </span>
+                          </div>
+                          {sale.tax > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Impuestos:</span>
+                              <span className="font-medium">
+                                {formatPrice(sale.tax)}
+                              </span>
+                            </div>
+                          )}
+                          {sale.discount > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Descuento:</span>
+                              <span className="font-medium text-red-600">
+                                -{formatPrice(sale.discount)}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between pt-1 border-t border-blue-200">
+                            <span className="text-gray-600 font-medium">Total:</span>
+                            <span className="font-bold text-blue-600">
+                              {formatPrice(sale.total)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block bg-white shadow-sm rounded-lg border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
