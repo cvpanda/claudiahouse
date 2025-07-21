@@ -283,7 +283,7 @@ export default function Layout({ children }: LayoutProps) {
           </button>
           <div className="flex-1 flex items-center justify-between px-4 lg:px-6">
             <div className="flex-1" />
-            <div className="flex items-center space-x-4">
+            <div className="hidden sm:flex items-center space-x-4">
               <span className="text-sm text-gray-600">
                 {new Date().toLocaleDateString("es-AR", {
                   weekday: "long",
@@ -298,7 +298,7 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Page content */}
         <main className="flex-1">
-          <div className="p-6 lg:p-8">{children}</div>
+          <div className="p-3 sm:p-4 lg:p-6 xl:p-8">{children}</div>
         </main>
       </div>
     </div>
