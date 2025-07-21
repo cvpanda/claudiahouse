@@ -139,9 +139,9 @@ export default function CustomersPage() {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Clientes</h1>
             <p className="mt-1 text-sm text-gray-600">
               Gestiona tu base de clientes
             </p>
@@ -161,22 +161,22 @@ export default function CustomersPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
               <input
                 type="text"
                 placeholder="Buscar clientes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="pl-9 sm:pl-10 w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="">Todos los tipos</option>
               <option value="retail">Minorista</option>
@@ -186,26 +186,26 @@ export default function CustomersPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <Users className="w-8 h-8 text-blue-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">
+              <Users className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+              <div className="ml-2 sm:ml-3">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">
                   Total Clientes
                 </p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {customers.length}
                 </p>
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <User className="w-8 h-8 text-purple-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Mayoristas</p>
-                <p className="text-2xl font-bold text-gray-900">
+              <User className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
+              <div className="ml-2 sm:ml-3">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Mayoristas</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {
                     customers.filter((c) => c.customerType === "wholesale")
                       .length
@@ -214,12 +214,12 @@ export default function CustomersPage() {
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <User className="w-8 h-8 text-green-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Minoristas</p>
-                <p className="text-2xl font-bold text-gray-900">
+              <User className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
+              <div className="ml-2 sm:ml-3">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Minoristas</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {customers.filter((c) => c.customerType === "retail").length}
                 </p>
               </div>
@@ -227,8 +227,131 @@ export default function CustomersPage() {
           </div>
         </div>
 
-        {/* Customers Table */}
-        <div className="bg-white shadow-sm rounded-lg border overflow-hidden">
+        {/* Mobile Cards View */}
+        <div className="block md:hidden">
+          {filteredCustomers.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
+              <Users className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No hay clientes
+              </h3>
+              <p className="mt-1 text-sm text-gray-500 px-4">
+                {searchTerm || filterType
+                  ? "No se encontraron clientes que coincidan con los filtros."
+                  : "Comienza creando tu primer cliente."}
+              </p>
+              <div className="mt-6 px-4">
+                <Link
+                  href="/customers/new"
+                  className="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nuevo Cliente
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredCustomers.map((customer) => (
+                <div key={customer.id} className="bg-white rounded-lg shadow-sm border p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-900">
+                        {customer.name}
+                      </h3>
+                      {customer.cuit && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          CUIT: {customer.cuit}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col space-y-1">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeColor(
+                          customer.customerType
+                        )}`}
+                      >
+                        {getTypeLabel(customer.customerType)}
+                      </span>
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          customer.isActive
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {customer.isActive ? "Activo" : "Inactivo"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    {customer.email && (
+                      <div className="flex items-center text-gray-600">
+                        <Mail className="w-4 h-4 mr-2 flex-shrink-0" />
+                        <span className="truncate">{customer.email}</span>
+                      </div>
+                    )}
+                    {customer.phone && (
+                      <div className="flex items-center text-gray-600">
+                        <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
+                        <span>{customer.phone}</span>
+                      </div>
+                    )}
+                    {(customer.address || customer.city || customer.province) && (
+                      <div className="flex items-start text-gray-600">
+                        <MapPin className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
+                        <div className="flex flex-col">
+                          {customer.address && (
+                            <span className="text-sm">{customer.address}</span>
+                          )}
+                          {(customer.city || customer.province) && (
+                            <span className="text-xs text-gray-500">
+                              {[
+                                customer.city,
+                                customer.province,
+                                customer.postalCode,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-3 flex justify-end space-x-2">
+                    <Link
+                      href={`/customers/${customer.id}`}
+                      className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-md ${
+                        canUpdate
+                          ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
+                          : "text-gray-400 bg-gray-50 cursor-not-allowed"
+                      }`}
+                      onClick={(e) => !canUpdate && e.preventDefault()}
+                    >
+                      <Edit className="w-3 h-3 mr-1" />
+                      Editar
+                    </Link>
+                    {canDelete && (
+                      <button
+                        onClick={() => deleteCustomer(customer.id)}
+                        className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-red-600 bg-red-50 hover:bg-red-100"
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Eliminar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block bg-white shadow-sm rounded-lg border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -353,6 +476,7 @@ export default function CustomersPage() {
             </table>
           </div>
 
+          {/* Desktop empty state */}
           {filteredCustomers.length === 0 && (
             <div className="text-center py-12">
               <Users className="mx-auto h-12 w-12 text-gray-400" />
@@ -360,7 +484,9 @@ export default function CustomersPage() {
                 No hay clientes
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                Comienza creando un nuevo cliente.
+                {searchTerm || filterType
+                  ? "No se encontraron clientes que coincidan con los filtros."
+                  : "Comienza creando tu primer cliente."}
               </p>
               <div className="mt-6">
                 <Link
