@@ -69,7 +69,15 @@ export default function MobileImageUploader({
     }
   }, [isOpen, isUploading]);
 
-  const handleFileSelection = async (file: File) => {
+  // Evita submit/navegación accidental
+  const handleFileSelection = async (
+    file: File,
+    event?: React.SyntheticEvent
+  ) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     try {
       setError(null);
       setShowOptions(false);
@@ -84,8 +92,8 @@ export default function MobileImageUploader({
       // Subir a Google Drive
       const result = await uploadToGoogleDrive(compressedFile);
 
-      // Notificar al componente padre
-      onImageUploaded(result.url);
+      // Notificar al componente padre con el enlace de vista previa
+      onImageUploaded(result.viewUrl || result.url);
 
       // Limpiar preview URL
       URL.revokeObjectURL(preview);
@@ -97,7 +105,11 @@ export default function MobileImageUploader({
     }
   };
 
-  const handleCameraCapture = async () => {
+  const handleCameraCapture = async (event?: React.SyntheticEvent) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     try {
       setError(null);
       const file = await captureFromCamera();
@@ -113,7 +125,14 @@ export default function MobileImageUploader({
     }
   };
 
-  const handleGallerySelection = async (file: File) => {
+  const handleGallerySelection = async (
+    file: File,
+    event?: React.SyntheticEvent
+  ) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     try {
       setError(null);
       await handleFileSelection(file);
@@ -195,7 +214,7 @@ export default function MobileImageUploader({
                 <>
                   {/* Opción Cámara - Solo en móvil */}
                   <button
-                    onClick={handleCameraCapture}
+                    onClick={(e) => handleCameraCapture(e)}
                     className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
                   >
                     <Camera className="h-6 w-6 text-blue-600" />
@@ -206,11 +225,17 @@ export default function MobileImageUploader({
 
                   {/* Opción Galería */}
                   <FileInputWrapper
-                    onFileSelect={handleGallerySelection}
+                    onFileSelect={(file) => handleGallerySelection(file)}
                     disabled={isUploading}
                     accept="image/*"
                   >
-                    <div className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors">
+                    <div
+                      className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    >
                       <ImageIcon className="h-6 w-6 text-green-600" />
                       <span className="text-green-700 font-medium">
                         Seleccionar de Galería
@@ -225,12 +250,19 @@ export default function MobileImageUploader({
                   disabled={isUploading}
                   accept="image/*"
                 >
-                  <div className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors">
-                    <Upload className="h-6 w-6 text-blue-600" />
-                    <span className="text-blue-700 font-medium">
-                      Seleccionar Archivo
-                    </span>
-                  </div>
+                  {({ openFileDialog }) => (
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                      onClick={openFileDialog}
+                      disabled={isUploading}
+                    >
+                      <Upload className="h-6 w-6 text-blue-600" />
+                      <span className="text-blue-700 font-medium">
+                        Seleccionar Archivo
+                      </span>
+                    </button>
+                  )}
                 </FileInputWrapper>
               )}
 

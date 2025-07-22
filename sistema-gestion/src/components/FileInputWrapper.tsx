@@ -6,7 +6,9 @@ import { Image as ImageIcon, Upload } from "lucide-react";
 interface FileInputWrapperProps {
   onFileSelect: (file: File) => void;
   disabled?: boolean;
-  children: React.ReactNode;
+  children:
+    | React.ReactNode
+    | ((props: { openFileDialog: () => void }) => React.ReactNode);
   accept?: string;
 }
 
@@ -66,9 +68,17 @@ export default function FileInputWrapper({
     }
   };
 
+  const openFileDialog = () => {
+    if (!disabled && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const isRenderProp = typeof children === "function";
+
   return (
     <div
-      onClick={handleClick}
+      {...(!isRenderProp && { onClick: handleClick })}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -87,7 +97,7 @@ export default function FileInputWrapper({
         className="hidden"
         style={{ display: "none" }}
       />
-      {children}
+      {isRenderProp ? (children as Function)({ openFileDialog }) : children}
     </div>
   );
 }

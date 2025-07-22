@@ -4,6 +4,8 @@ import { useState, useCallback } from "react";
 
 export interface ImageUploadResult {
   url: string;
+  viewUrl?: string;
+  thumbnailUrl?: string;
   publicId: string;
   fileName: string;
 }
