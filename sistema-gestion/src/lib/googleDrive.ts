@@ -68,11 +68,15 @@ export async function uploadFileToGoogleDrive(
       },
     });
 
-    // Generar URL público
-    const publicUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+    // Generar URLs públicos
+    const downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+    const viewUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+    const thumbnailUrl = `https://drive.google.com/thumbnail?id=${fileId}`;
 
     return {
-      url: publicUrl,
+      url: downloadUrl,
+      viewUrl,
+      thumbnailUrl,
       publicId: fileId,
       fileName,
     };

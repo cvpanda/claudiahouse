@@ -75,15 +75,25 @@ export default function ProductImageUploader({
             </div>
           </div>
         ) : (
-          /* Opción desktop tradicional */
-          <div className="text-center p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-            <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600">
-              En dispositivos móviles podrás tomar fotos directamente
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Por ahora, ingresa una URL de imagen en el campo superior
-            </p>
+          /* Opción desktop: botón para subir desde PC */
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              onClick={() => setShowMobileUploader(true)}
+              disabled={disabled}
+              className="flex items-center justify-center space-x-2 p-3 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Upload className="h-5 w-5 text-blue-600" />
+              <span className="text-blue-700 font-medium">
+                Subir imagen desde tu PC
+              </span>
+            </button>
+            <div className="flex items-center space-x-2 text-xs text-gray-500 justify-center">
+              <Camera className="h-4 w-4" />
+              <span>
+                Selecciona una imagen y se subirá automáticamente a Google Drive
+              </span>
+            </div>
           </div>
         )}
       </div>
