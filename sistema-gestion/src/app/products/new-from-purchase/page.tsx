@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import ProductImageUploader from "@/components/ProductImageUploader";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
@@ -35,6 +36,7 @@ const NewProductFromPurchaseComponent = () => {
     unit: "unidad",
     supplierId: "",
     categoryId: "",
+    imageUrl: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -178,6 +180,11 @@ const NewProductFromPurchaseComponent = () => {
     }
   };
 
+  // Manejar cambio de imagen
+  const handleImageChange = (imageUrl: string) => {
+    setFormData((prev) => ({ ...prev, imageUrl }));
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -236,6 +243,15 @@ const NewProductFromPurchaseComponent = () => {
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Descripción del producto"
+                />
+              </div>
+
+              {/* Integración de carga de imagen */}
+              <div className="md:col-span-2">
+                <ProductImageUploader
+                  currentImageUrl={formData.imageUrl}
+                  onImageChange={handleImageChange}
+                  disabled={loading}
                 />
               </div>
 
