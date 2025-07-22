@@ -212,35 +212,53 @@ export default function MobileImageUploader({
             <div className="space-y-3">
               {isMobile ? (
                 <>
-                  {/* Opción Cámara - Solo en móvil */}
-                  <button
-                    onClick={(e) => handleCameraCapture(e)}
-                    className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                  >
-                    <Camera className="h-6 w-6 text-blue-600" />
-                    <span className="text-blue-700 font-medium">
-                      Tomar Foto
-                    </span>
-                  </button>
-
-                  {/* Opción Galería */}
+                  {/* Opción Cámara - mobile: input file con capture */}
                   <FileInputWrapper
-                    onFileSelect={(file) => handleGallerySelection(file)}
+                    onFileSelect={handleFileSelection}
+                    disabled={isUploading}
+                    accept="image/*"
+                    capture="environment"
+                  >
+                    {({ openFileDialog }) => (
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          openFileDialog();
+                        }}
+                        disabled={isUploading}
+                      >
+                        <Camera className="h-6 w-6 text-blue-600" />
+                        <span className="text-blue-700 font-medium">
+                          Tomar Foto
+                        </span>
+                      </button>
+                    )}
+                  </FileInputWrapper>
+
+                  {/* Opción Galería - mobile: input file sin capture */}
+                  <FileInputWrapper
+                    onFileSelect={handleGallerySelection}
                     disabled={isUploading}
                     accept="image/*"
                   >
-                    <div
-                      className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    >
-                      <ImageIcon className="h-6 w-6 text-green-600" />
-                      <span className="text-green-700 font-medium">
-                        Seleccionar de Galería
-                      </span>
-                    </div>
+                    {({ openFileDialog }) => (
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-center space-x-3 p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          openFileDialog();
+                        }}
+                        disabled={isUploading}
+                      >
+                        <ImageIcon className="h-6 w-6 text-green-600" />
+                        <span className="text-green-700 font-medium">
+                          Seleccionar de Galería
+                        </span>
+                      </button>
+                    )}
                   </FileInputWrapper>
                 </>
               ) : (
