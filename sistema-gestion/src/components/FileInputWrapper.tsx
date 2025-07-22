@@ -10,6 +10,7 @@ interface FileInputWrapperProps {
     | React.ReactNode
     | ((props: { openFileDialog: () => void }) => React.ReactNode);
   accept?: string;
+  capture?: boolean | "user" | "environment";
 }
 
 export default function FileInputWrapper({
@@ -17,6 +18,7 @@ export default function FileInputWrapper({
   disabled = false,
   children,
   accept = "image/*",
+  capture,
 }: FileInputWrapperProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -92,6 +94,7 @@ export default function FileInputWrapper({
         ref={fileInputRef}
         type="file"
         accept={accept}
+        capture={capture}
         onChange={handleFileChange}
         disabled={disabled}
         className="hidden"
