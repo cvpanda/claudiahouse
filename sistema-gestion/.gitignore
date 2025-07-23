@@ -41,6 +41,7 @@ next-env.d.ts
 # Credentials and secrets
 /credentials/
 credentials/
+*/credentials/
 google-drive-service-account.json
 *.key
 *.pem

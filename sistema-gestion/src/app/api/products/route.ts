@@ -39,8 +39,16 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const categoryId = searchParams.get("categoryId");
     const lowStock = searchParams.get("lowStock") === "true";
-    const orderBy = searchParams.get("orderBy") || "name";
-    const order = searchParams.get("order") || "asc";
+    // Ordenar por updatedAt desc por defecto, si no existe usar createdAt desc
+    let orderBy = searchParams.get("orderBy");
+    let order = searchParams.get("order");
+    if (!orderBy) {
+      // Si el modelo tiene updatedAt, usarlo, si no createdAt
+      orderBy = "updatedAt";
+    }
+    if (!order) {
+      order = "desc";
+    }
 
     const skip = (page - 1) * limit;
 
@@ -100,6 +108,21 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Stats globales (sin filtros de búsqueda ni paginación)
+    // Obtener todos los productos activos para calcular stats globales correctamente
+    const allActiveProducts = await prisma.product.findMany({
+      where: { isActive: true },
+      select: { stock: true, minStock: true, cost: true },
+    });
+    const globalTotal = allActiveProducts.length;
+    const globalLowStock = allActiveProducts.filter(
+      (p) => p.stock <= p.minStock
+    ).length;
+    const globalTotalStockValue = allActiveProducts.reduce(
+      (sum, p) => sum + p.stock * p.cost,
+      0
+    );
+
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
@@ -125,6 +148,11 @@ export async function GET(request: NextRequest) {
         limit,
         total,
         pages: Math.ceil(total / limit),
+      },
+      stats: {
+        totalProducts: globalTotal,
+        lowStock: globalLowStock,
+        totalStockValue: globalTotalStockValue,
       },
     });
   } catch (error) {

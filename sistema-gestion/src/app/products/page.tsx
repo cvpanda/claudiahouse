@@ -43,6 +43,14 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [categories, setCategories] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [limit] = useState(50); // Puedes ajustar el tamaño de página aquí
+  const [globalStats, setGlobalStats] = useState({
+    totalProducts: 0,
+    lowStock: 0,
+    totalStockValue: 0,
+  });
   const { hasPermission } = useAuth();
 
   // Verificar permisos
@@ -71,15 +79,49 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, searchTerm, filterCategory]);
+
+  useEffect(() => {
     fetchCategories();
   }, []);
 
   const fetchProducts = async () => {
+    setLoading(true);
     try {
-      const response = await fetch("/api/products");
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        page: page.toString(),
+        ...(searchTerm ? { search: searchTerm } : {}),
+        ...(filterCategory ? { category: filterCategory } : {}),
+      });
+      const response = await fetch(`/api/products?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setProducts(data.data || []);
+        // Usar el total de la paginación del backend
+        setTotal(data.pagination?.total || 0);
+        // Leer stats globales si existen
+        if (data.stats) {
+          setGlobalStats({
+            totalProducts:
+              data.stats.totalProducts ?? data.pagination?.total ?? 0,
+            lowStock: data.stats.lowStock ?? 0,
+            totalStockValue: data.stats.totalStockValue ?? 0,
+          });
+        } else {
+          // fallback: usar total y calcular localmente (no ideal)
+          setGlobalStats({
+            totalProducts: data.pagination?.total ?? 0,
+            lowStock: (data.data || []).filter(
+              (p: Product) => p.stock <= p.minStock
+            ).length,
+            totalStockValue: (data.data || []).reduce(
+              (sum: number, p: Product) => sum + p.cost * p.stock,
+              0
+            ),
+          });
+        }
       }
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -122,17 +164,8 @@ export default function ProductsPage() {
     }
   };
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.supplier.name.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesCategory =
-      !filterCategory || product.category.id === filterCategory;
-
-    return matchesSearch && matchesCategory;
-  });
+  // La búsqueda y filtrado ahora se hace en el backend, así que usamos products directamente
+  const filteredProducts = products;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-AR", {
@@ -150,6 +183,57 @@ export default function ProductsPage() {
       </Layout>
     );
   }
+
+  // Calcular total de páginas
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  // Handlers para paginación
+  const handlePrevPage = () => setPage((p) => Math.max(1, p - 1));
+  const handleNextPage = () => setPage((p) => Math.min(totalPages, p + 1));
+  const handlePageClick = (p: number) => setPage(p);
+
+  // Componente de paginación reutilizable
+  const Pagination = () =>
+    totalPages > 1 ? (
+      <div className="flex justify-center items-center gap-2 py-4 border-t bg-gray-50">
+        <button
+          onClick={handlePrevPage}
+          disabled={page === 1}
+          className={`px-3 py-1 rounded border text-sm font-medium ${
+            page === 1
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-white text-blue-600 hover:bg-blue-50"
+          }`}
+        >
+          Anterior
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+          <button
+            key={p}
+            onClick={() => handlePageClick(p)}
+            className={`px-3 py-1 rounded border text-sm font-medium ${
+              p === page
+                ? "bg-blue-600 text-white"
+                : "bg-white text-blue-600 hover:bg-blue-50"
+            }`}
+            disabled={p === page}
+          >
+            {p}
+          </button>
+        ))}
+        <button
+          onClick={handleNextPage}
+          disabled={page === totalPages}
+          className={`px-3 py-1 rounded border text-sm font-medium ${
+            page === totalPages
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-white text-blue-600 hover:bg-blue-50"
+          }`}
+        >
+          Siguiente
+        </button>
+      </div>
+    ) : null;
 
   return (
     <Layout>
@@ -187,13 +271,19 @@ export default function ProductsPage() {
                 type="text"
                 placeholder="Buscar productos..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
                 className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
               />
             </div>
             <select
               value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
+              onChange={(e) => {
+                setFilterCategory(e.target.value);
+                setPage(1);
+              }}
               className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
             >
               <option value="">Todas las categorías</option>
@@ -216,7 +306,7 @@ export default function ProductsPage() {
                   Total Productos
                 </p>
                 <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                  {products.length}
+                  {globalStats.totalProducts}
                 </p>
               </div>
             </div>
@@ -229,7 +319,7 @@ export default function ProductsPage() {
                   Stock Bajo
                 </p>
                 <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                  {products.filter((p) => p.stock <= p.minStock).length}
+                  {globalStats.lowStock}
                 </p>
               </div>
             </div>
@@ -242,9 +332,7 @@ export default function ProductsPage() {
                   Valor Total Stock
                 </p>
                 <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                  {formatPrice(
-                    products.reduce((sum, p) => sum + p.cost * p.stock, 0)
-                  )}
+                  {formatPrice(globalStats.totalStockValue)}
                 </p>
               </div>
             </div>
@@ -253,11 +341,13 @@ export default function ProductsPage() {
 
         {/* Products - Mobile Cards / Desktop Table */}
         <div className="bg-white shadow-sm rounded-lg border overflow-hidden">
+          {/* Pagination arriba */}
+          <Pagination />
           {/* Mobile View - Cards */}
           <div className="block md:hidden">
             <div className="p-3 border-b border-gray-200">
               <p className="text-sm font-medium text-gray-600">
-                {filteredProducts.length} productos encontrados
+                {total} productos encontrados
               </p>
             </div>
             <div className="divide-y divide-gray-200">
@@ -508,6 +598,9 @@ export default function ProductsPage() {
               </div>
             </div>
           )}
+
+          {/* Pagination abajo */}
+          <Pagination />
         </div>
       </div>
     </Layout>
