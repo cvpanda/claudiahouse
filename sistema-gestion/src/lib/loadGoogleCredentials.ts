@@ -17,7 +17,26 @@ interface GoogleServiceAccountCredentials {
 
 export function loadGoogleCredentials(): GoogleServiceAccountCredentials | null {
   try {
-    // Intentar cargar desde variables de entorno primero (producción)
+    // 1. Intentar cargar desde una variable de entorno con el JSON completo (ideal para Vercel)
+    if (process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON) {
+      try {
+        const credentials: GoogleServiceAccountCredentials = JSON.parse(
+          process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON
+        );
+        console.log(
+          "✅ Credenciales de Google Drive cargadas desde GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON"
+        );
+        return credentials;
+      } catch (jsonError) {
+        console.error(
+          "❌ Error parseando GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON:",
+          jsonError
+        );
+        // Si falla, continuar con los otros métodos
+      }
+    }
+
+    // 2. Intentar cargar desde variables de entorno individuales (legacy)
     if (
       process.env.GOOGLE_CLOUD_PROJECT_ID &&
       process.env.GOOGLE_CLOUD_PRIVATE_KEY
@@ -40,7 +59,7 @@ export function loadGoogleCredentials(): GoogleServiceAccountCredentials | null 
       };
     }
 
-    // Si no están las variables de entorno, intentar cargar desde archivo local (desarrollo)
+    // 3. Si no están las variables de entorno, intentar cargar desde archivo local (desarrollo)
     const credentialsPath = join(
       process.cwd(),
       "credentials",
@@ -51,7 +70,6 @@ export function loadGoogleCredentials(): GoogleServiceAccountCredentials | null 
       const credentialsFile = readFileSync(credentialsPath, "utf8");
       const credentials: GoogleServiceAccountCredentials =
         JSON.parse(credentialsFile);
-
       console.log(
         "✅ Credenciales de Google Drive cargadas desde archivo local"
       );
