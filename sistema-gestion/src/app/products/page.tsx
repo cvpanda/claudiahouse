@@ -41,6 +41,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [pendingSearch, setPendingSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [categories, setCategories] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -167,6 +168,19 @@ export default function ProductsPage() {
   // La búsqueda y filtrado ahora se hace en el backend, así que usamos products directamente
   const filteredProducts = products;
 
+  // Handler para submit de búsqueda
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setSearchTerm(pendingSearch);
+    setPage(1);
+  };
+
+  // Handler para cambio de categoría
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilterCategory(e.target.value);
+    setPage(1);
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-AR", {
       style: "currency",
@@ -264,26 +278,37 @@ export default function ProductsPage() {
 
         {/* Filters */}
         <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border">
-          <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <form
+            className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4"
+            onSubmit={handleSearchSubmit}
+            autoComplete="off"
+          >
+            <div className="relative flex">
               <input
                 type="text"
                 placeholder="Buscar productos..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(1);
+                value={pendingSearch}
+                onChange={(e) => setPendingSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearchSubmit();
+                  }
                 }}
                 className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
               />
+              <button
+                type="button"
+                onClick={handleSearchSubmit}
+                className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-full text-gray-400 hover:text-blue-600"
+                tabIndex={-1}
+                aria-label="Buscar"
+              >
+                <Search className="w-5 h-5" />
+              </button>
             </div>
             <select
               value={filterCategory}
-              onChange={(e) => {
-                setFilterCategory(e.target.value);
-                setPage(1);
-              }}
+              onChange={handleCategoryChange}
               className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
             >
               <option value="">Todas las categorías</option>
@@ -293,7 +318,7 @@ export default function ProductsPage() {
                 </option>
               ))}
             </select>
-          </div>
+          </form>
         </div>
 
         {/* Stats */}

@@ -108,36 +108,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = saleSchema.parse(body);
 
-    // Verificar stock disponible
-    for (const item of validatedData.items) {
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId },
-      });
-
-      if (!product) {
-        return NextResponse.json(
-          { error: `Producto no encontrado: ${item.productId}` },
-          { status: 400 }
-        );
-      }
-
-      if (!product.isActive) {
-        return NextResponse.json(
-          { error: `Producto inactivo: ${product.name}` },
-          { status: 400 }
-        );
-      }
-
-      if (product.stock < item.quantity) {
-        return NextResponse.json(
-          {
-            error: `Stock insuficiente para ${product.name}. Disponible: ${product.stock}`,
-          },
-          { status: 400 }
-        );
-      }
-    }
-
     // Los totales ya vienen calculados del frontend, pero validamos
     const calculatedSubtotal = validatedData.items.reduce(
       (sum, item) => sum + item.quantity * item.unitPrice,
@@ -149,8 +119,29 @@ export async function POST(request: NextRequest) {
     const shippingCost = validatedData.shippingCost || 0;
     const calculatedTotal = taxableAmount + taxAmount + shippingCost;
 
-    // Crear venta en transacción
+    // Toda la lógica de stock y creación de venta dentro de la transacción
     const sale = await prisma.$transaction(async (tx: any) => {
+      // Verificar stock y estado de productos dentro de la transacción
+      for (const item of validatedData.items) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+        });
+
+        if (!product) {
+          throw new Error(`Producto no encontrado: ${item.productId}`);
+        }
+
+        if (!product.isActive) {
+          throw new Error(`Producto inactivo: ${product.name}`);
+        }
+
+        if (product.stock < item.quantity) {
+          throw new Error(
+            `Stock insuficiente para ${product.name}. Disponible: ${product.stock}`
+          );
+        }
+      }
+
       // Crear la venta
       const newSale = await tx.sale.create({
         data: {
@@ -209,12 +200,25 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(sale, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Datos inválidos", details: error.errors },
         { status: 400 }
       );
+    }
+    // Errores personalizados de stock/producto
+    if (
+      typeof error.message === "string" &&
+      error.message.startsWith("Producto")
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    if (
+      typeof error.message === "string" &&
+      error.message.startsWith("Stock")
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     console.error("Error creating sale:", error);
