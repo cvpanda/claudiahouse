@@ -77,10 +77,11 @@ export default function NewSalePage() {
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [showProductSearch, setShowProductSearch] = useState(false);
+  const [selectedProductIndex, setSelectedProductIndex] = useState(-1);
   const [formData, setFormData] = useState({
     paymentMethod: "efectivo",
     discount: 0,
-    tax: 21,
+    tax: 0,
     shippingCost: 0,
     shippingType: "",
     notes: "",
@@ -132,7 +133,75 @@ export default function NewSalePage() {
 
   useEffect(() => {
     setFilteredProducts(filterProducts(productSearch, products));
+    setSelectedProductIndex(-1); // Reset selection when search changes
   }, [productSearch, products]);
+
+  // Función para verificar si un producto ya está agregado al combo/agrupación
+  const isProductInCombo = (productId: string) => {
+    return comboComponents.some((comp) => comp.productId === productId);
+  };
+
+  // Función para manejar navegación con teclado
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showProductSearch || filteredProducts.length === 0) return;
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setSelectedProductIndex((prev) => {
+          const newIndex = prev < filteredProducts.length - 1 ? prev + 1 : 0;
+          // Scroll automático
+          setTimeout(() => {
+            const dropdown = document.querySelector(".dropdown-container");
+            const selectedElement = dropdown?.querySelector(
+              `[data-index="${newIndex}"]`
+            );
+            if (selectedElement && dropdown) {
+              selectedElement.scrollIntoView({
+                behavior: "smooth",
+                block: "nearest",
+              });
+            }
+          }, 0);
+          return newIndex;
+        });
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setSelectedProductIndex((prev) => {
+          const newIndex = prev > 0 ? prev - 1 : filteredProducts.length - 1;
+          // Scroll automático
+          setTimeout(() => {
+            const dropdown = document.querySelector(".dropdown-container");
+            const selectedElement = dropdown?.querySelector(
+              `[data-index="${newIndex}"]`
+            );
+            if (selectedElement && dropdown) {
+              selectedElement.scrollIntoView({
+                behavior: "smooth",
+                block: "nearest",
+              });
+            }
+          }, 0);
+          return newIndex;
+        });
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (
+          selectedProductIndex >= 0 &&
+          selectedProductIndex < filteredProducts.length
+        ) {
+          addProductToSale(filteredProducts[selectedProductIndex]);
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        setShowProductSearch(false);
+        setSelectedProductIndex(-1);
+        break;
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -162,6 +231,10 @@ export default function NewSalePage() {
     // Si estamos creando un combo, agregar al combo en lugar de la venta
     if (showComboCreator) {
       addProductToCombo(product);
+      // Limpiar búsqueda después de agregar al combo
+      setProductSearch("");
+      setShowProductSearch(false);
+      setSelectedProductIndex(-1);
       return;
     }
 
@@ -205,8 +278,10 @@ export default function NewSalePage() {
       setSaleItems([...saleItems, newItem]);
     }
 
+    // Limpiar búsqueda después de agregar
     setProductSearch("");
     setShowProductSearch(false);
+    setSelectedProductIndex(-1);
   };
 
   const updateItemQuantity = (index: number, newQuantity: number) => {
@@ -256,6 +331,12 @@ export default function NewSalePage() {
       const updated = [...comboComponents];
       updated[existingIndex].quantity += 1;
       setComboComponents(updated);
+      // Mostrar mensaje informativo
+      console.log(
+        `${product.name} ya está en el ${
+          itemType === "combo" ? "combo" : "pack"
+        }. Cantidad aumentada a ${updated[existingIndex].quantity}.`
+      );
     } else {
       setComboComponents([
         ...comboComponents,
@@ -266,8 +347,6 @@ export default function NewSalePage() {
         },
       ]);
     }
-    setProductSearch("");
-    setShowProductSearch(false);
   };
 
   const updateComboComponentQuantity = (index: number, newQuantity: number) => {
@@ -490,6 +569,46 @@ export default function NewSalePage() {
                   </div>
                 )}
 
+                {/* Ayuda de navegación */}
+                {!showComboCreator && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                    <div className="flex">
+                      <div className="ml-2">
+                        <h4 className="text-sm font-medium text-blue-800">
+                          💡 Navegación rápida
+                        </h4>
+                        <div className="mt-1 text-sm text-blue-700">
+                          <p>• Escriba para buscar productos</p>
+                          <p>• Use ↑↓ para navegar, Enter para seleccionar</p>
+                          <p>• Esc para cerrar la búsqueda</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {showComboCreator && (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+                    <div className="flex">
+                      <div className="ml-2">
+                        <h4 className="text-sm font-medium text-green-800">
+                          🎯 Creando{" "}
+                          {itemType === "combo" ? "Combo" : "Agrupación"}
+                        </h4>
+                        <div className="mt-1 text-sm text-green-700">
+                          <p>
+                            • Los productos ya agregados aparecen marcados con ✓
+                          </p>
+                          <p>• Use ↑↓ Enter para agregar rápidamente</p>
+                          <p>
+                            • Agregue hasta 100+ productos sin usar el mouse
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Mostrar el creador de combos si está activo */}
                 {showComboCreator && (
                   <div className="mb-4">
@@ -512,63 +631,110 @@ export default function NewSalePage() {
                 <div className="relative mb-4">
                   <input
                     type="text"
-                    placeholder="Buscar por nombre, SKU o código de barras..."
+                    placeholder={
+                      showComboCreator
+                        ? `Buscar productos para el ${
+                            itemType === "combo" ? "combo" : "pack"
+                          }...`
+                        : "Buscar por nombre, SKU o código de barras..."
+                    }
                     value={productSearch}
                     onChange={(e) => {
                       setProductSearch(e.target.value);
                       setShowProductSearch(e.target.value.length > 0);
+                      setSelectedProductIndex(-1);
                     }}
+                    onKeyDown={handleKeyDown}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    autoComplete="off"
                   />
 
+                  {/* Instrucciones de navegación */}
                   {showProductSearch && filteredProducts.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {filteredProducts.map((product) => (
-                        <div
-                          key={product.id}
-                          className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
-                          onClick={() => addProductToSale(product)}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium">{product.name}</p>
-                              <p className="text-sm text-gray-500">
-                                SKU: {product.sku || "N/A"} | Stock:{" "}
-                                {product.stock} {product.unit}
-                              </p>
-                              {product.category && (
-                                <p className="text-xs text-gray-400">
-                                  {product.category.name}
-                                </p>
-                              )}
-                            </div>
-                            <div className="text-right">
-                              {selectedCustomer?.customerType ===
-                              "wholesale" ? (
-                                <>
-                                  <p className="font-medium text-green-600">
-                                    ${product.wholesalePrice.toFixed(2)}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    Mayorista
-                                  </p>
-                                </>
-                              ) : (
-                                <>
-                                  <p className="font-medium text-blue-600">
-                                    ${product.retailPrice.toFixed(2)}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    Minorista
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="absolute right-2 top-2 text-xs text-gray-400 pointer-events-none">
+                      ↑↓ Enter
                     </div>
                   )}
+
+                  {showProductSearch && filteredProducts.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto dropdown-container">
+                      {filteredProducts.map((product, index) => {
+                        const isSelected = index === selectedProductIndex;
+                        const isInCombo =
+                          showComboCreator && isProductInCombo(product.id);
+
+                        return (
+                          <div
+                            key={product.id}
+                            data-index={index}
+                            className={`p-3 cursor-pointer border-b last:border-b-0 transition-colors ${
+                              isSelected
+                                ? "bg-blue-50 border-blue-200"
+                                : "hover:bg-gray-50"
+                            } ${isInCombo ? "bg-green-50" : ""}`}
+                            onClick={() => addProductToSale(product)}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{product.name}</p>
+                                  {isInCombo && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      ✓ En{" "}
+                                      {itemType === "combo" ? "combo" : "pack"}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-500">
+                                  SKU: {product.sku || "N/A"} | Stock:{" "}
+                                  {product.stock} {product.unit}
+                                </p>
+                                {product.category && (
+                                  <p className="text-xs text-gray-400">
+                                    {product.category.name}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                {selectedCustomer?.customerType ===
+                                "wholesale" ? (
+                                  <>
+                                    <p className="font-medium text-green-600">
+                                      ${product.wholesalePrice.toFixed(2)}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Mayorista
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="font-medium text-blue-600">
+                                      ${product.retailPrice.toFixed(2)}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Minorista
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Mensaje cuando no hay resultados */}
+                  {showProductSearch &&
+                    productSearch.length > 0 &&
+                    filteredProducts.length === 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                        <p>No se encontraron productos</p>
+                        <p className="text-sm">
+                          Intente con otro término de búsqueda
+                        </p>
+                      </div>
+                    )}
                 </div>
 
                 {/* Lista de items en la venta */}
