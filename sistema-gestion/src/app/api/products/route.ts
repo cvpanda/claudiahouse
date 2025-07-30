@@ -10,13 +10,18 @@ const productSchema = z.object({
   description: z.string().optional(),
   sku: z.string().optional(),
   barcode: z.string().optional(),
-  cost: z.coerce.number().min(0, "El costo debe ser mayor o igual a 0"),
+  cost: z.coerce
+    .number()
+    .min(0, "El costo debe ser mayor o igual a 0")
+    .transform((val) => Math.round(val * 100) / 100), // Redondear a 2 decimales
   wholesalePrice: z.coerce
     .number()
-    .min(0, "El precio mayorista debe ser mayor o igual a 0"),
+    .min(0, "El precio mayorista debe ser mayor o igual a 0")
+    .transform((val) => Math.round(val * 100) / 100), // Redondear a 2 decimales
   retailPrice: z.coerce
     .number()
-    .min(0, "El precio minorista debe ser mayor o igual a 0"),
+    .min(0, "El precio minorista debe ser mayor o igual a 0")
+    .transform((val) => Math.round(val * 100) / 100), // Redondear a 2 decimales
   stock: z.coerce.number().int().min(0, "El stock debe ser mayor o igual a 0"),
   minStock: z.coerce
     .number()

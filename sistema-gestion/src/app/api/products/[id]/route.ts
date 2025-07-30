@@ -10,14 +10,17 @@ const productUpdateSchema = z.object({
   cost: z.coerce
     .number()
     .min(0, "El costo debe ser mayor o igual a 0")
+    .transform((val) => Math.round(val * 100) / 100) // Redondear a 2 decimales
     .optional(),
   wholesalePrice: z.coerce
     .number()
     .min(0, "El precio mayorista debe ser mayor o igual a 0")
+    .transform((val) => Math.round(val * 100) / 100) // Redondear a 2 decimales
     .optional(),
   retailPrice: z.coerce
     .number()
     .min(0, "El precio minorista debe ser mayor o igual a 0")
+    .transform((val) => Math.round(val * 100) / 100) // Redondear a 2 decimales
     .optional(),
   stock: z.coerce
     .number()

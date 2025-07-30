@@ -81,18 +81,23 @@ export default function EditProductPage() {
       if (response.ok) {
         const productData = await response.json();
         setProduct(productData);
+
+        // Función para limpiar y formatear números que vienen de la API
+        const cleanApiNumber = (value: number): string => {
+          if (!value || value === 0) return "0";
+          // Redondear a 2 decimales para evitar problemas de precisión
+          const rounded = Math.round(value * 100) / 100;
+          return rounded.toString().replace(".", ",");
+        };
+
         setFormData({
           name: productData.name,
           description: productData.description || "",
           sku: productData.sku || "",
           barcode: productData.barcode || "",
-          cost: formatArgentineNumber(productData.cost.toString()),
-          wholesalePrice: formatArgentineNumber(
-            productData.wholesalePrice.toString()
-          ),
-          retailPrice: formatArgentineNumber(
-            productData.retailPrice.toString()
-          ),
+          cost: cleanApiNumber(productData.cost),
+          wholesalePrice: cleanApiNumber(productData.wholesalePrice),
+          retailPrice: cleanApiNumber(productData.retailPrice),
           stock: productData.stock.toString(),
           minStock: productData.minStock.toString(),
           maxStock: productData.maxStock?.toString() || "",
@@ -140,22 +145,35 @@ export default function EditProductPage() {
 
   // Función para formatear números con separadores argentinos
   const formatArgentineNumber = (value: string): string => {
-    // Remover todos los caracteres que no sean dígitos o punto decimal
-    const cleanValue = value.replace(/[^\d.]/g, "");
+    if (!value || value === "0") return "0";
 
-    // Asegurar que solo haya un punto decimal
-    const parts = cleanValue.split(".");
-    if (parts.length > 2) {
-      return parts[0] + "." + parts.slice(1).join("");
+    // Limpiar el valor - solo números y coma decimal
+    let cleanValue = value.replace(/[^\d,]/g, "");
+
+    // Si está vacío después de limpiar, retornar vacío
+    if (!cleanValue) return "";
+
+    // Separar parte entera y decimal
+    const parts = cleanValue.split(",");
+    let integerPart = parts[0];
+    const decimalPart = parts[1] || "";
+
+    // Si no hay parte entera, retornar el valor limpio
+    if (!integerPart) return cleanValue;
+
+    // Formatear solo si tiene más de 3 dígitos
+    if (integerPart.length > 3) {
+      integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
 
-    // Si hay parte entera, formatearla con separadores de miles
-    if (parts[0]) {
-      const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-      return parts.length > 1 ? `${integerPart},${parts[1]}` : integerPart;
-    }
+    // Retornar con o sin decimales
+    return decimalPart ? `${integerPart},${decimalPart}` : integerPart;
+  };
 
-    return cleanValue;
+  // Función para limpiar y preparar número para formateo
+  const cleanNumberForFormatting = (value: string): string => {
+    // Remover puntos de miles existentes pero mantener coma decimal
+    return value.replace(/\./g, "");
   };
 
   // Función para convertir formato argentino a número
@@ -163,7 +181,10 @@ export default function EditProductPage() {
     if (!value) return 0;
     // Remover puntos de miles y reemplazar coma decimal por punto
     const cleanValue = value.replace(/\./g, "").replace(/,/g, ".");
-    return parseFloat(cleanValue) || 0;
+    const parsed = parseFloat(cleanValue);
+    if (isNaN(parsed)) return 0;
+    // Redondear a 2 decimales para evitar problemas de precisión
+    return Math.round(parsed * 100) / 100;
   };
 
   // Función helper para clases de input con manejo de errores
@@ -205,16 +226,42 @@ export default function EditProductPage() {
       name === "wholesalePrice" ||
       name === "retailPrice"
     ) {
-      // Para campos de precio, aplicar formato argentino
-      const formattedValue = formatArgentineNumber(value);
+      // Para campos de precio, solo permitir dígitos y coma decimal
+      // No formatear durante la escritura
+      let cleanValue = value.replace(/[^\d,]/g, "");
+
+      // Asegurar que solo haya una coma decimal
+      const commaCount = (cleanValue.match(/,/g) || []).length;
+      if (commaCount > 1) {
+        const parts = cleanValue.split(",");
+        cleanValue = parts[0] + "," + parts.slice(1).join("");
+      }
+
       setFormData((prev) => ({
         ...prev,
-        [name]: formattedValue,
+        [name]: cleanValue,
       }));
     } else {
       setFormData((prev) => ({
         ...prev,
         [name]: value,
+      }));
+    }
+  };
+
+  // Manejador para formatear números cuando el campo pierde el foco
+  const handleNumberBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    if (
+      name === "cost" ||
+      name === "wholesalePrice" ||
+      name === "retailPrice"
+    ) {
+      const formattedValue = formatArgentineNumber(value);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: formattedValue,
       }));
     }
   };
@@ -607,6 +654,7 @@ export default function EditProductPage() {
                     required
                     value={formData.cost}
                     onChange={handleChange}
+                    onBlur={handleNumberBlur}
                     placeholder="0"
                     className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
@@ -634,6 +682,7 @@ export default function EditProductPage() {
                     required
                     value={formData.wholesalePrice}
                     onChange={handleChange}
+                    onBlur={handleNumberBlur}
                     placeholder="0"
                     className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
@@ -669,6 +718,7 @@ export default function EditProductPage() {
                     required
                     value={formData.retailPrice}
                     onChange={handleChange}
+                    onBlur={handleNumberBlur}
                     placeholder="0"
                     className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
