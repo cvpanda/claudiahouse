@@ -3,11 +3,41 @@ import { prisma } from "@/lib/prisma";
 import { generateSaleNumber } from "@/lib/utils";
 import { z } from "zod";
 
-const saleItemSchema = z.object({
+const saleItemComponentSchema = z.object({
   productId: z.string().min(1, "El producto es requerido"),
   quantity: z.number().int().min(1, "La cantidad debe ser mayor a 0"),
-  unitPrice: z.number().min(0, "El precio debe ser mayor o igual a 0"),
 });
+
+const saleItemSchema = z
+  .object({
+    // Para productos simples
+    productId: z.string().optional(),
+    quantity: z.number().int().min(1, "La cantidad debe ser mayor a 0"),
+    unitPrice: z.number().min(0, "El precio debe ser mayor o igual a 0"),
+
+    // Para combos/agrupaciones
+    itemType: z.enum(["simple", "combo", "grouped"]).default("simple"),
+    displayName: z.string().optional(),
+    components: z.array(saleItemComponentSchema).optional(),
+  })
+  .refine(
+    (data) => {
+      // Validar que para items simples se requiera productId
+      if (data.itemType === "simple") {
+        return !!data.productId;
+      }
+      // Validar que para combos/agrupaciones se requieran components
+      if (data.itemType === "combo" || data.itemType === "grouped") {
+        return (
+          !!data.components && data.components.length > 0 && !!data.displayName
+        );
+      }
+      return true;
+    },
+    {
+      message: "Datos incompletos para el tipo de item",
+    }
+  );
 
 const saleSchema = z.object({
   customerId: z.string().optional().nullable(),
@@ -74,6 +104,11 @@ export async function GET(request: NextRequest) {
           saleItems: {
             include: {
               product: true,
+              components: {
+                include: {
+                  product: true,
+                },
+              },
             },
           },
         },
@@ -122,10 +157,25 @@ export async function POST(request: NextRequest) {
     // Toda la lógica de stock y creación de venta dentro de la transacción
     const sale = await prisma.$transaction(
       async (tx: any) => {
+        // Recopilar todos los productos necesarios (simples y de componentes)
+        const allProductIds = new Set<string>();
+
+        validatedData.items.forEach((item) => {
+          if (item.itemType === "simple" && item.productId) {
+            allProductIds.add(item.productId);
+          } else if (
+            (item.itemType === "combo" || item.itemType === "grouped") &&
+            item.components
+          ) {
+            item.components.forEach((comp) =>
+              allProductIds.add(comp.productId)
+            );
+          }
+        });
+
         // Obtener todos los productos de una vez
-        const productIds = validatedData.items.map((item) => item.productId);
         const products = await tx.product.findMany({
-          where: { id: { in: productIds } },
+          where: { id: { in: Array.from(allProductIds) } },
         });
 
         // Crear un mapa para acceso rápido
@@ -133,24 +183,45 @@ export async function POST(request: NextRequest) {
 
         // Verificar stock y estado de productos
         for (const item of validatedData.items) {
-          const product = productMap.get(item.productId);
-
-          if (!product) {
-            throw new Error(`Producto no encontrado: ${item.productId}`);
-          }
-
-          if (!product.isActive) {
-            throw new Error(`Producto inactivo: ${product.name}`);
-          }
-
-          if (product.stock < item.quantity) {
-            throw new Error(
-              `Stock insuficiente para ${product.name}. Disponible: ${product.stock}`
-            );
+          if (item.itemType === "simple" && item.productId) {
+            const product: any = productMap.get(item.productId);
+            if (!product) {
+              throw new Error(`Producto no encontrado: ${item.productId}`);
+            }
+            if (!product.isActive) {
+              throw new Error(`Producto inactivo: ${product.name}`);
+            }
+            if (product.stock < item.quantity) {
+              throw new Error(
+                `Stock insuficiente para ${product.name}. Disponible: ${product.stock}`
+              );
+            }
+          } else if (
+            (item.itemType === "combo" || item.itemType === "grouped") &&
+            item.components
+          ) {
+            // Verificar cada componente del combo/agrupación
+            for (const component of item.components) {
+              const product: any = productMap.get(component.productId);
+              if (!product) {
+                throw new Error(
+                  `Producto no encontrado: ${component.productId}`
+                );
+              }
+              if (!product.isActive) {
+                throw new Error(`Producto inactivo: ${product.name}`);
+              }
+              const totalNeeded = component.quantity * item.quantity;
+              if (product.stock < totalNeeded) {
+                throw new Error(
+                  `Stock insuficiente para ${product.name}. Disponible: ${product.stock}, necesario: ${totalNeeded}`
+                );
+              }
+            }
           }
         }
 
-        // Crear la venta
+        // Crear la venta con sus items
         const newSale = await tx.sale.create({
           data: {
             saleNumber: generateSaleNumber(),
@@ -164,12 +235,38 @@ export async function POST(request: NextRequest) {
             shippingCost: validatedData.shippingCost,
             shippingType: validatedData.shippingType,
             saleItems: {
-              create: validatedData.items.map((item) => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                totalPrice: item.quantity * item.unitPrice,
-              })),
+              create: await Promise.all(
+                validatedData.items.map(async (item) => {
+                  const saleItemData: any = {
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    totalPrice: item.quantity * item.unitPrice,
+                    itemType: item.itemType,
+                    displayName: item.displayName,
+                  };
+
+                  // Para productos simples
+                  if (item.itemType === "simple" && item.productId) {
+                    saleItemData.productId = item.productId;
+                  }
+
+                  // Para combos/agrupaciones, crear los componentes
+                  if (
+                    (item.itemType === "combo" ||
+                      item.itemType === "grouped") &&
+                    item.components
+                  ) {
+                    saleItemData.components = {
+                      create: item.components.map((comp) => ({
+                        productId: comp.productId,
+                        quantity: comp.quantity,
+                      })),
+                    };
+                  }
+
+                  return saleItemData;
+                })
+              ),
             },
           },
           include: {
@@ -177,35 +274,74 @@ export async function POST(request: NextRequest) {
             saleItems: {
               include: {
                 product: true,
+                components: {
+                  include: {
+                    product: true,
+                  },
+                },
               },
             },
           },
         });
 
-        // Actualizar stock en lotes usando Promise.all
-        const stockUpdates = validatedData.items.map((item) =>
-          tx.product.update({
-            where: { id: item.productId },
-            data: {
-              stock: {
-                decrement: item.quantity,
-              },
-            },
-          })
-        );
+        // Actualizar stock en lotes
+        const stockUpdates: any[] = [];
+        const stockMovements: any[] = [];
 
-        // Crear movimientos de stock en lotes
-        const stockMovements = validatedData.items.map((item) =>
-          tx.stockMovement.create({
-            data: {
-              type: "out",
-              quantity: item.quantity,
-              reason: "Venta",
-              reference: newSale.saleNumber,
-              productId: item.productId,
-            },
-          })
-        );
+        for (const item of validatedData.items) {
+          if (item.itemType === "simple" && item.productId) {
+            // Stock update para producto simple
+            stockUpdates.push(
+              tx.product.update({
+                where: { id: item.productId },
+                data: { stock: { decrement: item.quantity } },
+              })
+            );
+
+            // Stock movement para producto simple
+            stockMovements.push(
+              tx.stockMovement.create({
+                data: {
+                  type: "out",
+                  quantity: item.quantity,
+                  reason: "Venta",
+                  reference: newSale.saleNumber,
+                  productId: item.productId,
+                },
+              })
+            );
+          } else if (
+            (item.itemType === "combo" || item.itemType === "grouped") &&
+            item.components
+          ) {
+            // Stock updates para componentes del combo/agrupación
+            for (const component of item.components) {
+              const totalQuantity = component.quantity * item.quantity;
+
+              stockUpdates.push(
+                tx.product.update({
+                  where: { id: component.productId },
+                  data: { stock: { decrement: totalQuantity } },
+                })
+              );
+
+              stockMovements.push(
+                tx.stockMovement.create({
+                  data: {
+                    type: "out",
+                    quantity: totalQuantity,
+                    reason: `Venta - ${
+                      item.displayName ||
+                      (item.itemType === "combo" ? "Combo" : "Agrupación")
+                    }`,
+                    reference: newSale.saleNumber,
+                    productId: component.productId,
+                  },
+                })
+              );
+            }
+          }
+        }
 
         // Ejecutar todas las operaciones en paralelo
         await Promise.all([...stockUpdates, ...stockMovements]);

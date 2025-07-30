@@ -63,9 +63,10 @@ model Product {
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
-  saleItems      SaleItem[]
-  purchaseItems  PurchaseItem[]
-  stockMovements StockMovement[]
+  saleItems         SaleItem[]
+  saleItemComponents SaleItemComponent[]
+  purchaseItems     PurchaseItem[]
+  stockMovements    StockMovement[]
 
   @@map("products")
 }
@@ -147,13 +148,34 @@ model SaleItem {
   unitPrice  Float
   totalPrice Float
 
+  // Nuevo: Tipo de item de venta
+  itemType    String  @default("simple") // "simple" | "combo" | "grouped"
+  displayName String? // Nombre personalizado para combos/agrupaciones
+
   saleId String
   sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  // Para items simples
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  // Para combos/agrupaciones - componentes individuales
+  components SaleItemComponent[]
+
+  @@map("sale_items")
+}
+
+model SaleItemComponent {
+  id       String @id @default(cuid())
+  quantity Int    // Cantidad de este producto en el combo/agrupación
+
+  saleItemId String
+  saleItem   SaleItem @relation(fields: [saleItemId], references: [id], onDelete: Cascade)
 
   productId String
   product   Product @relation(fields: [productId], references: [id])
 
-  @@map("sale_items")
+  @@map("sale_item_components")
 }
 
 model StockMovement {

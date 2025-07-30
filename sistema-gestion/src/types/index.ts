@@ -100,6 +100,23 @@ export interface SaleItem {
   unitPrice: number;
   totalPrice: number;
   saleId: string;
+
+  // Nuevo: Tipo de item y nombre personalizado
+  itemType: "simple" | "combo" | "grouped";
+  displayName?: string;
+
+  // Para productos simples
+  productId?: string;
+  product?: Product;
+
+  // Para combos/agrupaciones
+  components?: SaleItemComponent[];
+}
+
+export interface SaleItemComponent {
+  id: string;
+  quantity: number;
+  saleItemId: string;
   productId: string;
   product: Product;
 }
@@ -146,12 +163,25 @@ export interface ProductFormData {
 
 export interface SaleFormData {
   customerId?: string;
-  items: {
-    productId: string;
-    quantity: number;
-    unitPrice: number;
-  }[];
+  items: SaleItemFormData[];
   paymentMethod: "cash" | "card" | "transfer" | "credit";
   discount?: number;
   notes?: string;
+}
+
+export interface SaleItemFormData {
+  // Para productos simples
+  productId?: string;
+  quantity: number;
+  unitPrice: number;
+
+  // Para combos/agrupaciones
+  itemType: "simple" | "combo" | "grouped";
+  displayName?: string;
+  components?: SaleItemComponentFormData[];
+}
+
+export interface SaleItemComponentFormData {
+  productId: string;
+  quantity: number;
 }

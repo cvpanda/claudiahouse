@@ -44,6 +44,11 @@ export async function GET(request: NextRequest) {
                 category: true,
               },
             },
+            components: {
+              include: {
+                product: true,
+              },
+            },
           },
         },
       },
@@ -99,15 +104,49 @@ export async function GET(request: NextRequest) {
 
     sales.forEach((sale) => {
       sale.saleItems.forEach((item) => {
-        const productId = item.productId;
-        const productName = item.product?.name || "Producto desconocido";
+        // Para productos simples (itemType puede no existir en registros antiguos)
+        if ((!item.itemType || item.itemType === "simple") && item.productId) {
+          const productId = item.productId as string;
+          const productName = item.product?.name || "Producto desconocido";
 
-        if (!productStats[productId]) {
-          productStats[productId] = { sold: 0, revenue: 0, name: productName };
+          if (!productStats[productId]) {
+            productStats[productId] = {
+              sold: 0,
+              revenue: 0,
+              name: productName,
+            };
+          }
+
+          productStats[productId].sold += item.quantity;
+          productStats[productId].revenue += item.quantity * item.unitPrice;
         }
+        // Para combos y agrupaciones, contar cada componente
+        else if (
+          (item.itemType === "combo" || item.itemType === "grouped") &&
+          item.components
+        ) {
+          item.components.forEach((component) => {
+            const productId = component.productId as string;
+            const productName =
+              component.product?.name || "Producto desconocido";
+            const totalQuantity = component.quantity * item.quantity;
 
-        productStats[productId].sold += item.quantity;
-        productStats[productId].revenue += item.quantity * item.unitPrice;
+            if (!productStats[productId]) {
+              productStats[productId] = {
+                sold: 0,
+                revenue: 0,
+                name: productName,
+              };
+            }
+
+            productStats[productId].sold += totalQuantity;
+            // Para los componentes, calculamos el revenue proporcional
+            const proportionalPrice =
+              item.unitPrice / (item.components?.length || 1);
+            productStats[productId].revenue +=
+              totalQuantity * proportionalPrice;
+          });
+        }
       });
     });
 
