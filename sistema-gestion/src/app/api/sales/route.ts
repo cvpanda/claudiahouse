@@ -120,84 +120,103 @@ export async function POST(request: NextRequest) {
     const calculatedTotal = taxableAmount + taxAmount + shippingCost;
 
     // Toda la lógica de stock y creación de venta dentro de la transacción
-    const sale = await prisma.$transaction(async (tx: any) => {
-      // Verificar stock y estado de productos dentro de la transacción
-      for (const item of validatedData.items) {
-        const product = await tx.product.findUnique({
-          where: { id: item.productId },
+    const sale = await prisma.$transaction(
+      async (tx: any) => {
+        // Obtener todos los productos de una vez
+        const productIds = validatedData.items.map((item) => item.productId);
+        const products = await tx.product.findMany({
+          where: { id: { in: productIds } },
         });
 
-        if (!product) {
-          throw new Error(`Producto no encontrado: ${item.productId}`);
+        // Crear un mapa para acceso rápido
+        const productMap = new Map(products.map((p: any) => [p.id, p]));
+
+        // Verificar stock y estado de productos
+        for (const item of validatedData.items) {
+          const product = productMap.get(item.productId);
+
+          if (!product) {
+            throw new Error(`Producto no encontrado: ${item.productId}`);
+          }
+
+          if (!product.isActive) {
+            throw new Error(`Producto inactivo: ${product.name}`);
+          }
+
+          if (product.stock < item.quantity) {
+            throw new Error(
+              `Stock insuficiente para ${product.name}. Disponible: ${product.stock}`
+            );
+          }
         }
 
-        if (!product.isActive) {
-          throw new Error(`Producto inactivo: ${product.name}`);
-        }
+        // Crear la venta
+        const newSale = await tx.sale.create({
+          data: {
+            saleNumber: generateSaleNumber(),
+            subtotal: calculatedSubtotal,
+            total: calculatedTotal,
+            discount: discountAmount,
+            tax: taxAmount,
+            paymentMethod: validatedData.paymentMethod,
+            customerId: validatedData.customerId,
+            notes: validatedData.notes,
+            shippingCost: validatedData.shippingCost,
+            shippingType: validatedData.shippingType,
+            saleItems: {
+              create: validatedData.items.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                totalPrice: item.quantity * item.unitPrice,
+              })),
+            },
+          },
+          include: {
+            customer: true,
+            saleItems: {
+              include: {
+                product: true,
+              },
+            },
+          },
+        });
 
-        if (product.stock < item.quantity) {
-          throw new Error(
-            `Stock insuficiente para ${product.name}. Disponible: ${product.stock}`
-          );
-        }
-      }
+        // Actualizar stock en lotes usando Promise.all
+        const stockUpdates = validatedData.items.map((item) =>
+          tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: {
+                decrement: item.quantity,
+              },
+            },
+          })
+        );
 
-      // Crear la venta
-      const newSale = await tx.sale.create({
-        data: {
-          saleNumber: generateSaleNumber(),
-          subtotal: calculatedSubtotal,
-          total: calculatedTotal,
-          discount: discountAmount,
-          tax: taxAmount,
-          paymentMethod: validatedData.paymentMethod,
-          customerId: validatedData.customerId,
-          notes: validatedData.notes,
-          shippingCost: validatedData.shippingCost,
-          shippingType: validatedData.shippingType,
-          saleItems: {
-            create: validatedData.items.map((item) => ({
-              productId: item.productId,
+        // Crear movimientos de stock en lotes
+        const stockMovements = validatedData.items.map((item) =>
+          tx.stockMovement.create({
+            data: {
+              type: "out",
               quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              totalPrice: item.quantity * item.unitPrice,
-            })),
-          },
-        },
-        include: {
-          customer: true,
-          saleItems: {
-            include: {
-              product: true,
+              reason: "Venta",
+              reference: newSale.saleNumber,
+              productId: item.productId,
             },
-          },
-        },
-      });
+          })
+        );
 
-      // Actualizar stock y crear movimientos
-      for (const item of validatedData.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: {
-              decrement: item.quantity,
-            },
-          },
-        });
+        // Ejecutar todas las operaciones en paralelo
+        await Promise.all([...stockUpdates, ...stockMovements]);
 
-        await tx.stockMovement.create({
-          data: {
-            type: "out",
-            quantity: item.quantity,
-            reason: "Venta",
-            reference: newSale.saleNumber,
-            productId: item.productId,
-          },
-        });
+        return newSale;
+      },
+      {
+        maxWait: 10000, // 10 segundos de espera máxima
+        timeout: 10000, // 10 segundos de timeout
       }
-
-      return newSale;
-    });
+    );
 
     return NextResponse.json(sale, { status: 201 });
   } catch (error: any) {
