@@ -282,9 +282,21 @@ export async function DELETE(
   try {
     const saleId = params.id;
 
-    // Verificar que la venta existe
+    // Verificar que la venta existe y obtener todos los items con componentes
     const existingSale = await prisma.sale.findUnique({
       where: { id: saleId },
+      include: {
+        saleItems: {
+          include: {
+            product: true,
+            components: {
+              include: {
+                product: true,
+              }
+            }
+          }
+        }
+      }
     });
 
     if (!existingSale) {
@@ -294,19 +306,91 @@ export async function DELETE(
       );
     }
 
-    // En lugar de eliminar, cambiar el estado a cancelado
-    const cancelledSale = await prisma.sale.update({
-      where: { id: saleId },
-      data: {
-        status: "cancelled",
-        updatedAt: new Date(),
-      },
+    // No permitir cancelar ventas ya canceladas
+    if (existingSale.status === "cancelled") {
+      return NextResponse.json(
+        { error: "La venta ya está cancelada" },
+        { status: 400 }
+      );
+    }
+
+    // Cancelar la venta y devolver stock en una transacción
+    const cancelledSale = await prisma.$transaction(async (tx: any) => {
+      // 1. Cambiar el estado de la venta a cancelado
+      const updatedSale = await tx.sale.update({
+        where: { id: saleId },
+        data: {
+          status: "cancelled",
+          updatedAt: new Date(),
+        },
+      });
+
+      // 2. Devolver el stock y crear movimientos de stock
+      const stockUpdates: any[] = [];
+      const stockMovements: any[] = [];
+
+      for (const item of existingSale.saleItems) {
+        if ((!item.itemType || item.itemType === "simple") && item.productId) {
+          // Producto simple - devolver stock
+          stockUpdates.push(
+            tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
+            })
+          );
+
+          // Crear movimiento de stock de entrada
+          stockMovements.push(
+            tx.stockMovement.create({
+              data: {
+                type: "in",
+                quantity: item.quantity,
+                reason: "Cancelación de venta",
+                reference: existingSale.saleNumber,
+                productId: item.productId,
+              },
+            })
+          );
+        } else if ((item.itemType === "combo" || item.itemType === "grouped") && item.components && item.components.length > 0) {
+          // Combo/agrupación - devolver stock de cada componente
+          for (const component of item.components) {
+            const totalQuantity = component.quantity * item.quantity;
+            
+            stockUpdates.push(
+              tx.product.update({
+                where: { id: component.productId },
+                data: { stock: { increment: totalQuantity } },
+              })
+            );
+
+            stockMovements.push(
+              tx.stockMovement.create({
+                data: {
+                  type: "in",
+                  quantity: totalQuantity,
+                  reason: `Cancelación de venta - ${item.displayName || (item.itemType === "combo" ? "Combo" : "Agrupación")}`,
+                  reference: existingSale.saleNumber,
+                  productId: component.productId,
+                },
+              })
+            );
+          }
+        }
+      }
+
+      // Ejecutar todas las operaciones de stock en paralelo
+      await Promise.all([...stockUpdates, ...stockMovements]);
+
+      return updatedSale;
+    }, {
+      maxWait: 10000,
+      timeout: 10000,
     });
 
     return NextResponse.json({
       success: true,
       data: cancelledSale,
-      message: "Venta cancelada exitosamente",
+      message: "Venta cancelada exitosamente. Stock devuelto a los productos.",
     });
   } catch (error) {
     console.error("Error cancelling sale:", error);
