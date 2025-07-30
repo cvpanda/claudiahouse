@@ -616,20 +616,60 @@ export default function SaleDetailPage() {
     });
 
     const productRows = sale.saleItems
-      .map(
-        (item) => `
+      .map((item) => {
+        const itemData = item as any;
+        const isSimple = itemData.itemType === "simple";
+        const displayName = isSimple
+          ? item.product?.name
+          : itemData.displayName ||
+            `${
+              itemData.itemType === "combo" ? "Combo" : "Agrupación"
+            } sin nombre`;
+
+        const unit = isSimple
+          ? item.product?.unit || "unidad"
+          : itemData.itemType === "combo"
+          ? "combo"
+          : itemData.components
+          ? `${itemData.components.reduce(
+              (total: number, comp: any) => total + comp.quantity,
+              0
+            )} unidades`
+          : "unidades";
+
+        // Generar componentes solo para combos
+        const componentsHTML =
+          itemData.itemType === "combo" && itemData.components
+            ? `<div style="font-size: 11px; color: #666; margin-top: 4px; padding-left: 10px;">
+                 <strong>Componentes:</strong><br>
+                 ${itemData.components
+                   .map(
+                     (comp: any) => `• ${comp.product.name} x${comp.quantity}`
+                   )
+                   .join("<br>")}
+               </div>`
+            : "";
+
+        return `
       <tr>
         <td style="padding: 8px; border-bottom: 1px solid #ddd;">
-          <div style="font-weight: 500;">${item.product.name}</div>
+          <div style="font-weight: 500;">${displayName}</div>
           ${
-            item.product.sku
+            isSimple && item.product?.sku
               ? `<div style="font-size: 12px; color: #666;">SKU: ${item.product.sku}</div>`
+              : !isSimple
+              ? `<div style="font-size: 12px; color: #666;">Tipo: ${
+                  itemData.itemType === "combo" ? "Combo" : "Agrupación"
+                }</div>`
               : ""
           }
+          ${componentsHTML}
         </td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${
-          item.quantity
-        } ${item.product.unit || "unid"}</td>
+          isSimple || itemData.itemType === "combo"
+            ? `${item.quantity} ${unit}`
+            : unit // Para agrupaciones, solo mostrar las unidades totales
+        }</td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">${formatPrice(
           item.unitPrice
         )}</td>
@@ -637,8 +677,8 @@ export default function SaleDetailPage() {
           item.totalPrice
         )}</td>
       </tr>
-    `
-      )
+    `;
+      })
       .join("");
 
     const subtotalProducts = sale.saleItems.reduce(
@@ -1561,11 +1601,53 @@ export default function SaleDetailPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {item.product.name}
+                          {(item as any).itemType === "simple"
+                            ? item.product?.name
+                            : (item as any).displayName ||
+                              `${
+                                (item as any).itemType === "combo"
+                                  ? "Combo"
+                                  : "Agrupación"
+                              } sin nombre`}
                         </div>
                         <div className="text-sm text-gray-500">
-                          SKU: {item.product.sku || "N/A"}
+                          {(item as any).itemType === "simple"
+                            ? `SKU: ${item.product?.sku || "N/A"}`
+                            : `Tipo: ${
+                                (item as any).itemType === "combo"
+                                  ? "Combo"
+                                  : "Agrupación"
+                              }`}
                         </div>
+                        {/* Mostrar componentes solo para combos */}
+                        {(item as any).itemType === "combo" &&
+                          (item as any).components && (
+                            <div className="mt-3 text-sm text-gray-600">
+                              <div className="bg-gray-50 p-2 rounded border-l-2 border-blue-200">
+                                <div className="font-medium text-gray-700 mb-1">
+                                  Componentes:
+                                </div>
+                                <div className="space-y-1">
+                                  {(item as any).components.map(
+                                    (comp: any, idx: number) => (
+                                      <div
+                                        key={idx}
+                                        className="flex items-center text-sm"
+                                      >
+                                        <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                                        <span className="font-medium">
+                                          {comp.product.name}
+                                        </span>
+                                        <span className="ml-2 text-gray-500">
+                                          x{comp.quantity}
+                                        </span>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -1607,12 +1689,39 @@ export default function SaleDetailPage() {
                             <Plus className="w-4 h-4" />
                           </button>
                           <span className="text-sm text-gray-500">
-                            {item.product.unit}
+                            {(item as any).itemType === "simple"
+                              ? item.product?.unit || "unidad"
+                              : (item as any).itemType === "combo"
+                              ? "combo"
+                              : (item as any).components
+                              ? `unidades (${(item as any).components.reduce(
+                                  (total: number, comp: any) =>
+                                    total + comp.quantity,
+                                  0
+                                )} por pack)`
+                              : "unidades"}
                           </span>
                         </div>
                       ) : (
                         <span className="text-sm text-gray-900">
-                          {item.quantity} {item.product.unit}
+                          {(item as any).itemType === "simple" ||
+                          (item as any).itemType === "combo" ? (
+                            <>
+                              {item.quantity}{" "}
+                              {(item as any).itemType === "simple"
+                                ? item.product?.unit || "unidad"
+                                : "combo"}
+                            </>
+                          ) : // Para agrupaciones, mostrar solo las unidades totales
+                          (item as any).components ? (
+                            `${(item as any).components.reduce(
+                              (total: number, comp: any) =>
+                                total + comp.quantity,
+                              0
+                            )} unidades`
+                          ) : (
+                            "unidades"
+                          )}
                         </span>
                       )}
                     </td>

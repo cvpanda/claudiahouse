@@ -673,12 +673,63 @@ export default function SalesPage() {
                           >
                             <div className="flex-1">
                               <div className="text-sm font-medium text-gray-900">
-                                {item.product.name}
+                                {(item as any).itemType === "simple"
+                                  ? item.product?.name
+                                  : (item as any).displayName ||
+                                    `${
+                                      (item as any).itemType === "combo"
+                                        ? "Combo"
+                                        : "Agrupación"
+                                    } sin nombre`}
                               </div>
                               <div className="text-xs text-gray-500">
-                                {item.quantity} {item.product.unit} ×{" "}
-                                {formatPrice(item.unitPrice)}
+                                {(item as any).itemType === "simple" ? (
+                                  <>
+                                    {item.quantity}{" "}
+                                    {item.product?.unit || "unidad"} ×{" "}
+                                    {formatPrice(item.unitPrice)}
+                                  </>
+                                ) : (item as any).itemType === "combo" ? (
+                                  <>
+                                    {item.quantity} combo ×{" "}
+                                    {formatPrice(item.unitPrice)}
+                                  </>
+                                ) : (
+                                  <>
+                                    {/* Para agrupaciones, mostrar total de unidades */}
+                                    {(item as any).components
+                                      ? (item as any).components.reduce(
+                                          (total: number, comp: any) =>
+                                            total + comp.quantity,
+                                          0
+                                        ) * item.quantity
+                                      : item.quantity}{" "}
+                                    unidades × {formatPrice(item.unitPrice)}
+                                  </>
+                                )}
                               </div>
+                              {/* Mostrar componentes solo para combos */}
+                              {(item as any).itemType === "combo" &&
+                                (item as any).components && (
+                                  <div className="mt-2 text-xs text-gray-600">
+                                    <div className="font-medium mb-1">
+                                      Componentes:
+                                    </div>
+                                    {(item as any).components.map(
+                                      (comp: any, compIdx: number) => (
+                                        <div
+                                          key={compIdx}
+                                          className="flex items-center"
+                                        >
+                                          <span className="w-1 h-1 bg-gray-400 rounded-full mr-2"></span>
+                                          <span>
+                                            {comp.product.name} x{comp.quantity}
+                                          </span>
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                )}
                             </div>
                             <div className="text-sm font-medium text-gray-900">
                               {formatPrice(item.totalPrice)}
@@ -880,12 +931,71 @@ export default function SalesPage() {
                                 >
                                   <div className="flex-1">
                                     <div className="text-sm font-medium text-gray-900">
-                                      {item.product.name}
+                                      {(item as any).itemType === "simple"
+                                        ? item.product?.name
+                                        : (item as any).displayName ||
+                                          `${
+                                            (item as any).itemType === "combo"
+                                              ? "Combo"
+                                              : "Agrupación"
+                                          } sin nombre`}
                                     </div>
                                     <div className="text-xs text-gray-500">
-                                      {item.quantity} {item.product.unit} ×{" "}
-                                      {formatPrice(item.unitPrice)}
+                                      {(item as any).itemType === "simple" ? (
+                                        <>
+                                          {item.quantity}{" "}
+                                          {item.product?.unit || "unidad"} ×{" "}
+                                          {formatPrice(item.unitPrice)}
+                                        </>
+                                      ) : (item as any).itemType === "combo" ? (
+                                        <>
+                                          {item.quantity} combo ×{" "}
+                                          {formatPrice(item.unitPrice)}
+                                        </>
+                                      ) : (
+                                        <>
+                                          {/* Para agrupaciones, mostrar unidades por pack y cantidad de packs */}
+                                          {item.quantity} pack
+                                          {item.quantity > 1 ? "s" : ""}
+                                          {(item as any).components && (
+                                            <>
+                                              {" "}
+                                              (
+                                              {(item as any).components.reduce(
+                                                (total: number, comp: any) =>
+                                                  total + comp.quantity,
+                                                0
+                                              )}{" "}
+                                              unidades c/u)
+                                            </>
+                                          )}{" "}
+                                          × {formatPrice(item.unitPrice)}
+                                        </>
+                                      )}
                                     </div>
+                                    {/* Mostrar componentes solo para combos */}
+                                    {(item as any).itemType === "combo" &&
+                                      (item as any).components && (
+                                        <div className="mt-2 text-xs text-gray-600">
+                                          <div className="font-medium mb-1">
+                                            Componentes:
+                                          </div>
+                                          {(item as any).components.map(
+                                            (comp: any, compIdx: number) => (
+                                              <div
+                                                key={compIdx}
+                                                className="flex items-center"
+                                              >
+                                                <span className="w-1 h-1 bg-gray-400 rounded-full mr-2"></span>
+                                                <span>
+                                                  {comp.product.name} x
+                                                  {comp.quantity}
+                                                </span>
+                                              </div>
+                                            )
+                                          )}
+                                        </div>
+                                      )}
                                   </div>
                                   <div className="text-sm font-medium text-gray-900">
                                     {formatPrice(item.totalPrice)}

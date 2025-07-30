@@ -37,7 +37,7 @@ export async function GET(
   try {
     const saleId = params.id;
 
-    const sale = await prisma.sale.findUnique({
+    const sale = await (prisma.sale.findUnique as any)({
       where: {
         id: saleId,
       },
@@ -62,6 +62,21 @@ export async function GET(
                 stock: true,
                 retailPrice: true,
                 wholesalePrice: true,
+              },
+            },
+            components: {
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    name: true,
+                    sku: true,
+                    unit: true,
+                    stock: true,
+                    retailPrice: true,
+                    wholesalePrice: true,
+                  },
+                },
               },
             },
           },
@@ -283,7 +298,7 @@ export async function DELETE(
     const saleId = params.id;
 
     // Verificar que la venta existe y obtener todos los items con componentes
-    const existingSale = await prisma.sale.findUnique({
+    const existingSale = await (prisma.sale.findUnique as any)({
       where: { id: saleId },
       include: {
         saleItems: {
@@ -292,11 +307,11 @@ export async function DELETE(
             components: {
               include: {
                 product: true,
-              }
-            }
-          }
-        }
-      }
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!existingSale) {
@@ -315,77 +330,90 @@ export async function DELETE(
     }
 
     // Cancelar la venta y devolver stock en una transacción
-    const cancelledSale = await prisma.$transaction(async (tx: any) => {
-      // 1. Cambiar el estado de la venta a cancelado
-      const updatedSale = await tx.sale.update({
-        where: { id: saleId },
-        data: {
-          status: "cancelled",
-          updatedAt: new Date(),
-        },
-      });
+    const cancelledSale = await prisma.$transaction(
+      async (tx: any) => {
+        // 1. Cambiar el estado de la venta a cancelado
+        const updatedSale = await tx.sale.update({
+          where: { id: saleId },
+          data: {
+            status: "cancelled",
+            updatedAt: new Date(),
+          },
+        });
 
-      // 2. Devolver el stock y crear movimientos de stock
-      const stockUpdates: any[] = [];
-      const stockMovements: any[] = [];
+        // 2. Devolver el stock y crear movimientos de stock
+        const stockUpdates: any[] = [];
+        const stockMovements: any[] = [];
 
-      for (const item of existingSale.saleItems) {
-        if ((!item.itemType || item.itemType === "simple") && item.productId) {
-          // Producto simple - devolver stock
-          stockUpdates.push(
-            tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { increment: item.quantity } },
-            })
-          );
-
-          // Crear movimiento de stock de entrada
-          stockMovements.push(
-            tx.stockMovement.create({
-              data: {
-                type: "in",
-                quantity: item.quantity,
-                reason: "Cancelación de venta",
-                reference: existingSale.saleNumber,
-                productId: item.productId,
-              },
-            })
-          );
-        } else if ((item.itemType === "combo" || item.itemType === "grouped") && item.components && item.components.length > 0) {
-          // Combo/agrupación - devolver stock de cada componente
-          for (const component of item.components) {
-            const totalQuantity = component.quantity * item.quantity;
-            
+        for (const item of (existingSale as any).saleItems) {
+          if (
+            (!item.itemType || item.itemType === "simple") &&
+            item.productId
+          ) {
+            // Producto simple - devolver stock
             stockUpdates.push(
               tx.product.update({
-                where: { id: component.productId },
-                data: { stock: { increment: totalQuantity } },
+                where: { id: item.productId },
+                data: { stock: { increment: item.quantity } },
               })
             );
 
+            // Crear movimiento de stock de entrada
             stockMovements.push(
               tx.stockMovement.create({
                 data: {
                   type: "in",
-                  quantity: totalQuantity,
-                  reason: `Cancelación de venta - ${item.displayName || (item.itemType === "combo" ? "Combo" : "Agrupación")}`,
+                  quantity: item.quantity,
+                  reason: "Cancelación de venta",
                   reference: existingSale.saleNumber,
-                  productId: component.productId,
+                  productId: item.productId,
                 },
               })
             );
+          } else if (
+            (item.itemType === "combo" || item.itemType === "grouped") &&
+            item.components &&
+            item.components.length > 0
+          ) {
+            // Combo/agrupación - devolver stock de cada componente
+            for (const component of item.components) {
+              const totalQuantity = component.quantity * item.quantity;
+
+              stockUpdates.push(
+                tx.product.update({
+                  where: { id: component.productId },
+                  data: { stock: { increment: totalQuantity } },
+                })
+              );
+
+              stockMovements.push(
+                tx.stockMovement.create({
+                  data: {
+                    type: "in",
+                    quantity: totalQuantity,
+                    reason: `Cancelación de venta - ${
+                      item.displayName ||
+                      (item.itemType === "combo" ? "Combo" : "Agrupación")
+                    }`,
+                    reference: existingSale.saleNumber,
+                    productId: component.productId,
+                  },
+                })
+              );
+            }
           }
         }
+
+        // Ejecutar todas las operaciones de stock en paralelo
+        await Promise.all([...stockUpdates, ...stockMovements]);
+
+        return updatedSale;
+      },
+      {
+        maxWait: 10000,
+        timeout: 10000,
       }
-
-      // Ejecutar todas las operaciones de stock en paralelo
-      await Promise.all([...stockUpdates, ...stockMovements]);
-
-      return updatedSale;
-    }, {
-      maxWait: 10000,
-      timeout: 10000,
-    });
+    );
 
     return NextResponse.json({
       success: true,

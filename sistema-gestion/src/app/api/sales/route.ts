@@ -11,14 +11,15 @@ const saleItemComponentSchema = z.object({
 const saleItemSchema = z
   .object({
     // Para productos simples
-    productId: z.string().optional(),
+    productId: z.string().nullable().optional(),
     quantity: z.number().int().min(1, "La cantidad debe ser mayor a 0"),
     unitPrice: z.number().min(0, "El precio debe ser mayor o igual a 0"),
+    totalPrice: z.number().min(0, "El precio total debe ser mayor o igual a 0"),
 
     // Para combos/agrupaciones
     itemType: z.enum(["simple", "combo", "grouped"]).default("simple"),
-    displayName: z.string().optional(),
-    components: z.array(saleItemComponentSchema).optional(),
+    displayName: z.string().nullable().optional(),
+    components: z.array(saleItemComponentSchema).nullable().optional(),
   })
   .refine(
     (data) => {
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
     }
 
     const [sales, total] = await Promise.all([
-      prisma.sale.findMany({
+      (prisma.sale.findMany as any)({
         where,
         include: {
           customer: true,

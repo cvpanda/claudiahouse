@@ -1,6 +1,6 @@
 /**
  * DEMO: Cómo funciona la creación de combos y agrupaciones
- * 
+ *
  * Este es un ejemplo práctico de cómo usar la funcionalidad de combos
  * que ya está implementada en la API.
  */
@@ -9,100 +9,100 @@
 // 1. VENTA CON PRODUCTOS SIMPLES
 // ================================
 const ventaSimple = {
-  "items": [
+  items: [
     {
-      "productId": "producto-cafe-123",
-      "quantity": 2,
-      "unitPrice": 5.00
+      productId: "producto-cafe-123",
+      quantity: 2,
+      unitPrice: 5.0,
     },
     {
-      "productId": "producto-pan-456", 
-      "quantity": 1,
-      "unitPrice": 3.00
-    }
+      productId: "producto-pan-456",
+      quantity: 1,
+      unitPrice: 3.0,
+    },
   ],
-  "total": 13.00,
-  "paymentMethod": "cash"
+  total: 13.0,
+  paymentMethod: "cash",
 };
 
 // ================================
 // 2. VENTA CON COMBO
 // ================================
 const ventaConCombo = {
-  "items": [
+  items: [
     {
-      "itemType": "combo",
-      "displayName": "Combo Desayuno Completo",
-      "quantity": 2,
-      "unitPrice": 12.00,
-      "components": [
-        { "productId": "producto-cafe-123", "quantity": 1 },   // 1 café por combo
-        { "productId": "producto-pan-456", "quantity": 2 },    // 2 panes por combo
-        { "productId": "producto-mermelada-789", "quantity": 1 } // 1 mermelada por combo
-      ]
-    }
+      itemType: "combo",
+      displayName: "Combo Desayuno Completo",
+      quantity: 2,
+      unitPrice: 12.0,
+      components: [
+        { productId: "producto-cafe-123", quantity: 1 }, // 1 café por combo
+        { productId: "producto-pan-456", quantity: 2 }, // 2 panes por combo
+        { productId: "producto-mermelada-789", quantity: 1 }, // 1 mermelada por combo
+      ],
+    },
   ],
-  "total": 24.00, // 2 combos x $12
-  "paymentMethod": "cash"
+  total: 24.0, // 2 combos x $12
+  paymentMethod: "cash",
 };
 
 // ================================
 // 3. VENTA CON AGRUPACIÓN
 // ================================
 const ventaConAgrupacion = {
-  "items": [
+  items: [
     {
-      "itemType": "grouped",
-      "displayName": "Pack Limpieza Hogar",
-      "quantity": 1,
-      "unitPrice": 25.00, // Suma de precios individuales
-      "components": [
-        { "productId": "detergente-001", "quantity": 1 },
-        { "productId": "lavandina-002", "quantity": 1 },
-        { "productId": "esponja-003", "quantity": 3 }
-      ]
-    }
+      itemType: "grouped",
+      displayName: "Pack Limpieza Hogar",
+      quantity: 1,
+      unitPrice: 25.0, // Suma de precios individuales
+      components: [
+        { productId: "detergente-001", quantity: 1 },
+        { productId: "lavandina-002", quantity: 1 },
+        { productId: "esponja-003", quantity: 3 },
+      ],
+    },
   ],
-  "total": 25.00,
-  "paymentMethod": "cash"
+  total: 25.0,
+  paymentMethod: "cash",
 };
 
 // ================================
 // 4. VENTA MIXTA (Simple + Combo + Agrupación)
 // ================================
 const ventaMixta = {
-  "items": [
+  items: [
     // Producto simple
     {
-      "productId": "producto-individual-999",
-      "quantity": 1,
-      "unitPrice": 8.00
+      productId: "producto-individual-999",
+      quantity: 1,
+      unitPrice: 8.0,
     },
     // Combo
     {
-      "itemType": "combo",
-      "displayName": "Combo Desayuno",
-      "quantity": 1,
-      "unitPrice": 12.00,
-      "components": [
-        { "productId": "producto-cafe-123", "quantity": 1 },
-        { "productId": "producto-pan-456", "quantity": 2 }
-      ]
+      itemType: "combo",
+      displayName: "Combo Desayuno",
+      quantity: 1,
+      unitPrice: 12.0,
+      components: [
+        { productId: "producto-cafe-123", quantity: 1 },
+        { productId: "producto-pan-456", quantity: 2 },
+      ],
     },
     // Agrupación
     {
-      "itemType": "grouped",
-      "displayName": "Pack Limpieza",
-      "quantity": 1,
-      "unitPrice": 25.00,
-      "components": [
-        { "productId": "detergente-001", "quantity": 1 },
-        { "productId": "lavandina-002", "quantity": 1 }
-      ]
-    }
+      itemType: "grouped",
+      displayName: "Pack Limpieza",
+      quantity: 1,
+      unitPrice: 25.0,
+      components: [
+        { productId: "detergente-001", quantity: 1 },
+        { productId: "lavandina-002", quantity: 1 },
+      ],
+    },
   ],
-  "total": 45.00, // $8 + $12 + $25
-  "paymentMethod": "cash"
+  total: 45.0, // $8 + $12 + $25
+  paymentMethod: "cash",
 };
 
 // ================================
@@ -110,7 +110,7 @@ const ventaMixta = {
 // ================================
 
 console.log("🧪 EJEMPLOS DE USO - COMBOS Y AGRUPACIONES");
-console.log("=" .repeat(50));
+console.log("=".repeat(50));
 
 console.log("\n1️⃣ VENTA SIMPLE:");
 console.log("📱 POST /api/sales");
@@ -128,7 +128,7 @@ console.log("\n4️⃣ VENTA MIXTA:");
 console.log("📱 POST /api/sales");
 console.log(JSON.stringify(ventaMixta, null, 2));
 
-console.log("\n" + "=" .repeat(50));
+console.log("\n" + "=".repeat(50));
 console.log("💡 DIFERENCIAS CLAVE:");
 console.log("├── COMBO: Precio especial para conjunto de productos");
 console.log("├── AGRUPACIÓN: Precio = suma de precios individuales");
@@ -149,10 +149,10 @@ console.log("└── Verificación: Valida stock antes de crear venta");
  */
 async function crearVentaDePrueba(ventaData) {
   try {
-    const response = await fetch('http://localhost:3000/api/sales', {
-      method: 'POST',
+    const response = await fetch("http://localhost:3000/api/sales", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(ventaData),
     });
@@ -176,7 +176,7 @@ async function crearVentaDePrueba(ventaData) {
 async function cancelarVenta(saleId) {
   try {
     const response = await fetch(`http://localhost:3000/api/sales/${saleId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
 
     if (response.ok) {
@@ -193,7 +193,7 @@ async function cancelarVenta(saleId) {
 }
 
 // Exportar para uso en otros archivos
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     ventaSimple,
     ventaConCombo,

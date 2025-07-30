@@ -9,6 +9,7 @@ La funcionalidad está implementada a **nivel de API** y lista para usar. Solo n
 ### **📋 Proceso para crear combos/agrupaciones:**
 
 #### **1. Productos Simples (como siempre):**
+
 ```
 🛍️ Agregar producto individual
 ├── Seleccionar producto
@@ -17,9 +18,10 @@ La funcionalidad está implementada a **nivel de API** y lista para usar. Solo n
 ```
 
 #### **2. COMBO (nuevo):**
+
 ```
 📦 Crear Combo
-├── Elegir tipo: "COMBO" 
+├── Elegir tipo: "COMBO"
 ├── Nombre: "Combo Desayuno Completo"
 ├── Agregar productos:
 │   ├── 1x Café ($5)
@@ -30,8 +32,9 @@ La funcionalidad está implementada a **nivel de API** y lista para usar. Solo n
 ```
 
 #### **3. AGRUPACIÓN (nuevo):**
+
 ```
-📚 Crear Agrupación  
+📚 Crear Agrupación
 ├── Elegir tipo: "AGRUPACIÓN"
 ├── Nombre: "Pack Limpieza Casa"
 ├── Agregar productos:
@@ -47,14 +50,17 @@ La funcionalidad está implementada a **nivel de API** y lista para usar. Solo n
 ### **🔄 Gestión de Stock:**
 
 #### **Cuando vendes:**
+
 - **Producto simple**: Resta del stock del producto
 - **Combo/Agrupación**: Resta del stock de CADA componente
 
 #### **Cuando cancelas:**
+
 - **Producto simple**: Devuelve stock al producto ✅
 - **Combo/Agrupación**: Devuelve stock a CADA componente ✅
 
 #### **Ejemplo práctico:**
+
 ```
 Venta: 2x "Combo Desayuno"
 ├── Stock antes: Café(50), Medialunas(30), Mermelada(20)
@@ -67,11 +73,13 @@ Venta: 2x "Combo Desayuno"
 ### **💡 Interfaz de Usuario (pendiente):**
 
 #### **Botones en Nueva Venta:**
+
 ```
 [➕ Agregar Producto]  [📦 Crear Combo]  [📚 Crear Agrupación]
 ```
 
 #### **Modal de Combo/Agrupación:**
+
 ```
 ┌─────────────────────────────────────┐
 │ 🎯 Crear Combo/Agrupación           │
@@ -94,17 +102,18 @@ Venta: 2x "Combo Desayuno"
 ```
 
 #### **En la lista de venta:**
+
 ```
 📦 Combo Desayuno Completo  [COMBO]
    Incluye: 1x Café, 2x Medialunas, 1x Mermelada
    [➖] 2 [➕]  $10.00  $20.00  [🗑️]
 
-📚 Pack Limpieza Casa  [AGRUPACIÓN]  
+📚 Pack Limpieza Casa  [AGRUPACIÓN]
    Incluye: 1x Detergente, 1x Lavandina, 3x Esponjas
    [➖] 1 [➕]  $14.00  $14.00  [🗑️]
 
 🛍️ Producto Individual
-   SKU: ABC123 | Stock: 50 unidades  
+   SKU: ABC123 | Stock: 50 unidades
    [➖] 3 [➕]  $5.00  $15.00  [🗑️]
 ```
 
@@ -125,6 +134,7 @@ Venta: 2x "Combo Desayuno"
 ### **🚀 Para usar ahora mismo:**
 
 **Opción 1: Via API directa**
+
 ```bash
 # Crear combo via API
 curl -X POST http://localhost:3000/api/sales \\
@@ -146,8 +156,9 @@ curl -X POST http://localhost:3000/api/sales \\
 ```
 
 **Opción 2: Completar interfaz** (recomendado)
+
 - Integrar ComboCreator.tsx en la página de nueva venta
-- Agregar botones para crear combos/agrupaciones  
+- Agregar botones para crear combos/agrupaciones
 - Probar funcionalidad completa
 
 ### **🧪 Para probar:**

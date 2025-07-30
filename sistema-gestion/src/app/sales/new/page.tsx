@@ -13,8 +13,12 @@ import {
   User,
   Trash2,
   Package,
+  Layers,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import Layout from "@/components/Layout";
+import ComboCreator from "@/components/ComboCreator";
 import Link from "next/link";
 
 interface Product {
@@ -39,12 +43,26 @@ interface Customer {
   phone?: string;
 }
 
-interface SaleItem {
+interface ComboComponent {
   productId: string;
   product: Product;
   quantity: number;
+}
+
+interface SaleItem {
+  // Para productos simples
+  productId?: string;
+  product?: Product;
+
+  // Campos comunes
+  quantity: number;
   unitPrice: number;
   totalPrice: number;
+
+  // Para combos y agrupaciones
+  itemType?: "simple" | "combo" | "grouped";
+  displayName?: string;
+  components?: ComboComponent[];
 }
 
 export default function NewSalePage() {
@@ -67,6 +85,16 @@ export default function NewSalePage() {
     shippingType: "",
     notes: "",
   });
+
+  // Estados para combos y agrupaciones
+  const [itemType, setItemType] = useState<"simple" | "combo" | "grouped">(
+    "simple"
+  );
+  const [showComboCreator, setShowComboCreator] = useState(false);
+  const [comboName, setComboName] = useState("");
+  const [comboPrice, setComboPrice] = useState(0);
+  const [comboComponents, setComboComponents] = useState<ComboComponent[]>([]);
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
   // Cálculos de totales
   const subtotal = saleItems.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -131,15 +159,27 @@ export default function NewSalePage() {
   };
 
   const addProductToSale = (product: Product) => {
+    // Si estamos creando un combo, agregar al combo en lugar de la venta
+    if (showComboCreator) {
+      addProductToCombo(product);
+      return;
+    }
+
     const existingItemIndex = saleItems.findIndex(
-      (item) => item.productId === product.id
+      (item) =>
+        item.productId === product.id &&
+        item.itemType !== "combo" &&
+        item.itemType !== "grouped"
     );
 
     if (existingItemIndex >= 0) {
       // Si el producto ya existe, incrementar cantidad
       const updatedItems = [...saleItems];
       const existingItem = updatedItems[existingItemIndex];
-      if (existingItem.quantity < product.stock) {
+      if (
+        existingItem.product &&
+        existingItem.quantity < existingItem.product.stock
+      ) {
         existingItem.quantity += 1;
         existingItem.totalPrice =
           existingItem.quantity * existingItem.unitPrice;
@@ -160,6 +200,7 @@ export default function NewSalePage() {
         quantity: 1,
         unitPrice: unitPrice,
         totalPrice: unitPrice,
+        itemType: "simple",
       };
       setSaleItems([...saleItems, newItem]);
     }
@@ -177,7 +218,12 @@ export default function NewSalePage() {
     const updatedItems = [...saleItems];
     const item = updatedItems[index];
 
-    if (newQuantity > item.product.stock) {
+    // Solo verificar stock para productos simples
+    if (
+      item.itemType === "simple" &&
+      item.product &&
+      newQuantity > item.product.stock
+    ) {
       alert("No hay suficiente stock disponible");
       return;
     }
@@ -198,6 +244,137 @@ export default function NewSalePage() {
   const removeItem = (index: number) => {
     const updatedItems = saleItems.filter((_, i) => i !== index);
     setSaleItems(updatedItems);
+  };
+
+  // Funciones para manejar combos y agrupaciones
+  const addProductToCombo = (product: Product) => {
+    const existingIndex = comboComponents.findIndex(
+      (comp) => comp.productId === product.id
+    );
+
+    if (existingIndex >= 0) {
+      const updated = [...comboComponents];
+      updated[existingIndex].quantity += 1;
+      setComboComponents(updated);
+    } else {
+      setComboComponents([
+        ...comboComponents,
+        {
+          productId: product.id,
+          product: product,
+          quantity: 1,
+        },
+      ]);
+    }
+    setProductSearch("");
+    setShowProductSearch(false);
+  };
+
+  const updateComboComponentQuantity = (index: number, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeComboComponent(index);
+      return;
+    }
+
+    const updated = [...comboComponents];
+    updated[index].quantity = newQuantity;
+    setComboComponents(updated);
+  };
+
+  const removeComboComponent = (index: number) => {
+    const updated = comboComponents.filter((_, i) => i !== index);
+    setComboComponents(updated);
+  };
+
+  const addComboToSale = () => {
+    if (!comboName.trim() || comboComponents.length === 0) {
+      alert("Complete el nombre y agregue productos al combo");
+      return;
+    }
+
+    if (itemType === "combo" && comboPrice <= 0) {
+      alert("Ingrese un precio válido para el combo");
+      return;
+    }
+
+    if (itemType === "grouped") {
+      // Para agrupaciones: verificar que todos los productos tengan el mismo precio
+      const basePrice =
+        selectedCustomer?.customerType === "wholesale"
+          ? comboComponents[0].product.wholesalePrice
+          : comboComponents[0].product.retailPrice;
+
+      const allSamePrice = comboComponents.every((comp) => {
+        const price =
+          selectedCustomer?.customerType === "wholesale"
+            ? comp.product.wholesalePrice
+            : comp.product.retailPrice;
+        return price === basePrice;
+      });
+
+      if (!allSamePrice) {
+        alert(
+          "Todos los productos en una agrupación deben tener el mismo precio"
+        );
+        return;
+      }
+
+      // Para agrupaciones: la cantidad es la suma de todas las cantidades
+      const totalQuantity = comboComponents.reduce(
+        (sum, comp) => sum + comp.quantity,
+        0
+      );
+
+      const newGroupedItem: SaleItem = {
+        itemType: "grouped",
+        displayName: comboName,
+        quantity: totalQuantity,
+        unitPrice: basePrice,
+        totalPrice: totalQuantity * basePrice,
+        components: comboComponents,
+      };
+
+      setSaleItems([...saleItems, newGroupedItem]);
+    } else {
+      // Para combos: lógica existente
+      const totalPrice = comboPrice;
+
+      const newComboItem: SaleItem = {
+        itemType: "combo",
+        displayName: comboName,
+        quantity: 1,
+        unitPrice: totalPrice,
+        totalPrice: totalPrice,
+        components: comboComponents,
+      };
+
+      setSaleItems([...saleItems, newComboItem]);
+    }
+
+    // Limpiar el formulario
+    setComboName("");
+    setComboPrice(0);
+    setComboComponents([]);
+    setShowComboCreator(false);
+    setItemType("simple");
+  };
+
+  const cancelComboCreator = () => {
+    setComboName("");
+    setComboPrice(0);
+    setComboComponents([]);
+    setShowComboCreator(false);
+    setItemType("simple");
+  };
+
+  const toggleItemExpansion = (index: number) => {
+    const newExpandedItems = new Set(expandedItems);
+    if (newExpandedItems.has(index)) {
+      newExpandedItems.delete(index);
+    } else {
+      newExpandedItems.add(index);
+    }
+    setExpandedItems(newExpandedItems);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -222,10 +399,13 @@ export default function NewSalePage() {
         subtotal: subtotal,
         total: total,
         items: saleItems.map((item) => ({
-          productId: item.productId,
+          productId: item.productId || null,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
+          itemType: item.itemType || "simple",
+          displayName: item.displayName || null,
+          components: item.components || null,
         })),
       };
 
@@ -281,6 +461,53 @@ export default function NewSalePage() {
                   <Search className="h-5 w-5 mr-2" />
                   Buscar Productos
                 </h3>
+
+                {/* Botones para crear combos y agrupaciones */}
+                {!showComboCreator && (
+                  <div className="flex space-x-2 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setItemType("combo");
+                        setShowComboCreator(true);
+                      }}
+                      className="flex items-center px-3 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                    >
+                      <Layers className="h-4 w-4 mr-1" />
+                      Crear Combo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setItemType("grouped");
+                        setShowComboCreator(true);
+                      }}
+                      className="flex items-center px-3 py-2 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors"
+                    >
+                      <Package className="h-4 w-4 mr-1" />
+                      Crear Agrupación
+                    </button>
+                  </div>
+                )}
+
+                {/* Mostrar el creador de combos si está activo */}
+                {showComboCreator && (
+                  <div className="mb-4">
+                    <ComboCreator
+                      itemType={itemType === "combo" ? "combo" : "grouped"}
+                      selectedCustomer={selectedCustomer}
+                      components={comboComponents}
+                      onUpdateComponentQuantity={updateComboComponentQuantity}
+                      onRemoveComponent={removeComboComponent}
+                      onAddToSale={addComboToSale}
+                      onCancel={cancelComboCreator}
+                      comboName={comboName}
+                      setComboName={setComboName}
+                      comboPrice={comboPrice}
+                      setComboPrice={setComboPrice}
+                    />
+                  </div>
+                )}
 
                 <div className="relative mb-4">
                   <input
@@ -362,81 +589,166 @@ export default function NewSalePage() {
                   ) : (
                     <div className="space-y-2">
                       {saleItems.map((item, index) => (
-                        <div
-                          key={`${item.productId}-${index}`}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        >
-                          <div className="flex-1">
-                            <p className="font-medium">{item.product.name}</p>
-                            <p className="text-sm text-gray-500">
-                              SKU: {item.product.sku || "N/A"} | Stock:{" "}
-                              {item.product.stock} {item.product.unit}
-                            </p>
+                        <div key={`${item.productId || "combo"}-${index}`}>
+                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex-1 flex items-center">
+                              {/* Botón de expandir para combos y agrupaciones */}
+                              {(item.itemType === "combo" ||
+                                item.itemType === "grouped") && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleItemExpansion(index)}
+                                  className="p-1 text-gray-500 hover:text-gray-700 mr-2"
+                                >
+                                  {expandedItems.has(index) ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                </button>
+                              )}
+
+                              <div className="flex-1">
+                                {/* Renderizado para productos simples */}
+                                {item.itemType === "simple" && item.product && (
+                                  <>
+                                    <p className="font-medium">
+                                      {item.product.name}
+                                    </p>
+                                    <p className="text-sm text-gray-500">
+                                      SKU: {item.product.sku || "N/A"} | Stock:{" "}
+                                      {item.product.stock} {item.product.unit}
+                                    </p>
+                                  </>
+                                )}
+
+                                {/* Renderizado para combos */}
+                                {item.itemType === "combo" && (
+                                  <>
+                                    <p className="font-medium flex items-center">
+                                      <Layers className="h-4 w-4 mr-1 text-green-600" />
+                                      {item.displayName}
+                                    </p>
+                                    <p className="text-sm text-gray-500">
+                                      Combo con {item.components?.length || 0}{" "}
+                                      productos
+                                    </p>
+                                  </>
+                                )}
+
+                                {/* Renderizado para agrupaciones */}
+                                {item.itemType === "grouped" && (
+                                  <>
+                                    <p className="font-medium flex items-center">
+                                      <Package className="h-4 w-4 mr-1 text-purple-600" />
+                                      {item.displayName}
+                                    </p>
+                                    <p className="text-sm text-gray-500">
+                                      Pack con {item.components?.length || 0}{" "}
+                                      productos
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  updateItemQuantity(index, item.quantity - 1)
+                                }
+                                className="p-1 text-gray-500 hover:text-red-600"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </button>
+
+                              <input
+                                type="number"
+                                min="1"
+                                max={
+                                  item.itemType === "simple" && item.product
+                                    ? item.product.stock
+                                    : undefined
+                                }
+                                value={item.quantity}
+                                onChange={(e) =>
+                                  updateItemQuantity(
+                                    index,
+                                    parseInt(e.target.value) || 1
+                                  )
+                                }
+                                className="w-16 px-2 py-1 text-center border border-gray-300 rounded"
+                              />
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  updateItemQuantity(index, item.quantity + 1)
+                                }
+                                className="p-1 text-gray-500 hover:text-green-600"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+
+                              <span className="text-sm text-gray-500">x</span>
+
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.unitPrice}
+                                onChange={(e) =>
+                                  updateItemPrice(
+                                    index,
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                                className="w-20 px-2 py-1 text-center border border-gray-300 rounded"
+                              />
+
+                              <span className="w-20 text-right font-medium">
+                                ${item.totalPrice.toFixed(2)}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => removeItem(index)}
+                                className="p-1 text-gray-500 hover:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
 
-                          <div className="flex items-center space-x-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateItemQuantity(index, item.quantity - 1)
-                              }
-                              className="p-1 text-gray-500 hover:text-red-600"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </button>
-
-                            <input
-                              type="number"
-                              min="1"
-                              max={item.product.stock}
-                              value={item.quantity}
-                              onChange={(e) =>
-                                updateItemQuantity(
-                                  index,
-                                  parseInt(e.target.value) || 1
-                                )
-                              }
-                              className="w-16 px-2 py-1 text-center border border-gray-300 rounded"
-                            />
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateItemQuantity(index, item.quantity + 1)
-                              }
-                              className="p-1 text-gray-500 hover:text-green-600"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </button>
-
-                            <span className="text-sm text-gray-500">x</span>
-
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={item.unitPrice}
-                              onChange={(e) =>
-                                updateItemPrice(
-                                  index,
-                                  parseFloat(e.target.value) || 0
-                                )
-                              }
-                              className="w-20 px-2 py-1 text-center border border-gray-300 rounded"
-                            />
-
-                            <span className="w-20 text-right font-medium">
-                              ${item.totalPrice.toFixed(2)}
-                            </span>
-
-                            <button
-                              type="button"
-                              onClick={() => removeItem(index)}
-                              className="p-1 text-gray-500 hover:text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
+                          {/* Detalles expandidos para combos y agrupaciones */}
+                          {expandedItems.has(index) && item.components && (
+                            <div className="ml-6 mt-2 bg-white rounded-lg border border-gray-200 p-3">
+                              <p className="text-sm font-medium text-gray-700 mb-2">
+                                Contiene:
+                              </p>
+                              <div className="space-y-1">
+                                {item.components.map((comp, compIndex) => (
+                                  <div
+                                    key={compIndex}
+                                    className="flex justify-between text-sm"
+                                  >
+                                    <span className="text-gray-600">
+                                      {comp.product.name} x {comp.quantity}
+                                    </span>
+                                    <span className="text-gray-500">
+                                      $
+                                      {selectedCustomer?.customerType ===
+                                      "wholesale"
+                                        ? comp.product.wholesalePrice
+                                        : comp.product.retailPrice}{" "}
+                                      c/u
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -461,20 +773,27 @@ export default function NewSalePage() {
                       (c) => c.id === e.target.value
                     );
                     setSelectedCustomer(customer || null);
-                    // Actualizar precios cuando cambia el tipo de cliente
+                    // Actualizar precios cuando cambia el tipo de cliente - solo para productos simples
                     if (customer && saleItems.length > 0) {
-                      const updatedItems = saleItems.map((item) => ({
-                        ...item,
-                        unitPrice:
-                          customer.customerType === "wholesale"
-                            ? item.product.wholesalePrice
-                            : item.product.retailPrice,
-                        totalPrice:
-                          item.quantity *
-                          (customer.customerType === "wholesale"
-                            ? item.product.wholesalePrice
-                            : item.product.retailPrice),
-                      }));
+                      const updatedItems = saleItems.map((item) => {
+                        // Solo actualizar precios para productos simples
+                        if (item.itemType === "simple" && item.product) {
+                          return {
+                            ...item,
+                            unitPrice:
+                              customer.customerType === "wholesale"
+                                ? item.product.wholesalePrice
+                                : item.product.retailPrice,
+                            totalPrice:
+                              item.quantity *
+                              (customer.customerType === "wholesale"
+                                ? item.product.wholesalePrice
+                                : item.product.retailPrice),
+                          };
+                        }
+                        // Para combos y agrupaciones, mantener el precio actual
+                        return item;
+                      });
                       setSaleItems(updatedItems);
                     }
                   }}
