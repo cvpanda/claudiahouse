@@ -30,6 +30,8 @@ interface Product {
   name: string;
   sku?: string;
   cost: number;
+  wholesalePrice: number;
+  retailPrice: number;
   stock: number;
   unit: string;
   supplier: {
@@ -348,6 +350,51 @@ const NewPurchasePage = () => {
     []
   );
 
+  // Update product prices within an item
+  const updateItemProductPrice = useCallback(
+    (
+      productId: string,
+      priceField: "wholesalePrice" | "retailPrice",
+      value: number
+    ) => {
+      setItems((prevItems) =>
+        prevItems.map((item) =>
+          item.productId === productId
+            ? {
+                ...item,
+                product: {
+                  ...item.product,
+                  [priceField]: value,
+                },
+              }
+            : item
+        )
+      );
+    },
+    []
+  );
+
+  // Auto-resize function for price inputs
+  const getInputWidth = useCallback((value: string | number) => {
+    if (!value || value === "" || value === 0) return "80px"; // Mínimo para placeholder
+
+    const stringValue = value.toString();
+    const length = stringValue.length;
+
+    // Base width for mobile and desktop
+    const baseWidth = 60; // Ancho base
+    const charWidth = 8; // Aproximadamente 8px por carácter
+    const padding = 24; // Padding interno del input
+
+    const calculatedWidth = baseWidth + length * charWidth + padding;
+
+    // Límites mínimo y máximo
+    const minWidth = 80;
+    const maxWidth = 200;
+
+    return `${Math.min(Math.max(calculatedWidth, minWidth), maxWidth)}px`;
+  }, []);
+
   // Remove item
   const removeItem = (productId: string) => {
     setItems(items.filter((item) => item.productId !== productId));
@@ -499,6 +546,9 @@ const NewPurchasePage = () => {
           quantity: item.quantity,
           unitPriceForeign: item.unitPriceForeign,
           unitPricePesos: item.unitPricePesos,
+          // Incluir los precios actualizados para actualizar el producto
+          wholesalePrice: item.product.wholesalePrice,
+          retailPrice: item.product.retailPrice,
         })),
       };
 
@@ -603,6 +653,45 @@ const NewPurchasePage = () => {
               </div>
             </div>
           )}
+
+          {/* Información sobre precios de venta */}
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+            <div className="flex">
+              <Info className="h-5 w-5 text-blue-400 flex-shrink-0" />
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">
+                  Actualización de Precios de Venta
+                </h3>
+                <div className="mt-2 text-sm text-blue-700">
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>
+                      Puedes editar los precios mayorista y minorista de cada
+                      producto
+                    </li>
+                    <li>
+                      Los botones{" "}
+                      <span className="font-mono bg-blue-100 px-1 rounded">
+                        +30%
+                      </span>{" "}
+                      y{" "}
+                      <span className="font-mono bg-green-100 px-1 rounded">
+                        +50%
+                      </span>{" "}
+                      sugieren precios automáticamente
+                    </li>
+                    <li>
+                      Los márgenes se calculan sobre el costo final (incluyendo
+                      costos distribuidos para importaciones)
+                    </li>
+                    <li>
+                      Los precios se actualizarán en el producto cuando
+                      confirmes la compra
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
@@ -912,9 +1001,9 @@ const NewPurchasePage = () => {
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
                               Cantidad *
                             </label>
                             <input
@@ -928,13 +1017,13 @@ const NewPurchasePage = () => {
                                   parseInt(e.target.value) || 1
                                 )
                               }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                             />
                           </div>
 
                           {type === "IMPORT" && (
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
                                 Precio Unit. ({currency}) *
                               </label>
                               <input
@@ -960,19 +1049,22 @@ const NewPurchasePage = () => {
                                     if (!isNaN(parsed)) {
                                       updateItemFields(item.productId, {
                                         unitPriceForeign: parsed,
-                                        unitPricePesos: parsed * exchangeRate,
+                                        unitPricePesos:
+                                          Math.round(
+                                            parsed * exchangeRate * 100
+                                          ) / 100,
                                       });
                                     }
                                   }
                                 }}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                 placeholder="0.00"
                               />
                             </div>
                           )}
 
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
                               Precio Unit. (ARS) *
                             </label>
                             <input
@@ -982,66 +1074,252 @@ const NewPurchasePage = () => {
                               onChange={(e) => {
                                 const value = e.target.value;
                                 const pricePesos =
-                                  value === "" ? 0 : parseFloat(value);
+                                  value === ""
+                                    ? 0
+                                    : Math.round(parseFloat(value) * 100) / 100;
                                 updateItem(
                                   item.productId,
                                   "unitPricePesos",
                                   pricePesos
                                 );
                               }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                               placeholder="0.00"
                             />
                           </div>
 
                           {type === "IMPORT" && totals.totalCosts > 0 && (
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
                                 Costos Dist.
                               </label>
-                              <input
-                                type="text"
-                                value={`$${formatNumber(
+                              <div className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md bg-gray-50 text-gray-700 font-medium">
+                                $
+                                {formatNumber(
                                   itemWithCosts.distributedCosts || 0
-                                )}`}
-                                readOnly
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
-                              />
+                                )}
+                              </div>
                             </div>
                           )}
 
                           {type === "IMPORT" && totals.totalCosts > 0 && (
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
                                 Costo Final Unit.
                               </label>
-                              <input
-                                type="text"
-                                value={`$${formatNumber(
+                              <div className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md bg-blue-50 text-blue-800 font-medium">
+                                $
+                                {formatNumber(
                                   itemWithCosts.finalUnitCost ||
                                     item.unitPricePesos
-                                )}`}
-                                readOnly
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
-                              />
+                                )}
+                              </div>
                             </div>
                           )}
 
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
                               Total
                             </label>
-                            <input
-                              type="text"
-                              value={`$${(
+                            <div className="w-full px-2 py-1.5 text-sm border border-green-200 rounded-md bg-green-50 text-green-800 font-bold">
+                              $
+                              {(
                                 itemWithCosts.totalCost ||
                                 item.unitPricePesos * item.quantity
                               ).toLocaleString("es-AR", {
                                 minimumFractionDigits: 2,
-                              })}`}
-                              readOnly
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 font-medium"
-                            />
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sección de precios de venta y márgenes */}
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="text-xs font-medium text-gray-700">
+                              💰 Precios de Venta y Márgenes
+                            </h5>
+                            <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                              💡 Los precios se actualizarán al confirmar la
+                              compra
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            <div className="flex-shrink-0">
+                              <label className="block text-xs font-medium text-blue-700 mb-1">
+                                💼 Precio Mayorista *
+                              </label>
+                              <div className="flex items-center space-x-1">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={item.product.wholesalePrice || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    const price =
+                                      value === ""
+                                        ? 0
+                                        : Math.round(parseFloat(value) * 100) /
+                                          100;
+                                    updateItemProductPrice(
+                                      item.productId,
+                                      "wholesalePrice",
+                                      price
+                                    );
+                                  }}
+                                  style={{
+                                    width: getInputWidth(
+                                      item.product.wholesalePrice || ""
+                                    ),
+                                  }}
+                                  className="px-2 py-1.5 text-sm border border-blue-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-blue-800 font-medium bg-white min-w-[80px]"
+                                  placeholder="0.00"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const finalCost =
+                                      itemWithCosts.finalUnitCost ||
+                                      item.unitPricePesos;
+                                    const suggestedPrice =
+                                      Math.round(finalCost * 1.4 * 100) / 100; // 30% margen
+                                    updateItemProductPrice(
+                                      item.productId,
+                                      "wholesalePrice",
+                                      suggestedPrice
+                                    );
+                                  }}
+                                  className="px-2 py-1.5 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors font-medium border border-blue-200"
+                                  title="Sugerir precio con 40% de margen"
+                                >
+                                  +40%
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex-shrink-0">
+                              <label className="block text-xs font-medium text-green-700 mb-1">
+                                🏪 Precio Minorista *
+                              </label>
+                              <div className="flex items-center space-x-1">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={item.product.retailPrice || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    const price =
+                                      value === ""
+                                        ? 0
+                                        : Math.round(parseFloat(value) * 100) /
+                                          100;
+                                    updateItemProductPrice(
+                                      item.productId,
+                                      "retailPrice",
+                                      price
+                                    );
+                                  }}
+                                  style={{
+                                    width: getInputWidth(
+                                      item.product.retailPrice || ""
+                                    ),
+                                  }}
+                                  className="px-2 py-1.5 text-sm border border-green-300 rounded-md focus:ring-1 focus:ring-green-500 focus:border-green-500 text-green-800 font-medium bg-white min-w-[80px]"
+                                  placeholder="0.00"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const finalCost =
+                                      itemWithCosts.finalUnitCost ||
+                                      item.unitPricePesos;
+                                    const suggestedPrice =
+                                      Math.round(finalCost * 2.1 * 100) / 100; // 110% margen
+                                    updateItemProductPrice(
+                                      item.productId,
+                                      "retailPrice",
+                                      suggestedPrice
+                                    );
+                                  }}
+                                  className="px-2 py-1.5 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors font-medium border border-green-200"
+                                  title="Sugerir precio con 110% de margen"
+                                >
+                                  +110%
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex-shrink-0">
+                              <label className="block text-xs font-medium text-blue-700 mb-1">
+                                📊 Margen Mayorista
+                              </label>
+                              <div
+                                className={`px-3 py-1.5 text-sm border rounded-md font-medium text-center min-w-[80px] ${(() => {
+                                  const finalCost =
+                                    itemWithCosts.finalUnitCost ||
+                                    item.unitPricePesos;
+                                  if (finalCost === 0)
+                                    return "border-gray-300 bg-gray-50 text-gray-600";
+                                  const margin =
+                                    ((item.product.wholesalePrice - finalCost) /
+                                      finalCost) *
+                                    100;
+                                  if (margin >= 30)
+                                    return "border-green-300 bg-green-50 text-green-800";
+                                  if (margin >= 15)
+                                    return "border-yellow-300 bg-yellow-50 text-yellow-800";
+                                  return "border-red-300 bg-red-50 text-red-800";
+                                })()}`}
+                              >
+                                {(() => {
+                                  const finalCost =
+                                    itemWithCosts.finalUnitCost ||
+                                    item.unitPricePesos;
+                                  if (finalCost === 0) return "N/A";
+                                  const margin =
+                                    ((item.product.wholesalePrice - finalCost) /
+                                      finalCost) *
+                                    100;
+                                  return `${margin.toFixed(1)}%`;
+                                })()}
+                              </div>
+                            </div>
+
+                            <div className="flex-shrink-0">
+                              <label className="block text-xs font-medium text-green-700 mb-1">
+                                📈 Margen Minorista
+                              </label>
+                              <div
+                                className={`px-3 py-1.5 text-sm border rounded-md font-medium text-center min-w-[80px] ${(() => {
+                                  const finalCost =
+                                    itemWithCosts.finalUnitCost ||
+                                    item.unitPricePesos;
+                                  if (finalCost === 0)
+                                    return "border-gray-300 bg-gray-50 text-gray-600";
+                                  const margin =
+                                    ((item.product.retailPrice - finalCost) /
+                                      finalCost) *
+                                    100;
+                                  if (margin >= 50)
+                                    return "border-green-300 bg-green-50 text-green-800";
+                                  if (margin >= 30)
+                                    return "border-yellow-300 bg-yellow-50 text-yellow-800";
+                                  return "border-red-300 bg-red-50 text-red-800";
+                                })()}`}
+                              >
+                                {(() => {
+                                  const finalCost =
+                                    itemWithCosts.finalUnitCost ||
+                                    item.unitPricePesos;
+                                  if (finalCost === 0) return "N/A";
+                                  const margin =
+                                    ((item.product.retailPrice - finalCost) /
+                                      finalCost) *
+                                    100;
+                                  return `${margin.toFixed(1)}%`;
+                                })()}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>

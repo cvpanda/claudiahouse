@@ -35,6 +35,8 @@ interface CreatePurchaseData {
     distributedCosts?: number;
     finalUnitCost?: number;
     totalCost?: number;
+    wholesalePrice?: number;
+    retailPrice?: number;
   }>;
 }
 
@@ -247,6 +249,34 @@ export async function POST(request: NextRequest) {
           totalCost: item.totalCost || item.quantity * item.unitPricePesos,
         })),
       });
+
+      // Actualizar el costo y precios de los productos
+      for (const item of data.items) {
+        const itemWithCosts = itemsWithDistributedCosts.find(
+          (i) => i.productId === item.productId
+        );
+        const finalCost = itemWithCosts?.finalUnitCost || item.unitPricePesos;
+
+        const updateData: any = {
+          // Siempre actualizar el costo del producto con el costo final
+          cost: Math.round(finalCost * 100) / 100,
+        };
+
+        // Actualizar precios de venta solo si se proporcionaron
+        if (item.wholesalePrice !== undefined && item.wholesalePrice > 0) {
+          updateData.wholesalePrice =
+            Math.round(item.wholesalePrice * 100) / 100;
+        }
+
+        if (item.retailPrice !== undefined && item.retailPrice > 0) {
+          updateData.retailPrice = Math.round(item.retailPrice * 100) / 100;
+        }
+
+        await tx.product.update({
+          where: { id: item.productId },
+          data: updateData,
+        });
+      }
 
       return newPurchase;
     });
