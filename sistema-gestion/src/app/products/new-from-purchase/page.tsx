@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import ProductImageUploader from "@/components/ProductImageUploader";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Edit2, Check, X } from "lucide-react";
 import Link from "next/link";
 
 interface Supplier {
@@ -40,6 +40,8 @@ const NewProductFromPurchaseComponent = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSkuEditable, setIsSkuEditable] = useState(false);
+  const [originalSku, setOriginalSku] = useState("");
 
   // Fetch suppliers and categories
   useEffect(() => {
@@ -88,10 +90,30 @@ const NewProductFromPurchaseComponent = () => {
           ...prev,
           sku: data.nextSku,
         }));
+        setOriginalSku(data.nextSku);
       }
     } catch (error) {
       console.error("Error generating SKU:", error);
     }
+  };
+
+  // Funciones para manejar la edición del SKU
+  const handleEditSku = () => {
+    setOriginalSku(formData.sku);
+    setIsSkuEditable(true);
+  };
+
+  const handleSaveSku = () => {
+    setIsSkuEditable(false);
+    setOriginalSku(formData.sku);
+  };
+
+  const handleCancelSkuEdit = () => {
+    setFormData((prev) => ({
+      ...prev,
+      sku: originalSku,
+    }));
+    setIsSkuEditable(false);
   };
 
   // useEffect para generar SKU automáticamente cuando cambie la categoría
@@ -259,16 +281,67 @@ const NewProductFromPurchaseComponent = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   SKU
                   <span className="text-xs text-gray-500 ml-2">
-                    (Se genera automáticamente al seleccionar categoría)
+                    {isSkuEditable
+                      ? "(Editando SKU)"
+                      : "(Se genera automáticamente al seleccionar categoría)"}
                   </span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.sku}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 cursor-not-allowed"
-                  placeholder="Selecciona una categoría para generar el SKU"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.sku}
+                    readOnly={!isSkuEditable}
+                    onChange={
+                      isSkuEditable
+                        ? (e) => handleChange("sku", e.target.value)
+                        : undefined
+                    }
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-20 ${
+                      isSkuEditable
+                        ? "bg-white"
+                        : "bg-gray-50 cursor-not-allowed"
+                    }`}
+                    placeholder="Selecciona una categoría para generar el SKU"
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-1">
+                    {!isSkuEditable ? (
+                      <button
+                        type="button"
+                        onClick={handleEditSku}
+                        disabled={!formData.sku}
+                        className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Editar SKU"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleSaveSku}
+                          className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                          title="Guardar cambios"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelSkuEdit}
+                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                          title="Cancelar edición"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {isSkuEditable && (
+                  <p className="mt-1 text-xs text-blue-600">
+                    💡 Puedes modificar el SKU según tus necesidades. Asegúrate
+                    de que sea único.
+                  </p>
+                )}
               </div>
 
               <div>
