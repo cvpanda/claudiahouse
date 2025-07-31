@@ -8,6 +8,7 @@ import {
   Edit,
   Trash2,
   AlertTriangle,
+  Upload,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import ImagePreview from "@/components/ImagePreview";
@@ -262,18 +263,32 @@ export default function ProductsPage() {
               Gestiona tu inventario de productos
             </p>
           </div>
-          <Link
-            href="/products/new"
-            className={`inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-              canCreate
-                ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                : "bg-gray-400 cursor-not-allowed"
-            }`}
-            onClick={(e) => !canCreate && e.preventDefault()}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Producto
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Link
+              href="/products/import"
+              className={`inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                canCreate || canUpdate
+                  ? "bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  : "bg-gray-400 cursor-not-allowed"
+              }`}
+              onClick={(e) => !(canCreate || canUpdate) && e.preventDefault()}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Importar
+            </Link>
+            <Link
+              href="/products/new"
+              className={`inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                canCreate
+                  ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  : "bg-gray-400 cursor-not-allowed"
+              }`}
+              onClick={(e) => !canCreate && e.preventDefault()}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Producto
+            </Link>
+          </div>
         </div>
 
         {/* Filters */}
