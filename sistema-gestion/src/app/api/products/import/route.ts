@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, hasPermission } from "@/lib/auth";
 import { PrismaClient } from "@prisma/client";
 import { parse } from "csv-parse/sync";
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx";
 
 const prisma = new PrismaClient();
 
@@ -55,15 +55,34 @@ interface ImportResult {
   }[];
 }
 
-// Función para normalizar números decimales
-function parseDecimal(value: string | undefined): number | undefined {
-  if (!value || value.trim() === "") return undefined;
+// Helper function to safely trim values (handle non-string types from Excel)
+function safeTrim(value: any): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  const str = value.toString();
+  return str.trim() === "" ? undefined : str.trim();
+}
 
-  const parsed = parseFloat(value.replace(",", "."));
+// Función para normalizar números decimales
+function parseDecimal(value: any): number | undefined {
+  const trimmed = safeTrim(value);
+  if (!trimmed) return undefined;
+
+  const parsed = parseFloat(trimmed.replace(",", "."));
   if (isNaN(parsed)) return undefined;
 
   // Redondear a 2 decimales máximo
   return Math.round(parsed * 100) / 100;
+}
+
+// Función para normalizar números enteros
+function parseInteger(value: any): number | undefined {
+  const trimmed = safeTrim(value);
+  if (!trimmed) return undefined;
+
+  const parsed = parseInt(trimmed, 10);
+  if (isNaN(parsed)) return undefined;
+
+  return parsed;
 }
 
 // Función para validar que un número es mayor que 0
@@ -153,11 +172,11 @@ export async function POST(request: NextRequest) {
     // Leer el contenido del archivo
     const fileBuffer = await file.arrayBuffer();
     const fileName = file.name.toLowerCase();
-    
+
     // Parsear según el tipo de archivo
     let records: ImportRow[];
     try {
-      if (fileName.endsWith('.csv')) {
+      if (fileName.endsWith(".csv")) {
         // Procesar CSV
         const fileContent = new TextDecoder().decode(fileBuffer);
         records = parse(fileContent, {
@@ -166,44 +185,55 @@ export async function POST(request: NextRequest) {
           trim: true,
           comment: "#", // Ignorar líneas que empiecen con #
         });
-      } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      } else if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
         // Procesar Excel
-        const workbook = XLSX.read(fileBuffer, { type: 'array' });
-        
+        const workbook = XLSX.read(fileBuffer, { type: "array" });
+
         // Usar la primera hoja (normalmente "Productos")
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        
+
         // Convertir a JSON
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
           header: 1,
-          defval: ""
+          defval: "",
         });
-        
+
         // Obtener headers (primera fila)
         const headers = jsonData[0] as string[];
-        
+
         // Convertir a formato de objetos
-        records = (jsonData.slice(1) as any[][]).map((row: any[]) => {
-          const record: any = {};
-          headers.forEach((header, index) => {
-            record[header] = row[index] || "";
+        records = (jsonData.slice(1) as any[][])
+          .map((row: any[]) => {
+            const record: any = {};
+            headers.forEach((header, index) => {
+              record[header] = row[index] || "";
+            });
+            return record;
+          })
+          .filter((record: any) => {
+            // Filtrar filas vacías
+            return Object.values(record).some(
+              (value) => value && value.toString().trim() !== ""
+            );
           });
-          return record;
-        }).filter((record: any) => {
-          // Filtrar filas vacías
-          return Object.values(record).some(value => value && value.toString().trim() !== "");
-        });
       } else {
-        return NextResponse.json({ 
-          error: "Formato de archivo no soportado. Use CSV o Excel (.xlsx, .xls)" 
-        }, { status: 400 });
+        return NextResponse.json(
+          {
+            error:
+              "Formato de archivo no soportado. Use CSV o Excel (.xlsx, .xls)",
+          },
+          { status: 400 }
+        );
       }
     } catch (error) {
       console.error("Error parsing file:", error);
-      return NextResponse.json({ 
-        error: "Error al procesar el archivo. Verifica el formato." 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Error al procesar el archivo. Verifica el formato.",
+        },
+        { status: 400 }
+      );
     }
 
     // Obtener categorías y proveedores para validación
@@ -236,21 +266,21 @@ export async function POST(request: NextRequest) {
 
       try {
         // Validaciones básicas
-        if (!row.Nombre?.trim()) {
+        if (!safeTrim(row.Nombre)) {
           errors.push("Nombre es obligatorio");
         }
 
-        if (!row.Categoria?.trim()) {
+        if (!safeTrim(row.Categoria)) {
           errors.push("Categoría es obligatoria");
         }
 
-        if (!row.Proveedor?.trim()) {
+        if (!safeTrim(row.Proveedor)) {
           errors.push("Proveedor es obligatorio");
         }
 
         // Validar que categoría y proveedor existan
-        const categoryId = categoryMap.get(row.Categoria?.toLowerCase() || "");
-        const supplierId = supplierMap.get(row.Proveedor?.toLowerCase() || "");
+        const categoryId = categoryMap.get(safeTrim(row.Categoria)?.toLowerCase() || "");
+        const supplierId = supplierMap.get(safeTrim(row.Proveedor)?.toLowerCase() || "");
 
         if (row.Categoria && !categoryId) {
           errors.push(`Categoría "${row.Categoria}" no existe en el sistema`);
@@ -261,10 +291,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Procesar números
-        const stock = row.Stock ? parseInt(row.Stock) : undefined;
-        const minStock = row["Stock Minimo"]
-          ? parseInt(row["Stock Minimo"])
-          : undefined;
+        const stock = parseInteger(row.Stock);
+        const minStock = parseInteger(row["Stock Minimo"]);
         const cost = parseDecimal(row.Costo);
         const wholesalePrice = parseDecimal(row["Precio Mayorista"]);
         const retailPrice = parseDecimal(row["Precio Minorista"]);
@@ -303,13 +331,13 @@ export async function POST(request: NextRequest) {
 
         // Preparar datos del producto
         const productData: ProcessedProduct = {
-          name: row.Nombre.trim(),
-          description: row.Descripcion?.trim() || undefined,
+          name: safeTrim(row.Nombre)!,  // Ya validamos que existe
+          description: safeTrim(row.Descripcion) || undefined,
           categoryId: categoryId!,
           supplierId: supplierId!,
-          unit: row.Unidad?.trim() || "unidad",
-          imageUrl: row["URL Imagen"]?.trim() || undefined,
-          barcode: row["Codigo de Barras"]?.trim() || undefined,
+          unit: safeTrim(row.Unidad) || "unidad",
+          imageUrl: safeTrim(row["URL Imagen"]) || undefined,
+          barcode: safeTrim(row["Codigo de Barras"]) || undefined,
         };
 
         // Solo agregar campos que tienen valores
@@ -321,7 +349,7 @@ export async function POST(request: NextRequest) {
         if (retailPrice !== undefined) productData.retailPrice = retailPrice;
 
         // Determinar si es creación o actualización
-        const existingSku = row.SKU?.trim();
+        const existingSku = safeTrim(row.SKU);
         let existingProduct = null;
 
         if (existingSku) {

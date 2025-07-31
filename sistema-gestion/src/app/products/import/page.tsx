@@ -105,9 +105,13 @@ export default function ImportProductsPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && (selectedFile.type === "text/csv" || 
-        selectedFile.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-        selectedFile.type === "application/vnd.ms-excel")) {
+    if (
+      selectedFile &&
+      (selectedFile.type === "text/csv" ||
+        selectedFile.type ===
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+        selectedFile.type === "application/vnd.ms-excel")
+    ) {
       setFile(selectedFile);
       setImportResult(null);
     } else {
@@ -118,186 +122,194 @@ export default function ImportProductsPage() {
 
   const downloadTemplate = () => {
     // Usar xlsx para crear un archivo Excel con múltiples hojas y dropdowns
-    import('xlsx').then((XLSX) => {
-      // Crear un nuevo workbook
-      const workbook = XLSX.utils.book_new();
+    import("xlsx")
+      .then((XLSX) => {
+        // Crear un nuevo workbook
+        const workbook = XLSX.utils.book_new();
 
-      // 1. Hoja principal con la plantilla
-      const headers = [
-        "SKU",
-        "Nombre",
-        "Descripcion",
-        "Stock",
-        "Stock Minimo",
-        "Costo",
-        "Precio Mayorista",
-        "Precio Minorista",
-        "Categoria",
-        "Proveedor",
-        "Unidad",
-        "URL Imagen",
-        "Codigo de Barras",
-      ];
+        // 1. Hoja principal con la plantilla
+        const headers = [
+          "SKU",
+          "Nombre",
+          "Descripcion",
+          "Stock",
+          "Stock Minimo",
+          "Costo",
+          "Precio Mayorista",
+          "Precio Minorista",
+          "Categoria",
+          "Proveedor",
+          "Unidad",
+          "URL Imagen",
+          "Codigo de Barras",
+        ];
 
-      // Crear filas de ejemplo con datos reales
-      const exampleRows = [
-        [
-          "", // SKU vacío para auto-generar
-          "Producto Nuevo Ejemplo",
-          "Descripción del producto nuevo",
-          "50",
-          "5",
-          "25.50",
-          "35.75",
-          "50.00",
-          categories.length > 0 ? categories[0].name : "Categoria1",
-          suppliers.length > 0 ? suppliers[0].name : "Proveedor1",
-          "unidad",
-          "https://ejemplo.com/imagen.jpg",
-          "1234567890123",
-        ],
-        [
-          "PROD-001", // SKU existente para actualizar
-          "Producto Para Actualizar",
-          "", // Descripción vacía - no se actualizará si el producto ya existe
-          "100",
-          "10",
-          "", // Costo vacío - no se actualizará
-          "80.00",
-          "120.00",
-          categories.length > 1
-            ? categories[1].name
-            : categories.length > 0
-            ? categories[0].name
-            : "Categoria2",
-          suppliers.length > 1
-            ? suppliers[1].name
-            : suppliers.length > 0
-            ? suppliers[0].name
-            : "Proveedor2",
-          "kilogramo",
-          "",
-          "",
-        ],
-        [
-          "", // Ejemplo solo con stock
-          "Producto Solo Stock",
-          "Solo actualizar stock",
-          "200",
-          "20",
-          "", // Sin precios - válido porque tiene stock
-          "",
-          "",
-          categories.length > 0 ? categories[0].name : "Categoria1",
-          suppliers.length > 0 ? suppliers[0].name : "Proveedor1",
-          "litro",
-          "",
-          "",
-        ],
-      ];
+        // Crear filas de ejemplo con datos reales
+        const exampleRows = [
+          [
+            "", // SKU vacío para auto-generar
+            "Producto Nuevo Ejemplo",
+            "Descripción del producto nuevo",
+            "50",
+            "5",
+            "25.50",
+            "35.75",
+            "50.00",
+            categories.length > 0 ? categories[0].name : "Categoria1",
+            suppliers.length > 0 ? suppliers[0].name : "Proveedor1",
+            "unidad",
+            "https://ejemplo.com/imagen.jpg",
+            "1234567890123",
+          ],
+          [
+            "PROD-001", // SKU existente para actualizar
+            "Producto Para Actualizar",
+            "", // Descripción vacía - no se actualizará si el producto ya existe
+            "100",
+            "10",
+            "", // Costo vacío - no se actualizará
+            "80.00",
+            "120.00",
+            categories.length > 1
+              ? categories[1].name
+              : categories.length > 0
+              ? categories[0].name
+              : "Categoria2",
+            suppliers.length > 1
+              ? suppliers[1].name
+              : suppliers.length > 0
+              ? suppliers[0].name
+              : "Proveedor2",
+            "kilogramo",
+            "",
+            "",
+          ],
+          [
+            "", // Ejemplo solo con stock
+            "Producto Solo Stock",
+            "Solo actualizar stock",
+            "200",
+            "20",
+            "", // Sin precios - válido porque tiene stock
+            "",
+            "",
+            categories.length > 0 ? categories[0].name : "Categoria1",
+            suppliers.length > 0 ? suppliers[0].name : "Proveedor1",
+            "litro",
+            "",
+            "",
+          ],
+        ];
 
-      // Crear datos para la hoja principal
-      const mainSheetData = [headers, ...exampleRows];
-      const mainSheet = XLSX.utils.aoa_to_sheet(mainSheetData);
+        // Crear datos para la hoja principal
+        const mainSheetData = [headers, ...exampleRows];
+        const mainSheet = XLSX.utils.aoa_to_sheet(mainSheetData);
 
-      // Agregar la hoja principal
-      XLSX.utils.book_append_sheet(workbook, mainSheet, "Productos");
+        // Agregar la hoja principal
+        XLSX.utils.book_append_sheet(workbook, mainSheet, "Productos");
 
-      // 2. Hoja de referencia con categorías
-      const categoriesData = [
-        ["Categorias"],
-        ...categories.map((cat) => [cat.name]),
-      ];
-      const categoriesSheet = XLSX.utils.aoa_to_sheet(categoriesData);
-      XLSX.utils.book_append_sheet(workbook, categoriesSheet, "Categorias");
+        // 2. Hoja de referencia con categorías
+        const categoriesData = [
+          ["Categorias"],
+          ...categories.map((cat) => [cat.name]),
+        ];
+        const categoriesSheet = XLSX.utils.aoa_to_sheet(categoriesData);
+        XLSX.utils.book_append_sheet(workbook, categoriesSheet, "Categorias");
 
-      // 3. Hoja de referencia con proveedores
-      const suppliersData = [
-        ["Proveedores"],
-        ...suppliers.map((sup) => [sup.name]),
-      ];
-      const suppliersSheet = XLSX.utils.aoa_to_sheet(suppliersData);
-      XLSX.utils.book_append_sheet(workbook, suppliersSheet, "Proveedores");
+        // 3. Hoja de referencia con proveedores
+        const suppliersData = [
+          ["Proveedores"],
+          ...suppliers.map((sup) => [sup.name]),
+        ];
+        const suppliersSheet = XLSX.utils.aoa_to_sheet(suppliersData);
+        XLSX.utils.book_append_sheet(workbook, suppliersSheet, "Proveedores");
 
-      // 4. Hoja de referencia con unidades comunes
-      const unitsData = [
-        ["Unidades"],
-        ["unidad"],
-        ["kilogramo"],
-        ["gramo"],
-        ["litro"],
-        ["mililitro"],
-        ["metro"],
-        ["centimetro"],
-        ["caja"],
-        ["paquete"],
-        ["docena"],
-      ];
-      const unitsSheet = XLSX.utils.aoa_to_sheet(unitsData);
-      XLSX.utils.book_append_sheet(workbook, unitsSheet, "Unidades");
+        // 4. Hoja de referencia con unidades comunes
+        const unitsData = [
+          ["Unidades"],
+          ["unidad"],
+          ["kilogramo"],
+          ["gramo"],
+          ["litro"],
+          ["mililitro"],
+          ["metro"],
+          ["centimetro"],
+          ["caja"],
+          ["paquete"],
+          ["docena"],
+        ];
+        const unitsSheet = XLSX.utils.aoa_to_sheet(unitsData);
+        XLSX.utils.book_append_sheet(workbook, unitsSheet, "Unidades");
 
-      // 5. Hoja de instrucciones
-      const instructionsData = [
-        ["INSTRUCCIONES PARA IMPORTACION DE PRODUCTOS"],
-        [""],
-        ["CAMPOS OBLIGATORIOS:"],
-        ["- Categoria: Debe existir en el sistema (ver hoja Categorias)"],
-        ["- Proveedor: Debe existir en el sistema (ver hoja Proveedores)"],
-        ["- Unidad: Si esta vacio se usa 'unidad' (ver hoja Unidades)"],
-        [""],
-        ["VALIDACION MINIMA:"],
-        ["Al menos UNO de estos campos debe tener valor:"],
-        ["- Stock (numero entero, 0 o mayor)"],
-        ["- Costo (numero decimal mayor a 0.01)"],
-        ["- Precio Mayorista (numero decimal mayor a 0.01)"],
-        ["- Precio Minorista (numero decimal mayor a 0.01)"],
-        [""],
-        ["LOGICA DE IMPORTACION:"],
-        ["- SKU vacio: Se crea un producto NUEVO con SKU auto-generado"],
-        ["- SKU existente: Se ACTUALIZA el producto (solo campos con valores)"],
-        [""],
-        ["FORMATO DE NUMEROS:"],
-        ["- Usar PUNTO decimal (ejemplo: 123.45)"],
-        ["- Valores 0 o 0.00 se consideran VACIOS (excepto Stock)"],
-        ["- Maximo 2 decimales"],
-        [""],
-        ["CAMPOS OPCIONALES:"],
-        ["- SKU: Dejar vacio para auto-generar"],
-        ["- Descripcion: Texto libre"],
-        ["- URL Imagen: URL completa de la imagen"],
-        ["- Codigo de Barras: Codigo numerico"],
-        [""],
-        ["IMPORTANTE:"],
-        ["- Los campos vacios en actualizacion NO se modifican"],
-        ["- Solo se actualizan campos que tengan un valor"],
-        ["- Guardar como CSV antes de subir al sistema"],
-      ];
-      const instructionsSheet = XLSX.utils.aoa_to_sheet(instructionsData);
-      XLSX.utils.book_append_sheet(workbook, instructionsSheet, "Instrucciones");
+        // 5. Hoja de instrucciones
+        const instructionsData = [
+          ["INSTRUCCIONES PARA IMPORTACION DE PRODUCTOS"],
+          [""],
+          ["CAMPOS OBLIGATORIOS:"],
+          ["- Categoria: Debe existir en el sistema (ver hoja Categorias)"],
+          ["- Proveedor: Debe existir en el sistema (ver hoja Proveedores)"],
+          ["- Unidad: Si esta vacio se usa 'unidad' (ver hoja Unidades)"],
+          [""],
+          ["VALIDACION MINIMA:"],
+          ["Al menos UNO de estos campos debe tener valor:"],
+          ["- Stock (numero entero, 0 o mayor)"],
+          ["- Costo (numero decimal mayor a 0.01)"],
+          ["- Precio Mayorista (numero decimal mayor a 0.01)"],
+          ["- Precio Minorista (numero decimal mayor a 0.01)"],
+          [""],
+          ["LOGICA DE IMPORTACION:"],
+          ["- SKU vacio: Se crea un producto NUEVO con SKU auto-generado"],
+          [
+            "- SKU existente: Se ACTUALIZA el producto (solo campos con valores)",
+          ],
+          [""],
+          ["FORMATO DE NUMEROS:"],
+          ["- Usar PUNTO decimal (ejemplo: 123.45)"],
+          ["- Valores 0 o 0.00 se consideran VACIOS (excepto Stock)"],
+          ["- Maximo 2 decimales"],
+          [""],
+          ["CAMPOS OPCIONALES:"],
+          ["- SKU: Dejar vacio para auto-generar"],
+          ["- Descripcion: Texto libre"],
+          ["- URL Imagen: URL completa de la imagen"],
+          ["- Codigo de Barras: Codigo numerico"],
+          [""],
+          ["IMPORTANTE:"],
+          ["- Los campos vacios en actualizacion NO se modifican"],
+          ["- Solo se actualizan campos que tengan un valor"],
+          ["- Guardar como CSV antes de subir al sistema"],
+        ];
+        const instructionsSheet = XLSX.utils.aoa_to_sheet(instructionsData);
+        XLSX.utils.book_append_sheet(
+          workbook,
+          instructionsSheet,
+          "Instrucciones"
+        );
 
-      // Generar el archivo Excel
-      const excelBuffer = XLSX.write(workbook, { 
-        bookType: 'xlsx', 
-        type: 'array' 
+        // Generar el archivo Excel
+        const excelBuffer = XLSX.write(workbook, {
+          bookType: "xlsx",
+          type: "array",
+        });
+
+        // Descargar el archivo
+        const blob = new Blob([excelBuffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "plantilla_productos.xlsx");
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      })
+      .catch((error) => {
+        console.error("Error creando plantilla Excel:", error);
+        // Fallback a CSV simple
+        downloadSimpleCSV();
       });
-
-      // Descargar el archivo
-      const blob = new Blob([excelBuffer], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-      });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", "plantilla_productos.xlsx");
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }).catch((error) => {
-      console.error("Error creando plantilla Excel:", error);
-      // Fallback a CSV simple
-      downloadSimpleCSV();
-    });
   };
 
   // Función fallback para CSV simple
@@ -531,7 +543,8 @@ export default function ImportProductsPage() {
                       (≥0.01)
                     </li>
                     <li>
-                      <strong>Campos opcionales:</strong> URL Imagen, Código de Barras
+                      <strong>Campos opcionales:</strong> URL Imagen, Código de
+                      Barras
                     </li>
                     <li>
                       <strong>SKU vacío:</strong> Se auto-genera un nuevo
@@ -561,10 +574,11 @@ export default function ImportProductsPage() {
               Plantilla Excel/CSV
             </h2>
             <p className="text-gray-600 mb-4">
-              Descarga la plantilla Excel con múltiples hojas, dropdowns y ejemplos de datos.
-              La plantilla incluye hojas de referencia para categorías, proveedores y unidades.
+              Descarga la plantilla Excel con múltiples hojas, dropdowns y
+              ejemplos de datos. La plantilla incluye hojas de referencia para
+              categorías, proveedores y unidades.
             </p>
-            
+
             {/* Mostrar valores disponibles */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
               <div>
@@ -606,7 +620,8 @@ export default function ImportProductsPage() {
                   📏 Unidades Comunes:
                 </h4>
                 <div className="text-xs text-gray-600">
-                  unidad, kilogramo, gramo, litro, mililitro, metro, centímetro, caja, paquete, docena
+                  unidad, kilogramo, gramo, litro, mililitro, metro, centímetro,
+                  caja, paquete, docena
                 </div>
               </div>
             </div>
@@ -617,12 +632,30 @@ export default function ImportProductsPage() {
                 ✨ Nueva Plantilla Excel Mejorada:
               </h4>
               <ul className="text-sm text-blue-700 list-disc list-inside space-y-1">
-                <li><strong>Hoja "Productos":</strong> Plantilla principal con ejemplos</li>
-                <li><strong>Hoja "Categorias":</strong> Lista completa de categorías del sistema</li>
-                <li><strong>Hoja "Proveedores":</strong> Lista completa de proveedores del sistema</li>
-                <li><strong>Hoja "Unidades":</strong> Unidades de medida más comunes</li>
-                <li><strong>Hoja "Instrucciones":</strong> Guía completa paso a paso</li>
-                <li><strong>Nuevos campos:</strong> URL de imagen y código de barras</li>
+                <li>
+                  <strong>Hoja "Productos":</strong> Plantilla principal con
+                  ejemplos
+                </li>
+                <li>
+                  <strong>Hoja "Categorias":</strong> Lista completa de
+                  categorías del sistema
+                </li>
+                <li>
+                  <strong>Hoja "Proveedores":</strong> Lista completa de
+                  proveedores del sistema
+                </li>
+                <li>
+                  <strong>Hoja "Unidades":</strong> Unidades de medida más
+                  comunes
+                </li>
+                <li>
+                  <strong>Hoja "Instrucciones":</strong> Guía completa paso a
+                  paso
+                </li>
+                <li>
+                  <strong>Nuevos campos:</strong> URL de imagen y código de
+                  barras
+                </li>
               </ul>
             </div>
 
