@@ -9,6 +9,7 @@ import {
   Trash2,
   AlertTriangle,
   Upload,
+  Download,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import ImagePreview from "@/components/ImagePreview";
@@ -53,6 +54,12 @@ export default function ProductsPage() {
     lowStock: 0,
     totalStockValue: 0,
   });
+  
+  // Estados para exportación
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  
   const { hasPermission } = useAuth();
 
   // Verificar permisos
@@ -86,6 +93,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchCategories();
+    fetchSuppliers();
   }, []);
 
   const fetchProducts = async () => {
@@ -142,6 +150,191 @@ export default function ProductsPage() {
     } catch (error) {
       console.error("Error fetching categories:", error);
     }
+  };
+
+  const fetchSuppliers = async () => {
+    try {
+      const response = await fetch("/api/suppliers");
+      if (response.ok) {
+        const data = await response.json();
+        setSuppliers(data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching suppliers:", error);
+    }
+  };
+
+  const handleExport = async (categoryId?: string, supplierId?: string, format: 'excel' | 'csv' = 'excel') => {
+    setExportLoading(true);
+    
+    try {
+      const params = new URLSearchParams({
+        format,
+        ...(categoryId && categoryId !== "all" ? { categoryId } : {}),
+        ...(supplierId && supplierId !== "all" ? { supplierId } : {}),
+      });
+      
+      const response = await fetch(`/api/products/export?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error('Error al exportar productos');
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Error desconocido');
+      }
+      
+      // Generar archivo Excel o CSV
+      if (format === 'excel') {
+        await generateExcelFile(data);
+      } else {
+        generateCSVFile(data);
+      }
+      
+      // Cerrar modal
+      setShowExportModal(false);
+      
+      // Mensaje de éxito
+      alert(`Exportación completada: ${data.summary.totalProducts} productos exportados`);
+      
+    } catch (error) {
+      console.error("Error exporting products:", error);
+      alert("Error al exportar productos. Por favor intenta nuevamente.");
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const generateExcelFile = async (exportData: any) => {
+    const XLSX = await import("xlsx");
+    
+    // Crear workbook
+    const workbook = XLSX.utils.book_new();
+    
+    // Hoja principal con datos
+    const mainSheetData = [
+      [
+        "SKU",
+        "Nombre", 
+        "Descripcion",
+        "Stock",
+        "Stock Minimo",
+        "Costo",
+        "Precio Mayorista",
+        "Precio Minorista", 
+        "Categoria",
+        "Proveedor",
+        "Unidad",
+        "URL Imagen",
+        "Codigo de Barras",
+      ],
+      ...exportData.data.map((product: any) => [
+        product.SKU,
+        product.Nombre,
+        product.Descripcion,
+        product.Stock,
+        product["Stock Minimo"],
+        product.Costo,
+        product["Precio Mayorista"],
+        product["Precio Minorista"],
+        product.Categoria,
+        product.Proveedor,
+        product.Unidad,
+        product["URL Imagen"],
+        product["Codigo de Barras"],
+      ]),
+    ];
+    
+    const mainSheet = XLSX.utils.aoa_to_sheet(mainSheetData);
+    XLSX.utils.book_append_sheet(workbook, mainSheet, "Productos");
+    
+    // Hojas de referencia
+    const categoriesSheet = XLSX.utils.aoa_to_sheet([
+      ["Categorias"],
+      ...exportData.referenceData.categories.map((cat: string) => [cat]),
+    ]);
+    XLSX.utils.book_append_sheet(workbook, categoriesSheet, "Categorias");
+    
+    const suppliersSheet = XLSX.utils.aoa_to_sheet([
+      ["Proveedores"],
+      ...exportData.referenceData.suppliers.map((sup: string) => [sup]),
+    ]);
+    XLSX.utils.book_append_sheet(workbook, suppliersSheet, "Proveedores");
+    
+    const unitsSheet = XLSX.utils.aoa_to_sheet([
+      ["Unidades"],
+      ...exportData.referenceData.units.map((unit: string) => [unit]),
+    ]);
+    XLSX.utils.book_append_sheet(workbook, unitsSheet, "Unidades");
+    
+    // Generar y descargar archivo
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    
+    const blob = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `productos_exportados_${new Date().toISOString().split('T')[0]}.xlsx`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const generateCSVFile = (exportData: any) => {
+    const headers = [
+      "SKU",
+      "Nombre",
+      "Descripcion", 
+      "Stock",
+      "Stock Minimo",
+      "Costo",
+      "Precio Mayorista",
+      "Precio Minorista",
+      "Categoria",
+      "Proveedor",
+      "Unidad",
+      "URL Imagen",
+      "Codigo de Barras",
+    ];
+    
+    const csvContent = [
+      headers.join(","),
+      ...exportData.data.map((product: any) =>
+        [
+          product.SKU,
+          product.Nombre,
+          product.Descripcion,
+          product.Stock,
+          product["Stock Minimo"],
+          product.Costo,
+          product["Precio Mayorista"],
+          product["Precio Minorista"],
+          product.Categoria,
+          product.Proveedor,
+          product.Unidad,
+          product["URL Imagen"],
+          product["Codigo de Barras"],
+        ].map(cell => `"${cell || ''}"`).join(",")
+      ),
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `productos_exportados_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const deleteProduct = async (id: string) => {
@@ -264,6 +457,18 @@ export default function ProductsPage() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={() => setShowExportModal(true)}
+              disabled={!canView}
+              className={`inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                canView
+                  ? "bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                  : "bg-gray-400 cursor-not-allowed"
+              }`}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Exportar
+            </button>
             <Link
               href="/products/import"
               className={`inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
@@ -643,6 +848,117 @@ export default function ProductsPage() {
           <Pagination />
         </div>
       </div>
+
+      {/* Modal de Exportación */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Exportar Productos
+                </h3>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <span className="sr-only">Cerrar</span>
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Filtrar por Categoría
+                  </label>
+                  <select
+                    id="exportCategoryFilter"
+                    className="block w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    defaultValue="all"
+                  >
+                    <option value="all">Todas las categorías</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Filtrar por Proveedor
+                  </label>
+                  <select
+                    id="exportSupplierFilter"
+                    className="block w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    defaultValue="all"
+                  >
+                    <option value="all">Todos los proveedores</option>
+                    {suppliers.map((supplier) => (
+                      <option key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Formato de Exportación
+                  </label>
+                  <select
+                    id="exportFormat"
+                    className="block w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    defaultValue="excel"
+                  >
+                    <option value="excel">Excel (.xlsx)</option>
+                    <option value="csv">CSV (.csv)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 mt-6 border-t">
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  disabled={exportLoading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    const categorySelect = document.getElementById('exportCategoryFilter') as HTMLSelectElement;
+                    const supplierSelect = document.getElementById('exportSupplierFilter') as HTMLSelectElement;
+                    const formatSelect = document.getElementById('exportFormat') as HTMLSelectElement;
+                    
+                    handleExport(
+                      categorySelect.value,
+                      supplierSelect.value,
+                      formatSelect.value as 'excel' | 'csv'
+                    );
+                  }}
+                  disabled={exportLoading}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-400 flex items-center"
+                >
+                  {exportLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Exportando...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      Exportar
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
