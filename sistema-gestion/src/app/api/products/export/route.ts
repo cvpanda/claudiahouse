@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verificar permisos
-    if (!hasPermission(user, "products", "read")) {
+    if (!hasPermission(user, "products", "view")) {
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
     }
 
@@ -42,10 +42,7 @@ export async function GET(request: NextRequest) {
         category: true,
         supplier: true,
       },
-      orderBy: [
-        { category: { name: "asc" } },
-        { name: "asc" },
-      ],
+      orderBy: [{ category: { name: "asc" } }, { name: "asc" }],
     });
 
     // Convertir productos al formato de exportación
@@ -56,8 +53,10 @@ export async function GET(request: NextRequest) {
       Stock: product.stock.toString(),
       "Stock Minimo": product.minStock.toString(),
       Costo: product.cost > 0 ? product.cost.toFixed(2) : "",
-      "Precio Mayorista": product.wholesalePrice > 0 ? product.wholesalePrice.toFixed(2) : "",
-      "Precio Minorista": product.retailPrice > 0 ? product.retailPrice.toFixed(2) : "",
+      "Precio Mayorista":
+        product.wholesalePrice > 0 ? product.wholesalePrice.toFixed(2) : "",
+      "Precio Minorista":
+        product.retailPrice > 0 ? product.retailPrice.toFixed(2) : "",
       Categoria: product.category.name,
       Proveedor: product.supplier.name,
       Unidad: product.unit,
@@ -90,11 +89,11 @@ export async function GET(request: NextRequest) {
         },
       },
       referenceData: {
-        categories: categories.map(c => c.name),
-        suppliers: suppliers.map(s => s.name),
+        categories: categories.map((c) => c.name),
+        suppliers: suppliers.map((s) => s.name),
         units: [
           "unidad",
-          "kilogramo", 
+          "kilogramo",
           "gramo",
           "litro",
           "mililitro",
@@ -111,10 +110,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error exporting products:", error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: "Error interno del servidor",
-        details: error instanceof Error ? error.message : "Error desconocido"
+        details: error instanceof Error ? error.message : "Error desconocido",
       },
       { status: 500 }
     );

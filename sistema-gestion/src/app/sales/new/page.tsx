@@ -332,11 +332,11 @@ export default function NewSalePage() {
       updated[existingIndex].quantity += 1;
       setComboComponents(updated);
       // Mostrar mensaje informativo
-      console.log(
-        `${product.name} ya está en el ${
-          itemType === "combo" ? "combo" : "pack"
-        }. Cantidad aumentada a ${updated[existingIndex].quantity}.`
-      );
+      // console.log(
+      //   `${product.name} ya está en el ${
+      //     itemType === "combo" ? "combo" : "pack"
+      //   }. Cantidad aumentada a ${updated[existingIndex].quantity}.`
+      // );
     } else {
       setComboComponents([
         ...comboComponents,

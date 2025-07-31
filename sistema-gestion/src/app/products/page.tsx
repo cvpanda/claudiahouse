@@ -54,12 +54,12 @@ export default function ProductsPage() {
     lowStock: 0,
     totalStockValue: 0,
   });
-  
+
   // Estados para exportación
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
-  
+
   const { hasPermission } = useAuth();
 
   // Verificar permisos
@@ -95,6 +95,10 @@ export default function ProductsPage() {
     fetchCategories();
     fetchSuppliers();
   }, []);
+
+  useEffect(() => {
+    console.log("Suppliers state updated:", suppliers);
+  }, [suppliers]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -154,51 +158,61 @@ export default function ProductsPage() {
 
   const fetchSuppliers = async () => {
     try {
+      console.log("Fetching suppliers...");
       const response = await fetch("/api/suppliers");
       if (response.ok) {
         const data = await response.json();
+        console.log("Suppliers response:", data);
+        console.log("Setting suppliers:", data.data || []);
         setSuppliers(data.data || []);
+      } else {
+        console.error("Failed to fetch suppliers, status:", response.status);
       }
     } catch (error) {
       console.error("Error fetching suppliers:", error);
     }
   };
 
-  const handleExport = async (categoryId?: string, supplierId?: string, format: 'excel' | 'csv' = 'excel') => {
+  const handleExport = async (
+    categoryId?: string,
+    supplierId?: string,
+    format: "excel" | "csv" = "excel"
+  ) => {
     setExportLoading(true);
-    
+
     try {
       const params = new URLSearchParams({
         format,
         ...(categoryId && categoryId !== "all" ? { categoryId } : {}),
         ...(supplierId && supplierId !== "all" ? { supplierId } : {}),
       });
-      
+
       const response = await fetch(`/api/products/export?${params.toString()}`);
-      
+
       if (!response.ok) {
-        throw new Error('Error al exportar productos');
+        throw new Error("Error al exportar productos");
       }
-      
+
       const data = await response.json();
-      
+
       if (!data.success) {
-        throw new Error(data.error || 'Error desconocido');
+        throw new Error(data.error || "Error desconocido");
       }
-      
+
       // Generar archivo Excel o CSV
-      if (format === 'excel') {
+      if (format === "excel") {
         await generateExcelFile(data);
       } else {
         generateCSVFile(data);
       }
-      
+
       // Cerrar modal
       setShowExportModal(false);
-      
+
       // Mensaje de éxito
-      alert(`Exportación completada: ${data.summary.totalProducts} productos exportados`);
-      
+      alert(
+        `Exportación completada: ${data.summary.totalProducts} productos exportados`
+      );
     } catch (error) {
       console.error("Error exporting products:", error);
       alert("Error al exportar productos. Por favor intenta nuevamente.");
@@ -209,21 +223,21 @@ export default function ProductsPage() {
 
   const generateExcelFile = async (exportData: any) => {
     const XLSX = await import("xlsx");
-    
+
     // Crear workbook
     const workbook = XLSX.utils.book_new();
-    
+
     // Hoja principal con datos
     const mainSheetData = [
       [
         "SKU",
-        "Nombre", 
+        "Nombre",
         "Descripcion",
         "Stock",
         "Stock Minimo",
         "Costo",
         "Precio Mayorista",
-        "Precio Minorista", 
+        "Precio Minorista",
         "Categoria",
         "Proveedor",
         "Unidad",
@@ -246,42 +260,45 @@ export default function ProductsPage() {
         product["Codigo de Barras"],
       ]),
     ];
-    
+
     const mainSheet = XLSX.utils.aoa_to_sheet(mainSheetData);
     XLSX.utils.book_append_sheet(workbook, mainSheet, "Productos");
-    
+
     // Hojas de referencia
     const categoriesSheet = XLSX.utils.aoa_to_sheet([
       ["Categorias"],
       ...exportData.referenceData.categories.map((cat: string) => [cat]),
     ]);
     XLSX.utils.book_append_sheet(workbook, categoriesSheet, "Categorias");
-    
+
     const suppliersSheet = XLSX.utils.aoa_to_sheet([
       ["Proveedores"],
       ...exportData.referenceData.suppliers.map((sup: string) => [sup]),
     ]);
     XLSX.utils.book_append_sheet(workbook, suppliersSheet, "Proveedores");
-    
+
     const unitsSheet = XLSX.utils.aoa_to_sheet([
       ["Unidades"],
       ...exportData.referenceData.units.map((unit: string) => [unit]),
     ]);
     XLSX.utils.book_append_sheet(workbook, unitsSheet, "Unidades");
-    
+
     // Generar y descargar archivo
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
       type: "array",
     });
-    
+
     const blob = new Blob([excelBuffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `productos_exportados_${new Date().toISOString().split('T')[0]}.xlsx`);
+    link.setAttribute(
+      "download",
+      `productos_exportados_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -292,7 +309,7 @@ export default function ProductsPage() {
     const headers = [
       "SKU",
       "Nombre",
-      "Descripcion", 
+      "Descripcion",
       "Stock",
       "Stock Minimo",
       "Costo",
@@ -304,7 +321,7 @@ export default function ProductsPage() {
       "URL Imagen",
       "Codigo de Barras",
     ];
-    
+
     const csvContent = [
       headers.join(","),
       ...exportData.data.map((product: any) =>
@@ -322,15 +339,20 @@ export default function ProductsPage() {
           product.Unidad,
           product["URL Imagen"],
           product["Codigo de Barras"],
-        ].map(cell => `"${cell || ''}"`).join(",")
+        ]
+          .map((cell) => `"${cell || ""}"`)
+          .join(",")
       ),
     ].join("\n");
-    
+
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `productos_exportados_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `productos_exportados_${new Date().toISOString().split("T")[0]}.csv`
+    );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -862,8 +884,7 @@ export default function ProductsPage() {
                   onClick={() => setShowExportModal(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  <span className="sr-only">Cerrar</span>
-                  ✕
+                  <span className="sr-only">Cerrar</span>✕
                 </button>
               </div>
 
@@ -929,14 +950,20 @@ export default function ProductsPage() {
                 </button>
                 <button
                   onClick={() => {
-                    const categorySelect = document.getElementById('exportCategoryFilter') as HTMLSelectElement;
-                    const supplierSelect = document.getElementById('exportSupplierFilter') as HTMLSelectElement;
-                    const formatSelect = document.getElementById('exportFormat') as HTMLSelectElement;
-                    
+                    const categorySelect = document.getElementById(
+                      "exportCategoryFilter"
+                    ) as HTMLSelectElement;
+                    const supplierSelect = document.getElementById(
+                      "exportSupplierFilter"
+                    ) as HTMLSelectElement;
+                    const formatSelect = document.getElementById(
+                      "exportFormat"
+                    ) as HTMLSelectElement;
+
                     handleExport(
                       categorySelect.value,
                       supplierSelect.value,
-                      formatSelect.value as 'excel' | 'csv'
+                      formatSelect.value as "excel" | "csv"
                     );
                   }}
                   disabled={exportLoading}
