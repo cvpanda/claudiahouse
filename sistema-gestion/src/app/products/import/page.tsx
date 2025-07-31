@@ -547,7 +547,8 @@ export default function ImportProductsPage() {
                       Barras
                     </li>
                     <li>
-                      <strong>Código de barras duplicado:</strong> Se ignora automáticamente si ya existe en otro producto
+                      <strong>Código de barras duplicado:</strong> Se ignora
+                      automáticamente si ya existe en otro producto
                     </li>
                     <li>
                       <strong>SKU vacío:</strong> Se auto-genera un nuevo

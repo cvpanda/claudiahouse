@@ -279,8 +279,12 @@ export async function POST(request: NextRequest) {
         }
 
         // Validar que categoría y proveedor existan
-        const categoryId = categoryMap.get(safeTrim(row.Categoria)?.toLowerCase() || "");
-        const supplierId = supplierMap.get(safeTrim(row.Proveedor)?.toLowerCase() || "");
+        const categoryId = categoryMap.get(
+          safeTrim(row.Categoria)?.toLowerCase() || ""
+        );
+        const supplierId = supplierMap.get(
+          safeTrim(row.Proveedor)?.toLowerCase() || ""
+        );
 
         if (row.Categoria && !categoryId) {
           errors.push(`Categoría "${row.Categoria}" no existe en el sistema`);
@@ -331,7 +335,7 @@ export async function POST(request: NextRequest) {
 
         // Preparar datos del producto
         const productData: ProcessedProduct = {
-          name: safeTrim(row.Nombre)!,  // Ya validamos que existe
+          name: safeTrim(row.Nombre)!, // Ya validamos que existe
           description: safeTrim(row.Descripcion) || undefined,
           categoryId: categoryId!,
           supplierId: supplierId!,
@@ -367,11 +371,16 @@ export async function POST(request: NextRequest) {
           // Si existe un producto con el mismo código de barras
           if (existingBarcodeProduct) {
             // Si estamos actualizando y el código de barras pertenece al mismo producto, está bien
-            if (existingProduct && existingBarcodeProduct.id === existingProduct.id) {
+            if (
+              existingProduct &&
+              existingBarcodeProduct.id === existingProduct.id
+            ) {
               // El código de barras ya pertenece a este producto, no hay problema
             } else {
               // El código de barras pertenece a otro producto, ignorar este campo
-              console.log(`Fila ${rowNumber}: Código de barras '${productData.barcode}' ya existe, se ignora este campo`);
+              console.log(
+                `Fila ${rowNumber}: Código de barras '${productData.barcode}' ya existe, se ignora este campo`
+              );
               productData.barcode = undefined; // Ignorar el código de barras duplicado
             }
           }
