@@ -105,17 +105,203 @@ export default function ImportProductsPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.type === "text/csv") {
+    if (selectedFile && (selectedFile.type === "text/csv" || 
+        selectedFile.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+        selectedFile.type === "application/vnd.ms-excel")) {
       setFile(selectedFile);
       setImportResult(null);
     } else {
-      alert("Por favor selecciona un archivo CSV válido");
+      alert("Por favor selecciona un archivo CSV o Excel válido");
       e.target.value = "";
     }
   };
 
   const downloadTemplate = () => {
-    // Crear el contenido del template CSV
+    // Usar xlsx para crear un archivo Excel con múltiples hojas y dropdowns
+    import('xlsx').then((XLSX) => {
+      // Crear un nuevo workbook
+      const workbook = XLSX.utils.book_new();
+
+      // 1. Hoja principal con la plantilla
+      const headers = [
+        "SKU",
+        "Nombre",
+        "Descripcion",
+        "Stock",
+        "Stock Minimo",
+        "Costo",
+        "Precio Mayorista",
+        "Precio Minorista",
+        "Categoria",
+        "Proveedor",
+        "Unidad",
+        "URL Imagen",
+        "Codigo de Barras",
+      ];
+
+      // Crear filas de ejemplo con datos reales
+      const exampleRows = [
+        [
+          "", // SKU vacío para auto-generar
+          "Producto Nuevo Ejemplo",
+          "Descripción del producto nuevo",
+          "50",
+          "5",
+          "25.50",
+          "35.75",
+          "50.00",
+          categories.length > 0 ? categories[0].name : "Categoria1",
+          suppliers.length > 0 ? suppliers[0].name : "Proveedor1",
+          "unidad",
+          "https://ejemplo.com/imagen.jpg",
+          "1234567890123",
+        ],
+        [
+          "PROD-001", // SKU existente para actualizar
+          "Producto Para Actualizar",
+          "", // Descripción vacía - no se actualizará si el producto ya existe
+          "100",
+          "10",
+          "", // Costo vacío - no se actualizará
+          "80.00",
+          "120.00",
+          categories.length > 1
+            ? categories[1].name
+            : categories.length > 0
+            ? categories[0].name
+            : "Categoria2",
+          suppliers.length > 1
+            ? suppliers[1].name
+            : suppliers.length > 0
+            ? suppliers[0].name
+            : "Proveedor2",
+          "kilogramo",
+          "",
+          "",
+        ],
+        [
+          "", // Ejemplo solo con stock
+          "Producto Solo Stock",
+          "Solo actualizar stock",
+          "200",
+          "20",
+          "", // Sin precios - válido porque tiene stock
+          "",
+          "",
+          categories.length > 0 ? categories[0].name : "Categoria1",
+          suppliers.length > 0 ? suppliers[0].name : "Proveedor1",
+          "litro",
+          "",
+          "",
+        ],
+      ];
+
+      // Crear datos para la hoja principal
+      const mainSheetData = [headers, ...exampleRows];
+      const mainSheet = XLSX.utils.aoa_to_sheet(mainSheetData);
+
+      // Agregar la hoja principal
+      XLSX.utils.book_append_sheet(workbook, mainSheet, "Productos");
+
+      // 2. Hoja de referencia con categorías
+      const categoriesData = [
+        ["Categorias"],
+        ...categories.map((cat) => [cat.name]),
+      ];
+      const categoriesSheet = XLSX.utils.aoa_to_sheet(categoriesData);
+      XLSX.utils.book_append_sheet(workbook, categoriesSheet, "Categorias");
+
+      // 3. Hoja de referencia con proveedores
+      const suppliersData = [
+        ["Proveedores"],
+        ...suppliers.map((sup) => [sup.name]),
+      ];
+      const suppliersSheet = XLSX.utils.aoa_to_sheet(suppliersData);
+      XLSX.utils.book_append_sheet(workbook, suppliersSheet, "Proveedores");
+
+      // 4. Hoja de referencia con unidades comunes
+      const unitsData = [
+        ["Unidades"],
+        ["unidad"],
+        ["kilogramo"],
+        ["gramo"],
+        ["litro"],
+        ["mililitro"],
+        ["metro"],
+        ["centimetro"],
+        ["caja"],
+        ["paquete"],
+        ["docena"],
+      ];
+      const unitsSheet = XLSX.utils.aoa_to_sheet(unitsData);
+      XLSX.utils.book_append_sheet(workbook, unitsSheet, "Unidades");
+
+      // 5. Hoja de instrucciones
+      const instructionsData = [
+        ["INSTRUCCIONES PARA IMPORTACION DE PRODUCTOS"],
+        [""],
+        ["CAMPOS OBLIGATORIOS:"],
+        ["- Categoria: Debe existir en el sistema (ver hoja Categorias)"],
+        ["- Proveedor: Debe existir en el sistema (ver hoja Proveedores)"],
+        ["- Unidad: Si esta vacio se usa 'unidad' (ver hoja Unidades)"],
+        [""],
+        ["VALIDACION MINIMA:"],
+        ["Al menos UNO de estos campos debe tener valor:"],
+        ["- Stock (numero entero, 0 o mayor)"],
+        ["- Costo (numero decimal mayor a 0.01)"],
+        ["- Precio Mayorista (numero decimal mayor a 0.01)"],
+        ["- Precio Minorista (numero decimal mayor a 0.01)"],
+        [""],
+        ["LOGICA DE IMPORTACION:"],
+        ["- SKU vacio: Se crea un producto NUEVO con SKU auto-generado"],
+        ["- SKU existente: Se ACTUALIZA el producto (solo campos con valores)"],
+        [""],
+        ["FORMATO DE NUMEROS:"],
+        ["- Usar PUNTO decimal (ejemplo: 123.45)"],
+        ["- Valores 0 o 0.00 se consideran VACIOS (excepto Stock)"],
+        ["- Maximo 2 decimales"],
+        [""],
+        ["CAMPOS OPCIONALES:"],
+        ["- SKU: Dejar vacio para auto-generar"],
+        ["- Descripcion: Texto libre"],
+        ["- URL Imagen: URL completa de la imagen"],
+        ["- Codigo de Barras: Codigo numerico"],
+        [""],
+        ["IMPORTANTE:"],
+        ["- Los campos vacios en actualizacion NO se modifican"],
+        ["- Solo se actualizan campos que tengan un valor"],
+        ["- Guardar como CSV antes de subir al sistema"],
+      ];
+      const instructionsSheet = XLSX.utils.aoa_to_sheet(instructionsData);
+      XLSX.utils.book_append_sheet(workbook, instructionsSheet, "Instrucciones");
+
+      // Generar el archivo Excel
+      const excelBuffer = XLSX.write(workbook, { 
+        bookType: 'xlsx', 
+        type: 'array' 
+      });
+
+      // Descargar el archivo
+      const blob = new Blob([excelBuffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", "plantilla_productos.xlsx");
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }).catch((error) => {
+      console.error("Error creando plantilla Excel:", error);
+      // Fallback a CSV simple
+      downloadSimpleCSV();
+    });
+  };
+
+  // Función fallback para CSV simple
+  const downloadSimpleCSV = () => {
     const headers = [
       "SKU",
       "Nombre",
@@ -128,6 +314,8 @@ export default function ImportProductsPage() {
       "Categoria",
       "Proveedor",
       "Unidad",
+      "URL Imagen",
+      "Codigo de Barras",
     ];
 
     // Comentarios explicativos
@@ -139,6 +327,8 @@ export default function ImportProductsPage() {
       "# - Precios: Usar punto decimal (ej: 123.45). Valores 0 o 0.00 se consideran vacíos",
       "# - Categoria/Proveedor: Deben existir en el sistema",
       "# - Unidad: Si vacío, se usa 'unidad'",
+      "# - URL Imagen: URL completa (opcional)",
+      "# - Codigo de Barras: Código numérico (opcional)",
       "# - Al menos uno debe tener valor: Stock, Costo, Precio Mayorista o Precio Minorista",
       "",
     ];
@@ -157,6 +347,8 @@ export default function ImportProductsPage() {
         categories.length > 0 ? categories[0].name : "Categoria1",
         suppliers.length > 0 ? suppliers[0].name : "Proveedor1",
         "unidad",
+        "https://ejemplo.com/imagen.jpg",
+        "1234567890123",
       ],
       [
         "PROD-001", // SKU existente para actualizar
@@ -167,22 +359,19 @@ export default function ImportProductsPage() {
         "", // Costo vacío - no se actualizará
         "80.00",
         "120.00",
-        categories.length > 1 ? categories[1].name : categories.length > 0 ? categories[0].name : "Categoria2",
-        suppliers.length > 1 ? suppliers[1].name : suppliers.length > 0 ? suppliers[0].name : "Proveedor2",
+        categories.length > 1
+          ? categories[1].name
+          : categories.length > 0
+          ? categories[0].name
+          : "Categoria2",
+        suppliers.length > 1
+          ? suppliers[1].name
+          : suppliers.length > 0
+          ? suppliers[0].name
+          : "Proveedor2",
         "kilogramo",
-      ],
-      [
-        "", // Ejemplo solo con stock
-        "Producto Solo Stock",
-        "Solo actualizar stock",
-        "200",
-        "20",
-        "", // Sin precios - válido porque tiene stock
         "",
         "",
-        categories.length > 0 ? categories[0].name : "Categoria1",
-        suppliers.length > 0 ? suppliers[0].name : "Proveedor1",
-        "litro",
       ],
     ];
 
@@ -333,23 +522,32 @@ export default function ImportProductsPage() {
                 <div className="mt-2 text-sm text-blue-700">
                   <ul className="list-disc list-inside space-y-1">
                     <li>
-                      <strong>Campos obligatorios:</strong> Categoría, Proveedor, Unidad
+                      <strong>Campos obligatorios:</strong> Categoría,
+                      Proveedor, Unidad
                     </li>
                     <li>
-                      <strong>Al menos uno de estos:</strong> Stock (≥0), Costo (≥0.01), 
-                      Precio Mayorista (≥0.01), o Precio Minorista (≥0.01)
+                      <strong>Al menos uno de estos:</strong> Stock (≥0), Costo
+                      (≥0.01), Precio Mayorista (≥0.01), o Precio Minorista
+                      (≥0.01)
                     </li>
                     <li>
-                      <strong>SKU vacío:</strong> Se auto-genera un nuevo producto
+                      <strong>Campos opcionales:</strong> URL Imagen, Código de Barras
                     </li>
                     <li>
-                      <strong>SKU existente:</strong> Se actualiza el producto (solo campos con valores)
+                      <strong>SKU vacío:</strong> Se auto-genera un nuevo
+                      producto
                     </li>
                     <li>
-                      <strong>Formato números:</strong> Usar punto decimal (ej: 123.45)
+                      <strong>SKU existente:</strong> Se actualiza el producto
+                      (solo campos con valores)
                     </li>
                     <li>
-                      <strong>Valores 0 o 0.00:</strong> Se consideran vacíos (excepto Stock)
+                      <strong>Formato números:</strong> Usar punto decimal (ej:
+                      123.45)
+                    </li>
+                    <li>
+                      <strong>Valores 0 o 0.00:</strong> Se consideran vacíos
+                      (excepto Stock)
                     </li>
                   </ul>
                 </div>
@@ -360,17 +558,18 @@ export default function ImportProductsPage() {
           {/* Descarga de plantilla */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Plantilla CSV
+              Plantilla Excel/CSV
             </h2>
             <p className="text-gray-600 mb-4">
-              Descarga la plantilla con la estructura correcta y ejemplos de datos.
+              Descarga la plantilla Excel con múltiples hojas, dropdowns y ejemplos de datos.
+              La plantilla incluye hojas de referencia para categorías, proveedores y unidades.
             </p>
             
             {/* Mostrar valores disponibles */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
               <div>
                 <h4 className="text-sm font-medium text-gray-700 mb-2">
-                  Categorías Disponibles:
+                  📂 Categorías Disponibles ({categories.length}):
                 </h4>
                 <div className="text-xs text-gray-600 max-h-20 overflow-y-auto">
                   {categories.length > 0 ? (
@@ -387,7 +586,7 @@ export default function ImportProductsPage() {
               </div>
               <div>
                 <h4 className="text-sm font-medium text-gray-700 mb-2">
-                  Proveedores Disponibles:
+                  🏢 Proveedores Disponibles ({suppliers.length}):
                 </h4>
                 <div className="text-xs text-gray-600 max-h-20 overflow-y-auto">
                   {suppliers.length > 0 ? (
@@ -402,34 +601,69 @@ export default function ImportProductsPage() {
                   )}
                 </div>
               </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  📏 Unidades Comunes:
+                </h4>
+                <div className="text-xs text-gray-600">
+                  unidad, kilogramo, gramo, litro, mililitro, metro, centímetro, caja, paquete, docena
+                </div>
+              </div>
             </div>
 
-            <button
-              onClick={downloadTemplate}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <Download className="h-4 w-4" />
-              Descargar Plantilla CSV
-            </button>
+            {/* Características de la plantilla */}
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
+              <h4 className="text-sm font-medium text-blue-800 mb-2">
+                ✨ Nueva Plantilla Excel Mejorada:
+              </h4>
+              <ul className="text-sm text-blue-700 list-disc list-inside space-y-1">
+                <li><strong>Hoja "Productos":</strong> Plantilla principal con ejemplos</li>
+                <li><strong>Hoja "Categorias":</strong> Lista completa de categorías del sistema</li>
+                <li><strong>Hoja "Proveedores":</strong> Lista completa de proveedores del sistema</li>
+                <li><strong>Hoja "Unidades":</strong> Unidades de medida más comunes</li>
+                <li><strong>Hoja "Instrucciones":</strong> Guía completa paso a paso</li>
+                <li><strong>Nuevos campos:</strong> URL de imagen y código de barras</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={downloadTemplate}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Descargar Plantilla Excel
+              </button>
+              <button
+                onClick={downloadSimpleCSV}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Descargar CSV Simple
+              </button>
+            </div>
           </div>
 
           {/* Carga de archivo */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Subir Archivo CSV
+              Subir Archivo CSV o Excel
             </h2>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Seleccionar archivo CSV
+                  Seleccionar archivo CSV o Excel
                 </label>
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.xlsx,.xls"
                   onChange={handleFileChange}
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Formatos soportados: CSV, Excel (.xlsx, .xls)
+                </p>
               </div>
 
               {file && (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, hasPermission } from "@/lib/auth";
 import { PrismaClient } from "@prisma/client";
 import { parse } from "csv-parse/sync";
+import * as XLSX from 'xlsx';
 
 const prisma = new PrismaClient();
 
@@ -17,6 +18,8 @@ interface ImportRow {
   Categoria: string;
   Proveedor: string;
   Unidad?: string;
+  "URL Imagen"?: string;
+  "Codigo de Barras"?: string;
 }
 
 interface ProcessedProduct {
@@ -31,6 +34,8 @@ interface ProcessedProduct {
   categoryId: string;
   supplierId: string;
   unit: string;
+  imageUrl?: string;
+  barcode?: string;
 }
 
 interface ImportResult {
@@ -53,10 +58,10 @@ interface ImportResult {
 // Función para normalizar números decimales
 function parseDecimal(value: string | undefined): number | undefined {
   if (!value || value.trim() === "") return undefined;
-  
+
   const parsed = parseFloat(value.replace(",", "."));
   if (isNaN(parsed)) return undefined;
-  
+
   // Redondear a 2 decimales máximo
   return Math.round(parsed * 100) / 100;
 }
@@ -79,8 +84,11 @@ async function generateNextSku(categoryId: string): Promise<string> {
     }
 
     // Crear prefijo basado en el nombre de la categoría (primeras 3 letras en mayúsculas)
-    const prefix = category.name.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, "");
-    
+    const prefix = category.name
+      .substring(0, 3)
+      .toUpperCase()
+      .replace(/[^A-Z]/g, "");
+
     // Buscar el último número de SKU para esta categoría
     const lastProduct = await prisma.product.findFirst({
       where: {
@@ -123,9 +131,12 @@ export async function POST(request: NextRequest) {
     // Verificar permisos
     const canCreate = hasPermission(user, "products", "create");
     const canUpdate = hasPermission(user, "products", "update");
-    
+
     if (!canCreate && !canUpdate) {
-      return NextResponse.json({ error: "Sin permisos suficientes" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Sin permisos suficientes" },
+        { status: 403 }
+      );
     }
 
     // Obtener el archivo del form data
@@ -133,24 +144,65 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File;
 
     if (!file) {
-      return NextResponse.json({ error: "No se encontró archivo" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No se encontró archivo" },
+        { status: 400 }
+      );
     }
 
     // Leer el contenido del archivo
-    const fileContent = await file.text();
+    const fileBuffer = await file.arrayBuffer();
+    const fileName = file.name.toLowerCase();
     
-    // Parsear el CSV
+    // Parsear según el tipo de archivo
     let records: ImportRow[];
     try {
-      records = parse(fileContent, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true,
-        comment: "#", // Ignorar líneas que empiecen con #
-      });
+      if (fileName.endsWith('.csv')) {
+        // Procesar CSV
+        const fileContent = new TextDecoder().decode(fileBuffer);
+        records = parse(fileContent, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+          comment: "#", // Ignorar líneas que empiecen con #
+        });
+      } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        // Procesar Excel
+        const workbook = XLSX.read(fileBuffer, { type: 'array' });
+        
+        // Usar la primera hoja (normalmente "Productos")
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convertir a JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+          header: 1,
+          defval: ""
+        });
+        
+        // Obtener headers (primera fila)
+        const headers = jsonData[0] as string[];
+        
+        // Convertir a formato de objetos
+        records = (jsonData.slice(1) as any[][]).map((row: any[]) => {
+          const record: any = {};
+          headers.forEach((header, index) => {
+            record[header] = row[index] || "";
+          });
+          return record;
+        }).filter((record: any) => {
+          // Filtrar filas vacías
+          return Object.values(record).some(value => value && value.toString().trim() !== "");
+        });
+      } else {
+        return NextResponse.json({ 
+          error: "Formato de archivo no soportado. Use CSV o Excel (.xlsx, .xls)" 
+        }, { status: 400 });
+      }
     } catch (error) {
+      console.error("Error parsing file:", error);
       return NextResponse.json({ 
-        error: "Error al procesar el archivo CSV. Verifica el formato." 
+        error: "Error al procesar el archivo. Verifica el formato." 
       }, { status: 400 });
     }
 
@@ -160,8 +212,12 @@ export async function POST(request: NextRequest) {
       prisma.supplier.findMany(),
     ]);
 
-    const categoryMap = new Map(categories.map(c => [c.name.toLowerCase(), c.id]));
-    const supplierMap = new Map(suppliers.map(s => [s.name.toLowerCase(), s.id]));
+    const categoryMap = new Map(
+      categories.map((c) => [c.name.toLowerCase(), c.id])
+    );
+    const supplierMap = new Map(
+      suppliers.map((s) => [s.name.toLowerCase(), s.id])
+    );
 
     const result: ImportResult = {
       success: true,
@@ -206,7 +262,9 @@ export async function POST(request: NextRequest) {
 
         // Procesar números
         const stock = row.Stock ? parseInt(row.Stock) : undefined;
-        const minStock = row["Stock Minimo"] ? parseInt(row["Stock Minimo"]) : undefined;
+        const minStock = row["Stock Minimo"]
+          ? parseInt(row["Stock Minimo"])
+          : undefined;
         const cost = parseDecimal(row.Costo);
         const wholesalePrice = parseDecimal(row["Precio Mayorista"]);
         const retailPrice = parseDecimal(row["Precio Minorista"]);
@@ -218,7 +276,9 @@ export async function POST(request: NextRequest) {
         const hasRetailPrice = isValidPositiveNumber(retailPrice);
 
         if (!hasStock && !hasCost && !hasWholesalePrice && !hasRetailPrice) {
-          errors.push("Debe completar al menos uno: Stock (≥0), Costo (>0), Precio Mayorista (>0), o Precio Minorista (>0)");
+          errors.push(
+            "Debe completar al menos uno: Stock (≥0), Costo (>0), Precio Mayorista (>0), o Precio Minorista (>0)"
+          );
         }
 
         // Validar números negativos en stock
@@ -248,13 +308,16 @@ export async function POST(request: NextRequest) {
           categoryId: categoryId!,
           supplierId: supplierId!,
           unit: row.Unidad?.trim() || "unidad",
+          imageUrl: row["URL Imagen"]?.trim() || undefined,
+          barcode: row["Codigo de Barras"]?.trim() || undefined,
         };
 
         // Solo agregar campos que tienen valores
         if (stock !== undefined) productData.stock = stock;
         if (minStock !== undefined) productData.minStock = minStock;
         if (cost !== undefined) productData.cost = cost;
-        if (wholesalePrice !== undefined) productData.wholesalePrice = wholesalePrice;
+        if (wholesalePrice !== undefined)
+          productData.wholesalePrice = wholesalePrice;
         if (retailPrice !== undefined) productData.retailPrice = retailPrice;
 
         // Determinar si es creación o actualización
@@ -270,17 +333,29 @@ export async function POST(request: NextRequest) {
         if (existingProduct) {
           // Actualizar producto existente - solo campos con valores
           const updateData: any = {};
-          
+
           if (productData.name) updateData.name = productData.name;
-          if (productData.description !== undefined) updateData.description = productData.description;
-          if (productData.stock !== undefined) updateData.stock = productData.stock;
-          if (productData.minStock !== undefined) updateData.minStock = productData.minStock;
-          if (productData.cost !== undefined) updateData.cost = productData.cost;
-          if (productData.wholesalePrice !== undefined) updateData.wholesalePrice = productData.wholesalePrice;
-          if (productData.retailPrice !== undefined) updateData.retailPrice = productData.retailPrice;
-          if (productData.categoryId) updateData.categoryId = productData.categoryId;
-          if (productData.supplierId) updateData.supplierId = productData.supplierId;
+          if (productData.description !== undefined)
+            updateData.description = productData.description;
+          if (productData.stock !== undefined)
+            updateData.stock = productData.stock;
+          if (productData.minStock !== undefined)
+            updateData.minStock = productData.minStock;
+          if (productData.cost !== undefined)
+            updateData.cost = productData.cost;
+          if (productData.wholesalePrice !== undefined)
+            updateData.wholesalePrice = productData.wholesalePrice;
+          if (productData.retailPrice !== undefined)
+            updateData.retailPrice = productData.retailPrice;
+          if (productData.categoryId)
+            updateData.categoryId = productData.categoryId;
+          if (productData.supplierId)
+            updateData.supplierId = productData.supplierId;
           if (productData.unit) updateData.unit = productData.unit;
+          if (productData.imageUrl !== undefined)
+            updateData.imageUrl = productData.imageUrl;
+          if (productData.barcode !== undefined)
+            updateData.barcode = productData.barcode;
 
           const updatedProduct = await prisma.product.update({
             where: { id: existingProduct.id },
@@ -296,7 +371,6 @@ export async function POST(request: NextRequest) {
             },
           });
           result.successCount++;
-
         } else {
           // Crear nuevo producto
           // Generar SKU si no se proporcionó
@@ -310,8 +384,10 @@ export async function POST(request: NextRequest) {
           if (productData.stock === undefined) productData.stock = 0;
           if (productData.minStock === undefined) productData.minStock = 1;
           if (productData.cost === undefined) productData.cost = 0;
-          if (productData.wholesalePrice === undefined) productData.wholesalePrice = 0;
-          if (productData.retailPrice === undefined) productData.retailPrice = 0;
+          if (productData.wholesalePrice === undefined)
+            productData.wholesalePrice = 0;
+          if (productData.retailPrice === undefined)
+            productData.retailPrice = 0;
 
           const newProduct = await prisma.product.create({
             data: productData as any,
@@ -327,13 +403,16 @@ export async function POST(request: NextRequest) {
           });
           result.successCount++;
         }
-
       } catch (error) {
         console.error(`Error procesando fila ${rowNumber}:`, error);
         result.results.push({
           row: rowNumber,
           action: "error",
-          errors: [`Error interno: ${error instanceof Error ? error.message : "Error desconocido"}`],
+          errors: [
+            `Error interno: ${
+              error instanceof Error ? error.message : "Error desconocido"
+            }`,
+          ],
         });
         result.errorCount++;
       }
@@ -343,7 +422,6 @@ export async function POST(request: NextRequest) {
     result.success = result.errorCount === 0 || result.successCount > 0;
 
     return NextResponse.json(result);
-
   } catch (error) {
     console.error("Error en importación:", error);
     return NextResponse.json(
