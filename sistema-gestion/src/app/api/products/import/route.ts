@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
         columns: true,
         skip_empty_lines: true,
         trim: true,
+        comment: "#", // Ignorar líneas que empiecen con #
       });
     } catch (error) {
       return NextResponse.json({ 

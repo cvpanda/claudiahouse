@@ -130,38 +130,65 @@ export default function ImportProductsPage() {
       "Unidad",
     ];
 
-    // Crear filas de ejemplo
+    // Comentarios explicativos
+    const comments = [
+      "# INSTRUCCIONES:",
+      "# - SKU: Dejar vacío para auto-generar, o completar para actualizar producto existente",
+      "# - Nombre: Obligatorio",
+      "# - Stock: Número entero (0 o mayor)",
+      "# - Precios: Usar punto decimal (ej: 123.45). Valores 0 o 0.00 se consideran vacíos",
+      "# - Categoria/Proveedor: Deben existir en el sistema",
+      "# - Unidad: Si vacío, se usa 'unidad'",
+      "# - Al menos uno debe tener valor: Stock, Costo, Precio Mayorista o Precio Minorista",
+      "",
+    ];
+
+    // Crear filas de ejemplo con datos reales
     const exampleRows = [
       [
         "", // SKU vacío para auto-generar
-        "Producto Ejemplo 1",
-        "Descripción opcional del producto",
-        "100",
-        "10",
+        "Producto Nuevo Ejemplo",
+        "Descripción del producto nuevo",
+        "50",
+        "5",
+        "25.50",
+        "35.75",
         "50.00",
-        "70.00",
-        "100.00",
-        categories[0]?.name || "Ejemplo Categoria",
-        suppliers[0]?.name || "Ejemplo Proveedor",
+        categories.length > 0 ? categories[0].name : "Categoria1",
+        suppliers.length > 0 ? suppliers[0].name : "Proveedor1",
         "unidad",
       ],
       [
         "PROD-001", // SKU existente para actualizar
-        "Producto Existente",
-        "",
-        "50",
-        "5",
-        "",
+        "Producto Para Actualizar",
+        "", // Descripción vacía - no se actualizará si el producto ya existe
+        "100",
+        "10",
+        "", // Costo vacío - no se actualizará
         "80.00",
-        "",
-        categories[1]?.name || "Otra Categoria",
-        suppliers[1]?.name || "Otro Proveedor",
+        "120.00",
+        categories.length > 1 ? categories[1].name : categories.length > 0 ? categories[0].name : "Categoria2",
+        suppliers.length > 1 ? suppliers[1].name : suppliers.length > 0 ? suppliers[0].name : "Proveedor2",
         "kilogramo",
+      ],
+      [
+        "", // Ejemplo solo con stock
+        "Producto Solo Stock",
+        "Solo actualizar stock",
+        "200",
+        "20",
+        "", // Sin precios - válido porque tiene stock
+        "",
+        "",
+        categories.length > 0 ? categories[0].name : "Categoria1",
+        suppliers.length > 0 ? suppliers[0].name : "Proveedor1",
+        "litro",
       ],
     ];
 
     // Crear contenido CSV
     const csvContent = [
+      ...comments,
       headers.join(","),
       ...exampleRows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
     ].join("\n");
@@ -338,6 +365,45 @@ export default function ImportProductsPage() {
             <p className="text-gray-600 mb-4">
               Descarga la plantilla con la estructura correcta y ejemplos de datos.
             </p>
+            
+            {/* Mostrar valores disponibles */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  Categorías Disponibles:
+                </h4>
+                <div className="text-xs text-gray-600 max-h-20 overflow-y-auto">
+                  {categories.length > 0 ? (
+                    categories.map((cat, index) => (
+                      <span key={cat.id} className="inline-block mr-2 mb-1">
+                        {cat.name}
+                        {index < categories.length - 1 && ","}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400">Cargando...</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  Proveedores Disponibles:
+                </h4>
+                <div className="text-xs text-gray-600 max-h-20 overflow-y-auto">
+                  {suppliers.length > 0 ? (
+                    suppliers.map((sup, index) => (
+                      <span key={sup.id} className="inline-block mr-2 mb-1">
+                        {sup.name}
+                        {index < suppliers.length - 1 && ","}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400">Cargando...</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={downloadTemplate}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
