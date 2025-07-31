@@ -358,78 +358,139 @@ export async function POST(request: NextRequest) {
           });
         }
 
+        // Validar código de barras duplicado si se proporciona
+        if (productData.barcode) {
+          const existingBarcodeProduct = await prisma.product.findUnique({
+            where: { barcode: productData.barcode },
+          });
+
+          // Si existe un producto con el mismo código de barras
+          if (existingBarcodeProduct) {
+            // Si estamos actualizando y el código de barras pertenece al mismo producto, está bien
+            if (existingProduct && existingBarcodeProduct.id === existingProduct.id) {
+              // El código de barras ya pertenece a este producto, no hay problema
+            } else {
+              // El código de barras pertenece a otro producto, ignorar este campo
+              console.log(`Fila ${rowNumber}: Código de barras '${productData.barcode}' ya existe, se ignora este campo`);
+              productData.barcode = undefined; // Ignorar el código de barras duplicado
+            }
+          }
+        }
+
         if (existingProduct) {
           // Actualizar producto existente - solo campos con valores
-          const updateData: any = {};
+          try {
+            const updateData: any = {};
 
-          if (productData.name) updateData.name = productData.name;
-          if (productData.description !== undefined)
-            updateData.description = productData.description;
-          if (productData.stock !== undefined)
-            updateData.stock = productData.stock;
-          if (productData.minStock !== undefined)
-            updateData.minStock = productData.minStock;
-          if (productData.cost !== undefined)
-            updateData.cost = productData.cost;
-          if (productData.wholesalePrice !== undefined)
-            updateData.wholesalePrice = productData.wholesalePrice;
-          if (productData.retailPrice !== undefined)
-            updateData.retailPrice = productData.retailPrice;
-          if (productData.categoryId)
-            updateData.categoryId = productData.categoryId;
-          if (productData.supplierId)
-            updateData.supplierId = productData.supplierId;
-          if (productData.unit) updateData.unit = productData.unit;
-          if (productData.imageUrl !== undefined)
-            updateData.imageUrl = productData.imageUrl;
-          if (productData.barcode !== undefined)
-            updateData.barcode = productData.barcode;
+            if (productData.name) updateData.name = productData.name;
+            if (productData.description !== undefined)
+              updateData.description = productData.description;
+            if (productData.stock !== undefined)
+              updateData.stock = productData.stock;
+            if (productData.minStock !== undefined)
+              updateData.minStock = productData.minStock;
+            if (productData.cost !== undefined)
+              updateData.cost = productData.cost;
+            if (productData.wholesalePrice !== undefined)
+              updateData.wholesalePrice = productData.wholesalePrice;
+            if (productData.retailPrice !== undefined)
+              updateData.retailPrice = productData.retailPrice;
+            if (productData.categoryId)
+              updateData.categoryId = productData.categoryId;
+            if (productData.supplierId)
+              updateData.supplierId = productData.supplierId;
+            if (productData.unit) updateData.unit = productData.unit;
+            if (productData.imageUrl !== undefined)
+              updateData.imageUrl = productData.imageUrl;
+            if (productData.barcode !== undefined)
+              updateData.barcode = productData.barcode;
 
-          const updatedProduct = await prisma.product.update({
-            where: { id: existingProduct.id },
-            data: updateData,
-          });
+            const updatedProduct = await prisma.product.update({
+              where: { id: existingProduct.id },
+              data: updateData,
+            });
 
-          result.results.push({
-            row: rowNumber,
-            action: "updated",
-            product: {
-              sku: updatedProduct.sku || "",
-              name: updatedProduct.name,
-            },
-          });
-          result.successCount++;
+            result.results.push({
+              row: rowNumber,
+              action: "updated",
+              product: {
+                sku: updatedProduct.sku || "",
+                name: updatedProduct.name,
+              },
+            });
+            result.successCount++;
+          } catch (updateError: any) {
+            let errorMessage = "Error al actualizar producto";
+            if (updateError.code === "P2002") {
+              const target = updateError.meta?.target?.[0];
+              if (target === "sku") {
+                errorMessage = `El SKU '${productData.sku}' ya está en uso`;
+              } else {
+                errorMessage = `Violación de restricción única: ${target}`;
+              }
+            } else {
+              errorMessage += `: ${updateError.message}`;
+            }
+
+            result.results.push({
+              row: rowNumber,
+              action: "error",
+              errors: [errorMessage],
+            });
+            result.errorCount++;
+          }
         } else {
           // Crear nuevo producto
-          // Generar SKU si no se proporcionó
-          if (!existingSku) {
-            productData.sku = await generateNextSku(productData.categoryId);
-          } else {
-            productData.sku = existingSku;
+          try {
+            // Generar SKU si no se proporcionó
+            if (!existingSku) {
+              productData.sku = await generateNextSku(productData.categoryId);
+            } else {
+              productData.sku = existingSku;
+            }
+
+            // Valores por defecto para campos obligatorios
+            if (productData.stock === undefined) productData.stock = 0;
+            if (productData.minStock === undefined) productData.minStock = 1;
+            if (productData.cost === undefined) productData.cost = 0;
+            if (productData.wholesalePrice === undefined)
+              productData.wholesalePrice = 0;
+            if (productData.retailPrice === undefined)
+              productData.retailPrice = 0;
+
+            const newProduct = await prisma.product.create({
+              data: productData as any,
+            });
+
+            result.results.push({
+              row: rowNumber,
+              action: "created",
+              product: {
+                sku: newProduct.sku || "",
+                name: newProduct.name,
+              },
+            });
+            result.successCount++;
+          } catch (createError: any) {
+            let errorMessage = "Error al crear producto";
+            if (createError.code === "P2002") {
+              const target = createError.meta?.target?.[0];
+              if (target === "sku") {
+                errorMessage = `El SKU '${productData.sku}' ya está en uso`;
+              } else {
+                errorMessage = `Violación de restricción única: ${target}`;
+              }
+            } else {
+              errorMessage += `: ${createError.message}`;
+            }
+
+            result.results.push({
+              row: rowNumber,
+              action: "error",
+              errors: [errorMessage],
+            });
+            result.errorCount++;
           }
-
-          // Valores por defecto para campos obligatorios
-          if (productData.stock === undefined) productData.stock = 0;
-          if (productData.minStock === undefined) productData.minStock = 1;
-          if (productData.cost === undefined) productData.cost = 0;
-          if (productData.wholesalePrice === undefined)
-            productData.wholesalePrice = 0;
-          if (productData.retailPrice === undefined)
-            productData.retailPrice = 0;
-
-          const newProduct = await prisma.product.create({
-            data: productData as any,
-          });
-
-          result.results.push({
-            row: rowNumber,
-            action: "created",
-            product: {
-              sku: newProduct.sku || "",
-              name: newProduct.name,
-            },
-          });
-          result.successCount++;
         }
       } catch (error) {
         console.error(`Error procesando fila ${rowNumber}:`, error);

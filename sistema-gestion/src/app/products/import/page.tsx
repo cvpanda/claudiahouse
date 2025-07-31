@@ -272,7 +272,7 @@ export default function ImportProductsPage() {
           ["- SKU: Dejar vacio para auto-generar"],
           ["- Descripcion: Texto libre"],
           ["- URL Imagen: URL completa de la imagen"],
-          ["- Codigo de Barras: Codigo numerico"],
+          ["- Codigo de Barras: Codigo numerico (se ignora si ya existe)"],
           [""],
           ["IMPORTANTE:"],
           ["- Los campos vacios en actualizacion NO se modifican"],
@@ -340,7 +340,7 @@ export default function ImportProductsPage() {
       "# - Categoria/Proveedor: Deben existir en el sistema",
       "# - Unidad: Si vacío, se usa 'unidad'",
       "# - URL Imagen: URL completa (opcional)",
-      "# - Codigo de Barras: Código numérico (opcional)",
+      "# - Codigo de Barras: Código numérico (se ignora si ya existe en otro producto)",
       "# - Al menos uno debe tener valor: Stock, Costo, Precio Mayorista o Precio Minorista",
       "",
     ];
@@ -545,6 +545,9 @@ export default function ImportProductsPage() {
                     <li>
                       <strong>Campos opcionales:</strong> URL Imagen, Código de
                       Barras
+                    </li>
+                    <li>
+                      <strong>Código de barras duplicado:</strong> Se ignora automáticamente si ya existe en otro producto
                     </li>
                     <li>
                       <strong>SKU vacío:</strong> Se auto-genera un nuevo
