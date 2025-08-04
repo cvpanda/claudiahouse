@@ -341,7 +341,7 @@ export default function SaleDetailPage() {
       };
 
       // Debug: Log the data being sent
-      console.log("Sending update data:", updateData);
+      // console.log("Sending update data:", updateData);
 
       const response = await fetch(`/api/sales/${params.id}`, {
         method: "PUT",
@@ -650,6 +650,11 @@ export default function SaleDetailPage() {
                </div>`
             : "";
 
+        // Calcular precio unitario por unidad individual para agrupaciones
+        const unitPriceToShow = itemData.itemType === "grouped" && itemData.components
+          ? item.unitPrice / itemData.components.reduce((total: number, comp: any) => total + comp.quantity, 0)
+          : item.unitPrice;
+
         return `
       <tr>
         <td style="padding: 8px; border-bottom: 1px solid #ddd;">
@@ -671,7 +676,7 @@ export default function SaleDetailPage() {
             : unit // Para agrupaciones, solo mostrar las unidades totales
         }</td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">${formatPrice(
-          item.unitPrice
+          unitPriceToShow
         )}</td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 500;">${formatPrice(
           item.totalPrice
@@ -1742,7 +1747,14 @@ export default function SaleDetailPage() {
                         />
                       ) : (
                         <span className="text-sm text-gray-900">
-                          {formatPrice(item.unitPrice)}
+                          {formatPrice(
+                            (item as any).itemType === "grouped" && (item as any).components
+                              ? item.unitPrice / (item as any).components.reduce(
+                                  (total: number, comp: any) => total + comp.quantity,
+                                  0
+                                )
+                              : item.unitPrice
+                          )}
                         </span>
                       )}
                     </td>
