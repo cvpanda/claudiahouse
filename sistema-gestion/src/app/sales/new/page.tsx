@@ -355,6 +355,46 @@ export default function NewSalePage() {
     setSaleItems(updatedItems);
   };
 
+  // Función helper para calcular el total de unidades en una agrupación
+  const getTotalUnitsInGroup = (item: SaleItem): number => {
+    if (item.itemType === "grouped" && item.components) {
+      return item.components.reduce((sum, comp) => sum + comp.quantity, 0);
+    }
+    return item.quantity || 1;
+  };
+
+  // Función helper para obtener el precio unitario por unidad individual en agrupaciones
+  const getUnitPricePerIndividualUnit = (item: SaleItem): number => {
+    if (item.itemType === "grouped" && item.components) {
+      const totalUnits = getTotalUnitsInGroup(item);
+      return totalUnits > 0 ? item.unitPrice / totalUnits : 0;
+    }
+    return item.unitPrice;
+  };
+
+  // Función para actualizar el precio unitario por unidad individual en agrupaciones
+  const updateGroupedItemUnitPrice = (index: number, pricePerUnit: number) => {
+    const updatedItems = [...saleItems];
+    const item = updatedItems[index];
+    
+    if (item.itemType === "grouped" && item.components) {
+      const totalUnits = getTotalUnitsInGroup(item);
+      const newTotalPrice = pricePerUnit * totalUnits;
+      
+      // Actualizar precio de agrupación
+      item.unitPrice = newTotalPrice;
+      item.totalPrice = item.quantity * item.unitPrice;
+      
+      // Actualizar precio de cada componente proporcionalmente
+      item.components = item.components.map(comp => ({
+        ...comp,
+        unitPrice: pricePerUnit
+      }));
+      
+      setSaleItems(updatedItems);
+    }
+  };
+
   // Funciones para manejar combos y agrupaciones
   const addProductToCombo = (product: Product) => {
     const existingIndex = comboComponents.findIndex(
@@ -842,78 +882,143 @@ export default function NewSalePage() {
 
                                 {/* Renderizado para agrupaciones */}
                                 {item.itemType === "grouped" && (
-                                  <>
-                                    <p className="font-medium flex items-center">
-                                      <Package className="h-4 w-4 mr-1 text-purple-600" />
-                                      {item.displayName}
-                                    </p>
-                                    <p className="text-sm text-gray-500">
-                                      Pack con {item.components?.length || 0}{" "}
-                                      productos
-                                    </p>
-                                  </>
+                                  <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center">
+                                      <Package className="h-4 w-4 mr-2 text-purple-600" />
+                                      <span className="font-medium">
+                                        {item.displayName}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center space-x-2 text-sm">
+                                      <span className="font-medium text-purple-600">
+                                        {getTotalUnitsInGroup(item)} unidades
+                                      </span>
+                                      <span className="text-gray-500">×</span>
+                                      <div className="flex items-center">
+                                        <span className="text-gray-500">$</span>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          value={getUnitPricePerIndividualUnit(item)}
+                                          onChange={(e) =>
+                                            updateGroupedItemUnitPrice(
+                                              index,
+                                              parseFloat(e.target.value) || 0
+                                            )
+                                          }
+                                          className="w-20 px-1 py-0.5 text-center border border-gray-300 rounded text-sm ml-1"
+                                        />
+                                        <span className="text-gray-500 ml-1">c/u</span>
+                                      </div>
+                                      <span className="text-gray-500">=</span>
+                                      <span className="font-medium text-gray-900">
+                                        ${(getTotalUnitsInGroup(item) * getUnitPricePerIndividualUnit(item)).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </div>
                                 )}
                               </div>
                             </div>
 
                             <div className="flex items-center space-x-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  updateItemQuantity(index, item.quantity - 1)
-                                }
-                                className="p-1 text-gray-500 hover:text-red-600"
-                              >
-                                <Minus className="h-4 w-4" />
-                              </button>
+                              {/* Para productos simples y combos: controles completos */}
+                              {item.itemType !== "grouped" && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      updateItemQuantity(index, item.quantity - 1)
+                                    }
+                                    className="p-1 text-gray-500 hover:text-red-600"
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </button>
 
-                              <input
-                                type="number"
-                                min="1"
-                                max={
-                                  item.itemType === "simple" && item.product
-                                    ? item.product.stock
-                                    : undefined
-                                }
-                                value={item.quantity}
-                                onChange={(e) =>
-                                  updateItemQuantity(
-                                    index,
-                                    parseInt(e.target.value) || 1
-                                  )
-                                }
-                                className="w-16 px-2 py-1 text-center border border-gray-300 rounded"
-                              />
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max={
+                                      item.itemType === "simple" && item.product
+                                        ? item.product.stock
+                                        : undefined
+                                    }
+                                    value={item.quantity}
+                                    onChange={(e) =>
+                                      updateItemQuantity(
+                                        index,
+                                        parseInt(e.target.value) || 1
+                                      )
+                                    }
+                                    className="w-16 px-2 py-1 text-center border border-gray-300 rounded"
+                                  />
 
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  updateItemQuantity(index, item.quantity + 1)
-                                }
-                                className="p-1 text-gray-500 hover:text-green-600"
-                              >
-                                <Plus className="h-4 w-4" />
-                              </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      updateItemQuantity(index, item.quantity + 1)
+                                    }
+                                    className="p-1 text-gray-500 hover:text-green-600"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </button>
 
-                              <span className="text-sm text-gray-500">x</span>
+                                  <span className="text-sm text-gray-500">x</span>
 
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={item.unitPrice}
-                                onChange={(e) =>
-                                  updateItemPrice(
-                                    index,
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                                className="w-20 px-2 py-1 text-center border border-gray-300 rounded"
-                              />
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={item.unitPrice}
+                                    onChange={(e) =>
+                                      updateItemPrice(
+                                        index,
+                                        parseFloat(e.target.value) || 0
+                                      )
+                                    }
+                                    className="w-20 px-2 py-1 text-center border border-gray-300 rounded"
+                                  />
 
-                              <span className="w-20 text-right font-medium">
-                                ${item.totalPrice.toFixed(2)}
-                              </span>
+                                  <span className="w-20 text-right font-medium">
+                                    ${item.totalPrice.toFixed(2)}
+                                  </span>
+                                </>
+                              )}
+
+                              {/* Para agrupaciones: solo controles de cantidad de packs */}
+                              {item.itemType === "grouped" && (
+                                <>
+                                  <div className="flex items-center space-x-2 bg-purple-50 px-3 py-1 rounded">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        updateItemQuantity(index, item.quantity - 1)
+                                      }
+                                      className="p-1 text-purple-600 hover:text-purple-800"
+                                    >
+                                      <Minus className="h-3 w-3" />
+                                    </button>
+
+                                    <span className="text-sm font-medium text-purple-700">
+                                      {item.quantity} pack{item.quantity !== 1 ? 's' : ''}
+                                    </span>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        updateItemQuantity(index, item.quantity + 1)
+                                      }
+                                      className="p-1 text-purple-600 hover:text-purple-800"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </button>
+                                  </div>
+
+                                  <span className="w-24 text-right font-medium text-lg">
+                                    ${item.totalPrice.toLocaleString()}
+                                  </span>
+                                </>
+                              )}
 
                               <button
                                 type="button"
