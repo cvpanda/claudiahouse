@@ -44,11 +44,19 @@ interface Product {
 
 interface SaleItem {
   id: string;
-  productId: string;
+  productId: string | null;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  product: Product;
+  product?: Product;
+  itemType?: string;
+  displayName?: string;
+  components?: Array<{
+    id: string;
+    productId: string;
+    quantity: number;
+    product?: Product;
+  }>;
 }
 
 interface Sale {
@@ -280,7 +288,8 @@ export default function SaleDetailPage() {
 
     // Check if product already exists in the sale
     const existingItem = editedItems.find(
-      (item) => item.productId === newProduct.productId
+      (item) =>
+        item.productId === newProduct.productId && item.itemType === "simple"
     );
     if (existingItem) {
       setError(
@@ -307,6 +316,7 @@ export default function SaleDetailPage() {
       totalPrice:
         newProduct.quantity * (newProduct.unitPrice || product.retailPrice),
       product: product,
+      itemType: "simple",
     };
 
     setEditedItems((prev) => [...prev, newItem]);
@@ -337,6 +347,9 @@ export default function SaleDetailPage() {
           productId: item.productId,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
+          itemType: item.itemType,
+          displayName: item.displayName,
+          components: item.components,
         })),
       };
 

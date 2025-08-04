@@ -22,9 +22,20 @@ const updateSaleSchema = z.object({
     .array(
       z.object({
         id: z.string().optional(),
-        productId: z.string(),
+        productId: z.string().nullable(),
         quantity: z.number().int().min(1),
         unitPrice: z.number().min(0),
+        itemType: z.string().optional(),
+        displayName: z.string().nullable().optional(),
+        components: z
+          .array(
+            z.object({
+              id: z.string().optional(),
+              productId: z.string(),
+              quantity: z.number().int().min(1),
+            })
+          )
+          .optional(),
       })
     )
     .optional(),
@@ -139,29 +150,60 @@ export async function PUT(
     const result = await prisma.$transaction(async (tx) => {
       // Si se están actualizando los items
       if (validatedData.items) {
-        // Eliminar items existentes
+        // Eliminar items existentes y sus componentes
         await tx.saleItem.deleteMany({
           where: { saleId: saleId },
         });
 
         // Calcular nuevos totales
         let subtotal = 0;
-        const newItems = validatedData.items.map((item) => {
-          const totalPrice = item.quantity * item.unitPrice;
-          subtotal += totalPrice;
-          return {
-            saleId: saleId,
-            productId: item.productId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: totalPrice,
-          };
-        });
 
-        // Crear nuevos items
-        await tx.saleItem.createMany({
-          data: newItems,
-        });
+        // Crear nuevos items (similar a la lógica de creación)
+        const newItems = await Promise.all(
+          validatedData.items.map(async (item) => {
+            const totalPrice = item.quantity * item.unitPrice;
+            subtotal += totalPrice;
+
+            const saleItemData: any = {
+              saleId: saleId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalPrice: totalPrice,
+              itemType: item.itemType || "simple",
+              displayName: item.displayName,
+            };
+
+            // Para productos simples
+            if (!item.itemType || item.itemType === "simple") {
+              saleItemData.productId = item.productId;
+            }
+
+            return saleItemData;
+          })
+        );
+
+        // Crear los items de venta
+        const createdItems = await Promise.all(
+          newItems.map(async (itemData, index) => {
+            const createdItem = await tx.saleItem.create({
+              data: itemData,
+            });
+
+            // Si el item tiene componentes, crearlos
+            const originalItem = validatedData.items![index];
+            if (originalItem.components && originalItem.components.length > 0) {
+              await tx.saleItemComponent.createMany({
+                data: originalItem.components.map((comp) => ({
+                  saleItemId: createdItem.id,
+                  productId: comp.productId,
+                  quantity: comp.quantity,
+                })),
+              });
+            }
+
+            return createdItem;
+          })
+        );
 
         // Actualizar totales
         const tax = validatedData.tax ?? existingSale.tax;
@@ -213,6 +255,21 @@ export async function PUT(
                     wholesalePrice: true,
                   },
                 },
+                components: {
+                  include: {
+                    product: {
+                      select: {
+                        id: true,
+                        name: true,
+                        sku: true,
+                        unit: true,
+                        stock: true,
+                        retailPrice: true,
+                        wholesalePrice: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -258,6 +315,21 @@ export async function PUT(
                     stock: true,
                     retailPrice: true,
                     wholesalePrice: true,
+                  },
+                },
+                components: {
+                  include: {
+                    product: {
+                      select: {
+                        id: true,
+                        name: true,
+                        sku: true,
+                        unit: true,
+                        stock: true,
+                        retailPrice: true,
+                        wholesalePrice: true,
+                      },
+                    },
                   },
                 },
               },
