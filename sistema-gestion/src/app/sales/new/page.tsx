@@ -47,6 +47,7 @@ interface ComboComponent {
   productId: string;
   product: Product;
   quantity: number;
+  unitPrice?: number; // Precio unitario específico para este componente en el combo/agrupación
 }
 
 interface SaleItem {
@@ -311,9 +312,42 @@ export default function NewSalePage() {
   const updateItemPrice = (index: number, newPrice: number) => {
     const updatedItems = [...saleItems];
     const item = updatedItems[index];
+    
+    if (item.itemType === "grouped" && item.components) {
+      // Para agrupaciones: el precio total se distribuye proporcionalmente entre componentes
+      const totalUnits = item.components.reduce((sum, comp) => sum + comp.quantity, 0);
+      const pricePerUnit = newPrice / totalUnits;
+      
+      // Actualizar precio unitario de cada componente
+      item.components = item.components.map(comp => ({
+        ...comp,
+        unitPrice: pricePerUnit
+      }));
+    }
+    
     item.unitPrice = newPrice;
     item.totalPrice = item.quantity * item.unitPrice;
     setSaleItems(updatedItems);
+  };
+
+  // Nueva función para actualizar precio de componentes individuales en agrupaciones
+  const updateComponentPrice = (itemIndex: number, componentIndex: number, newPrice: number) => {
+    const updatedItems = [...saleItems];
+    const item = updatedItems[itemIndex];
+    
+    if (item.itemType === "grouped" && item.components) {
+      // Actualizar precio del componente específico
+      item.components[componentIndex].unitPrice = newPrice;
+      
+      // Recalcular precio total de la agrupación basado en los nuevos precios de componentes
+      const newTotalPrice = item.components.reduce((sum, comp) => 
+        sum + (comp.quantity * (comp.unitPrice || 0)), 0
+      );
+      
+      item.unitPrice = newTotalPrice;
+      item.totalPrice = item.quantity * item.unitPrice;
+      setSaleItems(updatedItems);
+    }
   };
 
   const removeItem = (index: number) => {
@@ -398,8 +432,9 @@ export default function NewSalePage() {
         return;
       }
 
-      // Para agrupaciones: la cantidad es la suma de todas las cantidades
-      const totalQuantity = comboComponents.reduce(
+      // Para agrupaciones: la cantidad inicial es 1 agrupación
+      // El precio es el precio base de los productos individuales
+      const totalUnitsInGroup = comboComponents.reduce(
         (sum, comp) => sum + comp.quantity,
         0
       );
@@ -407,10 +442,13 @@ export default function NewSalePage() {
       const newGroupedItem: SaleItem = {
         itemType: "grouped",
         displayName: comboName,
-        quantity: totalQuantity,
-        unitPrice: basePrice,
-        totalPrice: totalQuantity * basePrice,
-        components: comboComponents,
+        quantity: 1, // Empezamos vendiendo 1 agrupación
+        unitPrice: basePrice * totalUnitsInGroup, // Precio por agrupación completa
+        totalPrice: basePrice * totalUnitsInGroup, // Total para 1 agrupación
+        components: comboComponents.map(comp => ({
+          ...comp,
+          unitPrice: basePrice // Asignar precio unitario a cada componente
+        })),
       };
 
       setSaleItems([...saleItems, newGroupedItem]);
@@ -893,23 +931,38 @@ export default function NewSalePage() {
                               <p className="text-sm font-medium text-gray-700 mb-2">
                                 Contiene:
                               </p>
-                              <div className="space-y-1">
+                              <p className="text-xs text-gray-500 mb-3">
+                                💡 Puedes ajustar el precio individual de cada componente. El precio total se recalculará automáticamente.
+                              </p>
+                              <div className="space-y-2">
                                 {item.components.map((comp, compIndex) => (
                                   <div
                                     key={compIndex}
-                                    className="flex justify-between text-sm"
+                                    className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded"
                                   >
                                     <span className="text-gray-600">
                                       {comp.product.name} x {comp.quantity}
                                     </span>
-                                    <span className="text-gray-500">
-                                      $
-                                      {selectedCustomer?.customerType ===
-                                      "wholesale"
-                                        ? comp.product.wholesalePrice
-                                        : comp.product.retailPrice}{" "}
-                                      c/u
-                                    </span>
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-xs text-gray-400">$</span>
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={comp.unitPrice || (selectedCustomer?.customerType === "wholesale"
+                                          ? comp.product.wholesalePrice
+                                          : comp.product.retailPrice)}
+                                        onChange={(e) =>
+                                          updateComponentPrice(
+                                            index,
+                                            compIndex,
+                                            parseFloat(e.target.value) || 0
+                                          )
+                                        }
+                                        className="w-20 px-2 py-1 text-right border border-gray-300 rounded text-sm"
+                                      />
+                                      <span className="text-xs text-gray-500">c/u</span>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
