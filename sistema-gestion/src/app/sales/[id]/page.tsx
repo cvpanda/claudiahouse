@@ -531,11 +531,11 @@ export default function SaleDetailPage() {
   const handlePreviewRemito = () => {
     if (!sale) return;
 
-    // Create a new window for preview
+    // Create a new window for preview with better dimensions
     const previewWindow = window.open(
       "",
       "_blank",
-      "width=800,height=900,scrollbars=yes"
+      "width=900,height=1200,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no"
     );
     if (!previewWindow) {
       alert(
@@ -585,6 +585,15 @@ export default function SaleDetailPage() {
         }
         @media print {
           .preview-controls { display: none !important; }
+        }
+        /* Asegurar que el contenido no se corte en vista previa */
+        body {
+          min-height: 100vh;
+          overflow-y: auto;
+        }
+        .page-container {
+          min-height: auto;
+          padding-bottom: 50px;
         }
       </style>
       </head>`
@@ -651,9 +660,14 @@ export default function SaleDetailPage() {
             : "";
 
         // Calcular precio unitario por unidad individual para agrupaciones
-        const unitPriceToShow = itemData.itemType === "grouped" && itemData.components
-          ? item.unitPrice / itemData.components.reduce((total: number, comp: any) => total + comp.quantity, 0)
-          : item.unitPrice;
+        const unitPriceToShow =
+          itemData.itemType === "grouped" && itemData.components
+            ? item.unitPrice /
+              itemData.components.reduce(
+                (total: number, comp: any) => total + comp.quantity,
+                0
+              )
+            : item.unitPrice;
 
         return `
       <tr>
@@ -876,12 +890,55 @@ export default function SaleDetailPage() {
             color: #6b7280;
         }
         @media print {
-            body { margin: 0; padding: 15px; }
-            .page-container { max-width: none; }
-            .products-table tbody tr:hover { background-color: transparent !important; }
-            .signature-section { page-break-inside: avoid; }
-            .totals-container { page-break-inside: avoid; }
-            .info-section { page-break-inside: avoid; }
+            body { 
+                margin: 0; 
+                padding: 15px; 
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+            }
+            .page-container { 
+                max-width: none; 
+                height: auto;
+                min-height: auto;
+            }
+            .products-table tbody tr:hover { 
+                background-color: transparent !important; 
+            }
+            .signature-section { 
+                page-break-inside: avoid; 
+                margin-top: 30px;
+                margin-bottom: 30px;
+            }
+            .totals-container { 
+                page-break-inside: avoid; 
+                margin-bottom: 30px;
+            }
+            .info-section { 
+                page-break-inside: avoid; 
+            }
+            .total-row.final {
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+            }
+            .footer {
+                page-break-inside: avoid;
+                margin-top: 30px;
+            }
+            .products-table {
+                page-break-inside: auto;
+            }
+            .products-table tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            /* Evitar que el contenido se corte */
+            * {
+                box-sizing: border-box;
+            }
+            html, body {
+                height: auto !important;
+                overflow: visible !important;
+            }
         }
     </style>
 </head>
@@ -1748,11 +1805,14 @@ export default function SaleDetailPage() {
                       ) : (
                         <span className="text-sm text-gray-900">
                           {formatPrice(
-                            (item as any).itemType === "grouped" && (item as any).components
-                              ? item.unitPrice / (item as any).components.reduce(
-                                  (total: number, comp: any) => total + comp.quantity,
-                                  0
-                                )
+                            (item as any).itemType === "grouped" &&
+                              (item as any).components
+                              ? item.unitPrice /
+                                  (item as any).components.reduce(
+                                    (total: number, comp: any) =>
+                                      total + comp.quantity,
+                                    0
+                                  )
                               : item.unitPrice
                           )}
                         </span>

@@ -312,38 +312,46 @@ export default function NewSalePage() {
   const updateItemPrice = (index: number, newPrice: number) => {
     const updatedItems = [...saleItems];
     const item = updatedItems[index];
-    
+
     if (item.itemType === "grouped" && item.components) {
       // Para agrupaciones: el precio total se distribuye proporcionalmente entre componentes
-      const totalUnits = item.components.reduce((sum, comp) => sum + comp.quantity, 0);
+      const totalUnits = item.components.reduce(
+        (sum, comp) => sum + comp.quantity,
+        0
+      );
       const pricePerUnit = newPrice / totalUnits;
-      
+
       // Actualizar precio unitario de cada componente
-      item.components = item.components.map(comp => ({
+      item.components = item.components.map((comp) => ({
         ...comp,
-        unitPrice: pricePerUnit
+        unitPrice: pricePerUnit,
       }));
     }
-    
+
     item.unitPrice = newPrice;
     item.totalPrice = item.quantity * item.unitPrice;
     setSaleItems(updatedItems);
   };
 
   // Nueva función para actualizar precio de componentes individuales en agrupaciones
-  const updateComponentPrice = (itemIndex: number, componentIndex: number, newPrice: number) => {
+  const updateComponentPrice = (
+    itemIndex: number,
+    componentIndex: number,
+    newPrice: number
+  ) => {
     const updatedItems = [...saleItems];
     const item = updatedItems[itemIndex];
-    
+
     if (item.itemType === "grouped" && item.components) {
       // Actualizar precio del componente específico
       item.components[componentIndex].unitPrice = newPrice;
-      
+
       // Recalcular precio total de la agrupación basado en los nuevos precios de componentes
-      const newTotalPrice = item.components.reduce((sum, comp) => 
-        sum + (comp.quantity * (comp.unitPrice || 0)), 0
+      const newTotalPrice = item.components.reduce(
+        (sum, comp) => sum + comp.quantity * (comp.unitPrice || 0),
+        0
       );
-      
+
       item.unitPrice = newTotalPrice;
       item.totalPrice = item.quantity * item.unitPrice;
       setSaleItems(updatedItems);
@@ -376,21 +384,21 @@ export default function NewSalePage() {
   const updateGroupedItemUnitPrice = (index: number, pricePerUnit: number) => {
     const updatedItems = [...saleItems];
     const item = updatedItems[index];
-    
+
     if (item.itemType === "grouped" && item.components) {
       const totalUnits = getTotalUnitsInGroup(item);
       const newTotalPrice = pricePerUnit * totalUnits;
-      
+
       // Actualizar precio de agrupación
       item.unitPrice = newTotalPrice;
       item.totalPrice = item.quantity * item.unitPrice;
-      
+
       // Actualizar precio de cada componente proporcionalmente
-      item.components = item.components.map(comp => ({
+      item.components = item.components.map((comp) => ({
         ...comp,
-        unitPrice: pricePerUnit
+        unitPrice: pricePerUnit,
       }));
-      
+
       setSaleItems(updatedItems);
     }
   };
@@ -485,9 +493,9 @@ export default function NewSalePage() {
         quantity: 1, // Empezamos vendiendo 1 agrupación
         unitPrice: basePrice * totalUnitsInGroup, // Precio por agrupación completa
         totalPrice: basePrice * totalUnitsInGroup, // Total para 1 agrupación
-        components: comboComponents.map(comp => ({
+        components: comboComponents.map((comp) => ({
           ...comp,
-          unitPrice: basePrice // Asignar precio unitario a cada componente
+          unitPrice: basePrice, // Asignar precio unitario a cada componente
         })),
       };
 
@@ -900,7 +908,9 @@ export default function NewSalePage() {
                                           type="number"
                                           step="0.01"
                                           min="0"
-                                          value={getUnitPricePerIndividualUnit(item)}
+                                          value={getUnitPricePerIndividualUnit(
+                                            item
+                                          )}
                                           onChange={(e) =>
                                             updateGroupedItemUnitPrice(
                                               index,
@@ -909,11 +919,17 @@ export default function NewSalePage() {
                                           }
                                           className="w-20 px-1 py-0.5 text-center border border-gray-300 rounded text-sm ml-1"
                                         />
-                                        <span className="text-gray-500 ml-1">c/u</span>
+                                        <span className="text-gray-500 ml-1">
+                                          c/u
+                                        </span>
                                       </div>
                                       <span className="text-gray-500">=</span>
                                       <span className="font-medium text-gray-900">
-                                        ${(getTotalUnitsInGroup(item) * getUnitPricePerIndividualUnit(item)).toLocaleString()}
+                                        $
+                                        {(
+                                          getTotalUnitsInGroup(item) *
+                                          getUnitPricePerIndividualUnit(item)
+                                        ).toLocaleString()}
                                       </span>
                                     </div>
                                   </div>
@@ -928,7 +944,10 @@ export default function NewSalePage() {
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      updateItemQuantity(index, item.quantity - 1)
+                                      updateItemQuantity(
+                                        index,
+                                        item.quantity - 1
+                                      )
                                     }
                                     className="p-1 text-gray-500 hover:text-red-600"
                                   >
@@ -956,14 +975,19 @@ export default function NewSalePage() {
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      updateItemQuantity(index, item.quantity + 1)
+                                      updateItemQuantity(
+                                        index,
+                                        item.quantity + 1
+                                      )
                                     }
                                     className="p-1 text-gray-500 hover:text-green-600"
                                   >
                                     <Plus className="h-4 w-4" />
                                   </button>
 
-                                  <span className="text-sm text-gray-500">x</span>
+                                  <span className="text-sm text-gray-500">
+                                    x
+                                  </span>
 
                                   <input
                                     type="number"
@@ -992,7 +1016,10 @@ export default function NewSalePage() {
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        updateItemQuantity(index, item.quantity - 1)
+                                        updateItemQuantity(
+                                          index,
+                                          item.quantity - 1
+                                        )
                                       }
                                       className="p-1 text-purple-600 hover:text-purple-800"
                                     >
@@ -1000,13 +1027,17 @@ export default function NewSalePage() {
                                     </button>
 
                                     <span className="text-sm font-medium text-purple-700">
-                                      {item.quantity} pack{item.quantity !== 1 ? 's' : ''}
+                                      {item.quantity} pack
+                                      {item.quantity !== 1 ? "s" : ""}
                                     </span>
 
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        updateItemQuantity(index, item.quantity + 1)
+                                        updateItemQuantity(
+                                          index,
+                                          item.quantity + 1
+                                        )
                                       }
                                       className="p-1 text-purple-600 hover:text-purple-800"
                                     >
@@ -1037,7 +1068,9 @@ export default function NewSalePage() {
                                 Contiene:
                               </p>
                               <p className="text-xs text-gray-500 mb-3">
-                                💡 Puedes ajustar el precio individual de cada componente. El precio total se recalculará automáticamente.
+                                💡 Puedes ajustar el precio individual de cada
+                                componente. El precio total se recalculará
+                                automáticamente.
                               </p>
                               <div className="space-y-2">
                                 {item.components.map((comp, compIndex) => (
@@ -1049,14 +1082,20 @@ export default function NewSalePage() {
                                       {comp.product.name} x {comp.quantity}
                                     </span>
                                     <div className="flex items-center space-x-2">
-                                      <span className="text-xs text-gray-400">$</span>
+                                      <span className="text-xs text-gray-400">
+                                        $
+                                      </span>
                                       <input
                                         type="number"
                                         step="0.01"
                                         min="0"
-                                        value={comp.unitPrice || (selectedCustomer?.customerType === "wholesale"
-                                          ? comp.product.wholesalePrice
-                                          : comp.product.retailPrice)}
+                                        value={
+                                          comp.unitPrice ||
+                                          (selectedCustomer?.customerType ===
+                                          "wholesale"
+                                            ? comp.product.wholesalePrice
+                                            : comp.product.retailPrice)
+                                        }
                                         onChange={(e) =>
                                           updateComponentPrice(
                                             index,
@@ -1066,7 +1105,9 @@ export default function NewSalePage() {
                                         }
                                         className="w-20 px-2 py-1 text-right border border-gray-300 rounded text-sm"
                                       />
-                                      <span className="text-xs text-gray-500">c/u</span>
+                                      <span className="text-xs text-gray-500">
+                                        c/u
+                                      </span>
                                     </div>
                                   </div>
                                 ))}
