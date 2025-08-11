@@ -96,9 +96,9 @@ export default function ProductsPage() {
     fetchSuppliers();
   }, []);
 
-  useEffect(() => {
-    console.log("Suppliers state updated:", suppliers);
-  }, [suppliers]);
+  // useEffect(() => {
+  //   console.log("Suppliers state updated:", suppliers);
+  // }, [suppliers]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -158,12 +158,12 @@ export default function ProductsPage() {
 
   const fetchSuppliers = async () => {
     try {
-      console.log("Fetching suppliers...");
+      // console.log("Fetching suppliers...");
       const response = await fetch("/api/suppliers");
       if (response.ok) {
         const data = await response.json();
-        console.log("Suppliers response:", data);
-        console.log("Setting suppliers:", data.data || []);
+        // console.log("Suppliers response:", data);
+        // console.log("Setting suppliers:", data.data || []);
         setSuppliers(data.data || []);
       } else {
         console.error("Failed to fetch suppliers, status:", response.status);

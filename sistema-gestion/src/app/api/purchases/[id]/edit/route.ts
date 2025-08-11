@@ -183,7 +183,7 @@ export async function PUT(
 
     console.log("Update data:", updateData);
 
-    // Usar transacción para garantizar consistencia
+    // Usar transacción para garantizar consistencia con timeout extendido
     const result = await prisma.$transaction(
       async (tx) => {
         console.log("🔄 Starting transaction...");
@@ -202,7 +202,7 @@ export async function PUT(
           data: updateData,
         });
 
-        console.log("� Processing items changes...");
+        console.log("📦 Processing items changes...");
 
         // Obtener items existentes
         const existingItems = await tx.purchaseItem.findMany({
@@ -236,66 +236,76 @@ export async function PUT(
         console.log(`Items to create: ${itemsToCreate.length}`);
         console.log(`Items to delete: ${itemsToDelete.length}`);
 
-        // 1. ACTUALIZAR items existentes
-        for (const item of itemsToUpdate) {
-          console.log(`Updating item ${item.id}`);
-
-          const itemSubtotalPesos = item.quantity * item.unitPricePesos;
-          const distributedCosts =
-            subtotalPesos > 0
-              ? (itemSubtotalPesos / subtotalPesos) * totalCostsInPesos
-              : 0;
-          const finalUnitCost =
-            item.unitPricePesos + distributedCosts / item.quantity;
-          const totalCost = finalUnitCost * item.quantity;
-
-          await tx.purchaseItem.update({
-            where: { id: item.id },
-            data: {
-              quantity: item.quantity,
-              unitPriceForeign: item.unitPriceForeign || null,
-              unitPricePesos: item.unitPricePesos,
-              distributedCosts,
-              finalUnitCost,
-              totalCost,
-            },
-          });
-        }
-
-        // 2. CREAR items nuevos
-        for (const item of itemsToCreate) {
-          console.log(`Creating new item for product ${item.productId}`);
-
-          const itemSubtotalPesos = item.quantity * item.unitPricePesos;
-          const distributedCosts =
-            subtotalPesos > 0
-              ? (itemSubtotalPesos / subtotalPesos) * totalCostsInPesos
-              : 0;
-          const finalUnitCost =
-            item.unitPricePesos + distributedCosts / item.quantity;
-          const totalCost = finalUnitCost * item.quantity;
-
-          await tx.purchaseItem.create({
-            data: {
-              purchaseId: params.id,
-              productId: item.productId,
-              quantity: item.quantity,
-              unitPriceForeign: item.unitPriceForeign || null,
-              unitPricePesos: item.unitPricePesos,
-              distributedCosts,
-              finalUnitCost,
-              totalCost,
-            },
-          });
-        }
-
-        // 3. ELIMINAR items que ya no están
+        // 1. ELIMINAR items que ya no están (hacer primero)
         if (itemsToDelete.length > 0) {
           console.log(`Deleting ${itemsToDelete.length} removed items`);
           const idsToDelete = itemsToDelete.map((item) => item.id);
           await tx.purchaseItem.deleteMany({
             where: { id: { in: idsToDelete } },
           });
+        }
+
+        // 2. ACTUALIZAR items existentes en paralelo
+        if (itemsToUpdate.length > 0) {
+          const updatePromises = itemsToUpdate.map((item) => {
+            console.log(`Updating item ${item.id}`);
+
+            const itemSubtotalPesos = item.quantity * item.unitPricePesos;
+            const distributedCosts =
+              subtotalPesos > 0
+                ? (itemSubtotalPesos / subtotalPesos) * totalCostsInPesos
+                : 0;
+            const finalUnitCost =
+              item.unitPricePesos + distributedCosts / item.quantity;
+            const totalCost = finalUnitCost * item.quantity;
+
+            return tx.purchaseItem.update({
+              where: { id: item.id },
+              data: {
+                quantity: item.quantity,
+                unitPriceForeign: item.unitPriceForeign || null,
+                unitPricePesos: item.unitPricePesos,
+                distributedCosts,
+                finalUnitCost,
+                totalCost,
+              },
+            });
+          });
+
+          await Promise.all(updatePromises);
+          console.log(`✅ Updated ${itemsToUpdate.length} items`);
+        }
+
+        // 3. CREAR items nuevos en paralelo
+        if (itemsToCreate.length > 0) {
+          const createPromises = itemsToCreate.map((item) => {
+            console.log(`Creating new item for product ${item.productId}`);
+
+            const itemSubtotalPesos = item.quantity * item.unitPricePesos;
+            const distributedCosts =
+              subtotalPesos > 0
+                ? (itemSubtotalPesos / subtotalPesos) * totalCostsInPesos
+                : 0;
+            const finalUnitCost =
+              item.unitPricePesos + distributedCosts / item.quantity;
+            const totalCost = finalUnitCost * item.quantity;
+
+            return tx.purchaseItem.create({
+              data: {
+                purchaseId: params.id,
+                productId: item.productId,
+                quantity: item.quantity,
+                unitPriceForeign: item.unitPriceForeign || null,
+                unitPricePesos: item.unitPricePesos,
+                distributedCosts,
+                finalUnitCost,
+                totalCost,
+              },
+            });
+          });
+
+          await Promise.all(createPromises);
+          console.log(`✅ Created ${itemsToCreate.length} items`);
         }
 
         console.log("✅ Items processing completed");
@@ -319,8 +329,8 @@ export async function PUT(
         return updatedPurchaseWithItems;
       },
       {
-        timeout: 30000,
-        maxWait: 5000,
+        maxWait: 10000, // 10 segundos máximo de espera para obtener la transacción
+        timeout: 45000, // 45 segundos máximo para completar la transacción
       }
     );
 

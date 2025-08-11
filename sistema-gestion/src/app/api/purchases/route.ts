@@ -210,93 +210,224 @@ export async function POST(request: NextRequest) {
 
     const total = subtotalPesos + totalCosts;
 
-    // Crear la compra en una transacción
-    const purchase = await prisma.$transaction(async (tx) => {
-      const newPurchase = await tx.purchase.create({
-        data: {
-          purchaseNumber,
-          supplierId: data.supplierId,
-          type: data.type,
-          currency: data.currency,
-          exchangeRate: data.exchangeRate,
-          exchangeType: data.exchangeType,
-          freightCost: data.freightCost || 0,
-          customsCost: data.customsCost || 0,
-          taxCost: data.taxCost || 0,
-          insuranceCost: data.insuranceCost || 0,
-          otherCosts: data.otherCosts || 0,
-          subtotalForeign,
-          subtotalPesos,
-          totalCosts,
-          total,
-          orderDate: new Date(data.orderDate),
-          expectedDate: data.expectedDate ? new Date(data.expectedDate) : null,
-          notes: data.notes,
-          status: "PENDING",
-        },
-      });
+    console.log("🚀 Starting purchase creation...");
 
-      // Crear los items de la compra
-      await tx.purchaseItem.createMany({
-        data: itemsWithDistributedCosts.map((item) => ({
-          purchaseId: newPurchase.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          unitPriceForeign: item.unitPriceForeign || null,
-          unitPricePesos: item.unitPricePesos,
-          distributedCosts: item.distributedCosts || 0,
-          finalUnitCost: item.finalUnitCost || item.unitPricePesos,
-          totalCost: item.totalCost || item.quantity * item.unitPricePesos,
-        })),
-      });
+    let purchaseAttempt = 1;
+    const maxAttempts = 3;
+    let currentPurchaseNumber = purchaseNumber;
 
-      // Actualizar el costo y precios de los productos
-      for (const item of data.items) {
-        const itemWithCosts = itemsWithDistributedCosts.find(
-          (i) => i.productId === item.productId
+    while (purchaseAttempt <= maxAttempts) {
+      try {
+        console.log(
+          `🔄 Purchase creation attempt ${purchaseAttempt}/${maxAttempts}`
         );
-        const finalCost = itemWithCosts?.finalUnitCost || item.unitPricePesos;
+        console.log(`📋 Using purchase number: ${currentPurchaseNumber}`);
 
-        const updateData: any = {
-          // Siempre actualizar el costo del producto con el costo final
-          cost: Math.round(finalCost * 100) / 100,
-        };
+        // Crear la compra en una transacción optimizada
+        const purchase = await prisma.$transaction(
+          async (tx) => {
+            console.log(
+              "📋 Creating purchase with",
+              data.items.length,
+              "items"
+            );
 
-        // Actualizar precios de venta solo si se proporcionaron
-        if (item.wholesalePrice !== undefined && item.wholesalePrice > 0) {
-          updateData.wholesalePrice =
-            Math.round(item.wholesalePrice * 100) / 100;
-        }
+            const newPurchase = await tx.purchase.create({
+              data: {
+                purchaseNumber: currentPurchaseNumber,
+                supplierId: data.supplierId,
+                type: data.type,
+                currency: data.currency,
+                exchangeRate: data.exchangeRate,
+                exchangeType: data.exchangeType,
+                freightCost: data.freightCost || 0,
+                customsCost: data.customsCost || 0,
+                taxCost: data.taxCost || 0,
+                insuranceCost: data.insuranceCost || 0,
+                otherCosts: data.otherCosts || 0,
+                subtotalForeign,
+                subtotalPesos,
+                totalCosts,
+                total,
+                orderDate: new Date(data.orderDate),
+                expectedDate: data.expectedDate
+                  ? new Date(data.expectedDate)
+                  : null,
+                notes: data.notes,
+                status: "PENDING",
+              },
+            });
 
-        if (item.retailPrice !== undefined && item.retailPrice > 0) {
-          updateData.retailPrice = Math.round(item.retailPrice * 100) / 100;
-        }
+            console.log("✅ Purchase created, adding items...");
 
-        await tx.product.update({
-          where: { id: item.productId },
-          data: updateData,
-        });
-      }
+            // Crear los items de la compra en lotes
+            await tx.purchaseItem.createMany({
+              data: itemsWithDistributedCosts.map((item) => ({
+                purchaseId: newPurchase.id,
+                productId: item.productId,
+                quantity: item.quantity,
+                unitPriceForeign: item.unitPriceForeign || null,
+                unitPricePesos: item.unitPricePesos,
+                distributedCosts: item.distributedCosts || 0,
+                finalUnitCost: item.finalUnitCost || item.unitPricePesos,
+                totalCost:
+                  item.totalCost || item.quantity * item.unitPricePesos,
+              })),
+            });
 
-      return newPurchase;
-    });
+            console.log("✅ Items created, updating product costs...");
 
-    // Obtener la compra completa con sus relaciones
-    const completePurchase = await prisma.purchase.findUnique({
-      where: { id: purchase.id },
-      include: {
-        supplier: true,
-        items: {
-          include: {
-            product: true,
+            // Preparar actualizaciones de productos en lotes
+            const productUpdates = data.items.map((item) => {
+              const itemWithCosts = itemsWithDistributedCosts.find(
+                (i) => i.productId === item.productId
+              );
+              const finalCost =
+                itemWithCosts?.finalUnitCost || item.unitPricePesos;
+
+              const updateData: any = {
+                // Siempre actualizar el costo del producto con el costo final
+                cost: Math.round(finalCost * 100) / 100,
+              };
+
+              // Actualizar precios de venta solo si se proporcionaron
+              if (
+                item.wholesalePrice !== undefined &&
+                item.wholesalePrice > 0
+              ) {
+                updateData.wholesalePrice =
+                  Math.round(item.wholesalePrice * 100) / 100;
+              }
+
+              if (item.retailPrice !== undefined && item.retailPrice > 0) {
+                updateData.retailPrice =
+                  Math.round(item.retailPrice * 100) / 100;
+              }
+
+              return {
+                productId: item.productId,
+                data: updateData,
+              };
+            });
+
+            // Ejecutar actualizaciones de productos en paralelo con Promise.allSettled
+            // para mejor manejo de errores y rendimiento
+            const updatePromises = productUpdates.map(
+              ({ productId, data: updateData }) =>
+                tx.product.update({
+                  where: { id: productId },
+                  data: updateData,
+                })
+            );
+
+            const updateResults = await Promise.allSettled(updatePromises);
+
+            // Log de errores pero no fallar la transacción por actualizaciones individuales
+            updateResults.forEach((result, index) => {
+              if (result.status === "rejected") {
+                console.error(
+                  `❌ Failed to update product ${productUpdates[index].productId}:`,
+                  result.reason
+                );
+              }
+            });
+
+            const successfulUpdates = updateResults.filter(
+              (result) => result.status === "fulfilled"
+            ).length;
+            console.log(
+              `✅ Updated ${successfulUpdates}/${productUpdates.length} products`
+            );
+
+            return newPurchase;
           },
-        },
-      },
-    });
+          {
+            maxWait: 20000, // 20 segundos máximo de espera para obtener la transacción
+            timeout: 60000, // 60 segundos máximo para completar la transacción
+          }
+        );
 
-    return NextResponse.json(completePurchase, { status: 201 });
+        // Si llegamos aquí, la transacción fue exitosa
+        console.log("✅ Purchase creation completed successfully");
+
+        // Obtener la compra completa con sus relaciones
+        const completePurchase = await prisma.purchase.findUnique({
+          where: { id: purchase.id },
+          include: {
+            supplier: true,
+            items: {
+              include: {
+                product: true,
+              },
+            },
+          },
+        });
+
+        return NextResponse.json(completePurchase, { status: 201 });
+      } catch (error: any) {
+        console.error(
+          `❌ Purchase creation attempt ${purchaseAttempt} failed:`,
+          error
+        );
+
+        // Si es un error de timeout o transacción y no es el último intento
+        if (
+          purchaseAttempt < maxAttempts &&
+          (error?.message?.includes("Transaction") ||
+            error?.message?.includes("timeout") ||
+            error?.message?.includes("connection") ||
+            error?.message?.includes("timed out") ||
+            error?.code === "P2028" ||
+            error?.code === "P1008")
+        ) {
+          console.log(
+            `🔄 Retrying purchase creation with attempt ${purchaseAttempt + 1}`
+          );
+
+          // Generar nuevo número de compra para el reintento
+          const originalNumber = currentPurchaseNumber.split("-R")[0]; // Remover sufijo de reintento previo
+          currentPurchaseNumber = `${originalNumber}-R${purchaseAttempt}`;
+          console.log(
+            `📝 Updated purchase number to: ${currentPurchaseNumber}`
+          );
+
+          purchaseAttempt++;
+
+          // Esperar un poco antes del reintento
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          continue;
+        }
+
+        // Si no es un error recuperable o ya agotamos los intentos
+        console.error("💥 Purchase creation failed permanently:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+
+        return NextResponse.json(
+          {
+            error: "Error al crear la compra",
+            details: errorMessage,
+            attemptsMade: purchaseAttempt,
+            lastPurchaseNumber: currentPurchaseNumber,
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Si llegamos aquí, agotamos todos los intentos
+    console.error("💥 All purchase creation attempts failed");
+    return NextResponse.json(
+      {
+        error: "Error al crear la compra después de múltiples intentos",
+        details: "Se agotaron todos los reintentos de creación",
+        attemptsMade: maxAttempts,
+        lastPurchaseNumber: currentPurchaseNumber,
+      },
+      { status: 500 }
+    );
   } catch (error) {
-    console.error("Error creating purchase:", error);
+    console.error("💥 Unexpected error in purchase creation:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     console.error("Error details:", {
@@ -304,7 +435,11 @@ export async function POST(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined,
     });
     return NextResponse.json(
-      { error: "Error al crear la compra", details: errorMessage },
+      {
+        error: "Error inesperado al crear la compra",
+        details: errorMessage,
+        attemptsMade: 0,
+      },
       { status: 500 }
     );
   }

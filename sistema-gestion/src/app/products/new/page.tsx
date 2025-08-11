@@ -162,7 +162,7 @@ export default function NewProductPage() {
         maxStock: formData.maxStock ? parseInt(formData.maxStock) : null,
       };
 
-      console.log("Sending product data:", productData);
+      // console.log("Sending product data:", productData);
 
       const response = await fetch("/api/products", {
         method: "POST",

@@ -311,6 +311,75 @@ const NewPurchasePage = () => {
     setFilteredProducts(filtered);
   }, [productSearch, products]);
 
+  // Auto-guardado periódico para prevenir pérdida de datos en sesiones largas
+  useEffect(() => {
+    if (items.length === 0 && !supplierId && !notes) {
+      return; // No guardar borrador si no hay datos
+    }
+
+    const autoSaveInterval = setInterval(() => {
+      saveDraftToStorage();
+      console.log("🔄 Auto-guardado realizado");
+    }, 300000); // Guardar cada 5 minutos
+
+    return () => clearInterval(autoSaveInterval);
+  }, [items, supplierId, notes, saveDraftToStorage]);
+
+  // Monitoreo de sesión para detectar posibles expiraciones
+  useEffect(() => {
+    let sessionCheckInterval: NodeJS.Timeout;
+    let warningShown = false;
+
+    const checkSession = async () => {
+      try {
+        // Hacer una petición ligera para verificar que la sesión sigue activa
+        const response = await fetch("/api/suppliers", {
+          method: "HEAD", // Solo headers, sin body
+          cache: "no-cache",
+        });
+
+        if (response.status === 401 && !warningShown) {
+          warningShown = true;
+          setError(
+            "⚠️ Su sesión puede haber expirado. Se recomienda refrescar la página antes de enviar la compra. Sus datos están guardados como borrador."
+          );
+        }
+      } catch (error) {
+        console.log("Error en verificación de sesión:", error);
+      }
+    };
+
+    // Verificar sesión cada 30 minutos después de 1 hora de inactividad
+    const startSessionChecking = () => {
+      sessionCheckInterval = setInterval(checkSession, 1800000); // Cada 30 minutos
+    };
+
+    const delayedStart = setTimeout(startSessionChecking, 3600000); // Comenzar después de 1 hora
+
+    return () => {
+      clearTimeout(delayedStart);
+      if (sessionCheckInterval) {
+        clearInterval(sessionCheckInterval);
+      }
+    };
+  }, []);
+
+  // Advertencia antes de cerrar/recargar la página si hay datos sin guardar
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (items.length > 0 || supplierId || notes) {
+        event.preventDefault();
+        event.returnValue =
+          "Tiene datos sin guardar. ¿Está seguro de que desea salir?";
+        // Guardar borrador antes de salir
+        saveDraftToStorage();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [items, supplierId, notes, saveDraftToStorage]);
+
   // Add product to purchase - mejorado como en edición
   const addProduct = (product: Product) => {
     const newItem: PurchaseItem = {
@@ -502,7 +571,78 @@ const NewPurchasePage = () => {
     return calculateTotals().itemsWithDistributedCosts;
   };
 
-  // Submit form - mejorado con la misma lógica de edición
+  // Función auxiliar para reintentar automáticamente errores de transacción
+  const attemptCreatePurchase = async (
+    purchaseData: any,
+    attempt: number = 1,
+    maxAttempts: number = 2
+  ): Promise<any> => {
+    console.log(`🚀 Intento ${attempt}/${maxAttempts} de crear compra`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 120000); // 2 minutos de timeout
+
+    try {
+      const response = await fetch("/api/purchases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(purchaseData),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const purchase = await response.json();
+        return { success: true, purchase };
+      } else {
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: errorData,
+          status: response.status,
+          attempt,
+        };
+      }
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+
+      if (fetchError instanceof Error) {
+        if (fetchError.name === "AbortError") {
+          return {
+            success: false,
+            error: {
+              error: "Timeout",
+              details: "La operación tardó demasiado tiempo",
+            },
+            status: 408,
+            attempt,
+          };
+        } else {
+          return {
+            success: false,
+            error: { error: "Network Error", details: fetchError.message },
+            status: 0,
+            attempt,
+          };
+        }
+      } else {
+        return {
+          success: false,
+          error: {
+            error: "Unknown Error",
+            details: "Error de conexión desconocido",
+          },
+          status: 0,
+          attempt,
+        };
+      }
+    }
+  };
+
+  // Submit form - mejorado con protección contra timeouts y pérdida de sesión
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -520,6 +660,9 @@ const NewPurchasePage = () => {
     setError(null);
 
     try {
+      // Guardar borrador antes de enviar (en caso de error podemos recuperar)
+      saveDraftToStorage();
+
       const totalsData = calculateTotals();
 
       const purchaseData = {
@@ -541,33 +684,161 @@ const NewPurchasePage = () => {
         subtotalForeign: totalsData.subtotalForeign,
         totalCosts: totalsData.totalCosts,
         total: totalsData.total,
-        items: items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          unitPriceForeign: item.unitPriceForeign,
-          unitPricePesos: item.unitPricePesos,
-          // Incluir los precios actualizados para actualizar el producto
-          wholesalePrice: item.product.wholesalePrice,
-          retailPrice: item.product.retailPrice,
-        })),
+        items: items.map((item) => {
+          // Obtener el item con costos distribuidos calculados
+          const itemWithCosts =
+            totalsData.itemsWithDistributedCosts.find(
+              (i: any) => i.productId === item.productId
+            ) || item;
+
+          const itemData = {
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPriceForeign: item.unitPriceForeign,
+            unitPricePesos: item.unitPricePesos,
+            // Incluir los precios actualizados basados en el costo final (con costos distribuidos)
+            wholesalePrice: item.product.wholesalePrice,
+            retailPrice: item.product.retailPrice,
+          };
+
+          console.log("🔍 Debug Item Data:", {
+            productName: item.product.name,
+            unitPricePesos: item.unitPricePesos,
+            finalUnitCost: itemWithCosts.finalUnitCost,
+            distributedCosts: itemWithCosts.distributedCosts,
+            wholesalePrice: item.product.wholesalePrice,
+            retailPrice: item.product.retailPrice,
+            itemData,
+          });
+
+          return itemData;
+        }),
       };
 
-      const response = await fetch("/api/purchases", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(purchaseData),
+      console.log("🚀 Enviando compra con datos:", {
+        totalItems: purchaseData.items.length,
+        subtotalPesos: purchaseData.subtotalPesos,
+        totalCosts: purchaseData.totalCosts,
+        total: purchaseData.total,
       });
 
-      if (response.ok) {
-        const purchase = await response.json();
-        clearDraftFromStorage(); // Limpiar el borrador al completar exitosamente
-        router.push(`/purchases/${purchase.id}`);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || "Error al crear la compra");
+      // Intentar crear la compra con reintentos automáticos para errores de transacción
+      const maxAttempts = 2;
+      let lastResult = null;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        lastResult = await attemptCreatePurchase(
+          purchaseData,
+          attempt,
+          maxAttempts
+        );
+
+        if (lastResult.success) {
+          // Éxito - limpiar borrador y redirigir
+          clearDraftFromStorage();
+          console.log("✅ Compra creada exitosamente:", lastResult.purchase.id);
+          router.push(`/purchases/${lastResult.purchase.id}`);
+          return;
+        }
+
+        // Si falló, verificar si vale la pena reintentar
+        const shouldRetry =
+          attempt < maxAttempts &&
+          (lastResult.status >= 500 || // Errores de servidor
+            lastResult.status === 408 || // Timeout
+            lastResult.status === 0 || // Error de red
+            (lastResult.error?.details &&
+              (lastResult.error.details.includes("Transaction not found") ||
+                lastResult.error.details.includes(
+                  "Transaction ID is invalid"
+                ) ||
+                lastResult.error.details.includes("timeout") ||
+                lastResult.error.details.includes("connection") ||
+                lastResult.error.details.includes(
+                  "refers to an old closed transaction"
+                ))));
+
+        if (shouldRetry) {
+          console.log(
+            `🔄 Reintentando en 3 segundos... (intento ${
+              attempt + 1
+            }/${maxAttempts})`
+          );
+          setError(
+            `🔄 Intento ${attempt} falló por error de transacción. Reintentando automáticamente...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        } else {
+          // No vale la pena reintentar (ej: errores 400, 401, 403)
+          break;
+        }
+      }
+
+      // Si llegamos aquí, todos los intentos fallaron
+      if (lastResult) {
+        const { error: errorData, status } = lastResult;
+
+        if (status === 401) {
+          setError(
+            "Su sesión ha expirado. Por favor, inicie sesión nuevamente y vuelva a intentar. Sus datos están guardados como borrador."
+          );
+        } else if (status >= 500 || status === 408) {
+          // Detectar errores específicos de transacción de Prisma
+          const isPrismaTransactionError =
+            errorData.details &&
+            (errorData.details.includes("Transaction not found") ||
+              errorData.details.includes("Transaction ID is invalid") ||
+              errorData.details.includes(
+                "refers to an old closed transaction"
+              ) ||
+              errorData.details.includes("Transaction API error") ||
+              errorData.details.includes("timeout") ||
+              errorData.details.includes("connection"));
+
+          if (isPrismaTransactionError) {
+            setError(`❌ Error de transacción de base de datos: La conexión se cerró o expiró durante una sesión larga. 
+            
+🔄 El sistema automáticamente:
+• Frontend: Realizó ${maxAttempts} intentos con reintentos inteligentes  
+• Backend: Generó nuevos IDs de transacción (${
+              errorData.attemptsMade || "múltiples"
+            } intentos realizados)
+• Guardó sus datos como borrador para proteger su trabajo
+
+💡 Recomendaciones:
+1. Verifique su conexión a internet estable
+2. Para compras muy grandes (50+ productos), considere dividirlas en lotes más pequeños
+3. Refresque la página y cargue desde el borrador si persiste el problema
+4. Sus datos están completamente seguros y no se perdieron
+
+📝 Error técnico: ${errorData.details || errorData.error}`);
+          } else {
+            setError(
+              `Error del servidor después de ${maxAttempts} intentos automáticos en frontend + ${
+                errorData.attemptsMade || "múltiples"
+              } intentos en backend. Sus datos están guardados como borrador. Intente nuevamente en unos minutos.`
+            );
+          }
+        } else {
+          setError(errorData.error || "Error al crear la compra");
+        }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
+      console.error("❌ Error en handleSubmit:", err);
+
+      if (err instanceof Error) {
+        if (err.name === "TypeError" && err.message.includes("NetworkError")) {
+          setError(
+            "Error de red. Verifique su conexión a internet. Sus datos están guardados como borrador."
+          );
+        } else {
+          setError(
+            `Error: ${err.message}. Sus datos están guardados como borrador.`
+          );
+        }
+      } else {
+        setError("Error desconocido. Sus datos están guardados como borrador.");
+      }
     } finally {
       setLoading(false);
     }
@@ -610,31 +881,40 @@ const NewPurchasePage = () => {
                 <ArrowLeft className="h-6 w-6" />
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">Nueva Compra</h1>
-              {localStorage.getItem(STORAGE_KEY) && (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-sm">
-                    <Info className="h-4 w-4" />
-                    Borrador guardado
+              <div className="flex items-center gap-2">
+                {localStorage.getItem(STORAGE_KEY) && (
+                  <>
+                    <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-sm">
+                      <Info className="h-4 w-4" />
+                      Borrador guardado
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          confirm(
+                            "¿Estás seguro de que quieres limpiar el borrador guardado?"
+                          )
+                        ) {
+                          clearDraftFromStorage();
+                          window.location.reload();
+                        }
+                      }}
+                      className="text-gray-400 hover:text-gray-600 text-sm"
+                      title="Limpiar borrador"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
+
+                {(items.length > 0 || supplierId || notes) && (
+                  <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-md text-xs">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    Auto-guardado activo
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          "¿Estás seguro de que quieres limpiar el borrador guardado?"
-                        )
-                      ) {
-                        clearDraftFromStorage();
-                        window.location.reload();
-                      }
-                    }}
-                    className="text-gray-400 hover:text-gray-600 text-sm"
-                    title="Limpiar borrador"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
             <p className="text-gray-600">
               Complete la información de la compra y agregue los productos
@@ -660,32 +940,39 @@ const NewPurchasePage = () => {
               <Info className="h-5 w-5 text-blue-400 flex-shrink-0" />
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-blue-800">
-                  Actualización de Precios de Venta
+                  💡 Información Importante
                 </h3>
                 <div className="mt-2 text-sm text-blue-700">
                   <ul className="list-disc list-inside space-y-1">
                     <li>
-                      Puedes editar los precios mayorista y minorista de cada
-                      producto
-                    </li>
-                    <li>
-                      Los botones{" "}
+                      <strong>Precios de venta:</strong> Los botones{" "}
                       <span className="font-mono bg-blue-100 px-1 rounded">
-                        +30%
+                        +40%
                       </span>{" "}
                       y{" "}
                       <span className="font-mono bg-green-100 px-1 rounded">
-                        +50%
+                        +110%
                       </span>{" "}
                       sugieren precios automáticamente
                     </li>
                     <li>
-                      Los márgenes se calculan sobre el costo final (incluyendo
-                      costos distribuidos para importaciones)
+                      <strong>Costos distribuidos:</strong> Los márgenes se
+                      calculan sobre el costo final (incluyendo costos
+                      distribuidos para importaciones)
                     </li>
                     <li>
-                      Los precios se actualizarán en el producto cuando
-                      confirmes la compra
+                      <strong>Auto-guardado:</strong> Sus datos se guardan
+                      automáticamente cada 5 minutos y antes de enviar
+                    </li>
+                    <li>
+                      <strong>Sesiones largas:</strong> Si está trabajando por
+                      más de 1 hora, el sistema monitoreará su sesión
+                      automáticamente
+                    </li>
+                    <li>
+                      <strong>Timeout:</strong> La creación tiene un límite de 2
+                      minutos. Para compras muy grandes (50+ productos),
+                      considere dividirlas
                     </li>
                   </ul>
                 </div>
@@ -1182,7 +1469,16 @@ const NewPurchasePage = () => {
                                       itemWithCosts.finalUnitCost ||
                                       item.unitPricePesos;
                                     const suggestedPrice =
-                                      Math.round(finalCost * 1.4 * 100) / 100; // 30% margen
+                                      Math.round(finalCost * 1.4 * 100) / 100; // 40% margen
+                                    console.log("🔍 Debug Precio Mayorista:", {
+                                      productId: item.productId,
+                                      productName: item.product.name,
+                                      unitPricePesos: item.unitPricePesos,
+                                      finalCost,
+                                      suggestedPrice,
+                                      currentWholesalePrice:
+                                        item.product.wholesalePrice,
+                                    });
                                     updateItemProductPrice(
                                       item.productId,
                                       "wholesalePrice",
@@ -1235,6 +1531,15 @@ const NewPurchasePage = () => {
                                       item.unitPricePesos;
                                     const suggestedPrice =
                                       Math.round(finalCost * 2.1 * 100) / 100; // 110% margen
+                                    console.log("🔍 Debug Precio Minorista:", {
+                                      productId: item.productId,
+                                      productName: item.product.name,
+                                      unitPricePesos: item.unitPricePesos,
+                                      finalCost,
+                                      suggestedPrice,
+                                      currentRetailPrice:
+                                        item.product.retailPrice,
+                                    });
                                     updateItemProductPrice(
                                       item.productId,
                                       "retailPrice",
@@ -1553,7 +1858,16 @@ const NewPurchasePage = () => {
                 disabled={loading || !supplierId || items.length === 0}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? "Creando..." : "Crear Compra"}
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                    {error && error.includes("🔄 Intento")
+                      ? "Reintentando..."
+                      : "Creando..."}
+                  </span>
+                ) : (
+                  "Crear Compra"
+                )}
               </button>
             </div>
           </form>
