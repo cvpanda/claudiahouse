@@ -78,9 +78,17 @@ const NewPurchasePage = () => {
   const router = useRouter();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [productSearch, setProductSearch] = useState("");
+  const [productSearchDebounced, setProductSearchDebounced] = useState("");
+  const [productPagination, setProductPagination] = useState({
+    page: 1,
+    limit: 100,
+    total: 0,
+    pages: 0
+  });
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [hasMoreProducts, setHasMoreProducts] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -271,45 +279,87 @@ const NewPurchasePage = () => {
     }
   };
 
-  const fetchProducts = async () => {
+  // Fetch products with server-side search and pagination
+  const fetchProducts = async (searchTerm: string = "", page: number = 1, loadMore: boolean = false) => {
+    setIsLoadingProducts(true);
     try {
-      const response = await fetch("/api/products");
-      if (response.ok) {
-        const data = await response.json();
-        const productsData = data.products || data.data || data || [];
-        setProducts(productsData);
-        setFilteredProducts(productsData);
+      const params = new URLSearchParams({
+        limit: productPagination.limit.toString(),
+        page: page.toString(),
+      });
+      
+      if (searchTerm.trim()) {
+        params.append('search', searchTerm.trim());
       }
-    } catch (error) {
-      console.error("Error al cargar productos:", error);
-      setProducts([]);
-      setFilteredProducts([]);
+
+      const response = await fetch(`/api/products?${params.toString()}`, {
+        signal: AbortSignal.timeout(120000) // 2 minutos timeout
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error fetching products: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('🔍 Products API Response:', {
+        searchTerm,
+        page,
+        loadMore,
+        totalProducts: result.data?.length,
+        pagination: result.pagination
+      });
+      
+      if (result.data) {
+        if (loadMore && page > 1) {
+          // Append new products to existing ones
+          setProducts(prev => [...prev, ...result.data]);
+        } else {
+          // Replace products (new search or first page)
+          setProducts(result.data);
+        }
+        
+        if (result.pagination) {
+          setProductPagination(result.pagination);
+          setHasMoreProducts(result.pagination.page < result.pagination.pages);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error fetching products:', error);
+      if (error.name !== 'TimeoutError' && error.name !== 'AbortError') {
+        setError('Error al cargar productos: ' + error.message);
+      }
+      if (!loadMore) {
+        setProducts([]);
+        setProductPagination(prev => ({ ...prev, total: 0, pages: 0 }));
+        setHasMoreProducts(false);
+      }
+    } finally {
+      setIsLoadingProducts(false);
     }
   };
 
   useEffect(() => {
     fetchSuppliers();
-    fetchProducts();
+    // Don't load products initially - wait for modal to open
   }, []);
 
-  // Filter products
+  // Debounce search input
   useEffect(() => {
-    let filtered = products;
+    const timer = setTimeout(() => {
+      setProductSearchDebounced(productSearch);
+    }, 300); // 300ms debounce
 
-    if (productSearch) {
-      filtered = products.filter(
-        (product) =>
-          product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-          (product.sku &&
-            product.sku.toLowerCase().includes(productSearch.toLowerCase())) ||
-          product.category.name
-            .toLowerCase()
-            .includes(productSearch.toLowerCase())
-      );
+    return () => clearTimeout(timer);
+  }, [productSearch]);
+
+  // Fetch products when search term changes or modal opens
+  useEffect(() => {
+    if (showProductModal) {
+      // Reset pagination when new search or modal opens
+      setProductPagination(prev => ({ ...prev, page: 1 }));
+      fetchProducts(productSearchDebounced, 1, false);
     }
-
-    setFilteredProducts(filtered);
-  }, [productSearch, products]);
+  }, [productSearchDebounced, showProductModal]);
 
   // Auto-guardado periódico para prevenir pérdida de datos en sesiones largas
   useEffect(() => {
@@ -391,7 +441,22 @@ const NewPurchasePage = () => {
       isNew: true,
     };
     setItems([...items, newItem]);
+    closeProductModal();
+  };
+
+  // Close product modal and reset state
+  const closeProductModal = () => {
     setShowProductModal(false);
+    setProductSearch("");
+    setProductSearchDebounced("");
+    setProducts([]);
+    setProductPagination({
+      page: 1,
+      limit: 100,
+      total: 0,
+      pages: 0
+    });
+    setHasMoreProducts(false);
   };
 
   // Update item
@@ -1892,7 +1957,7 @@ const NewPurchasePage = () => {
                         Nuevo Producto
                       </Link>
                       <button
-                        onClick={() => setShowProductModal(false)}
+                        onClick={closeProductModal}
                         className="text-gray-400 hover:text-gray-600"
                       >
                         <X className="h-6 w-6" />
@@ -1904,21 +1969,27 @@ const NewPurchasePage = () => {
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                       <input
                         type="text"
-                        placeholder="Buscar productos..."
+                        placeholder="Buscar productos por nombre, SKU o categoría..."
                         value={productSearch}
                         onChange={(e) => setProductSearch(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
+                    {isLoadingProducts && (
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
+                        <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+                        Buscando productos...
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="overflow-y-auto max-h-96 p-6">
                   <div className="grid grid-cols-1 gap-4">
-                    {filteredProducts.map((product) => (
+                    {products.map((product) => (
                       <div
                         key={product.id}
-                        className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                        className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                         onClick={() => addProduct(product)}
                       >
                         <div className="flex items-center justify-between">
@@ -1953,23 +2024,56 @@ const NewPurchasePage = () => {
                     ))}
                   </div>
 
-                  {filteredProducts.length === 0 && (
+                  {products.length === 0 && !isLoadingProducts && (
                     <div className="text-center py-8">
                       <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                       <p className="text-gray-500">
-                        No se encontraron productos
+                        {productSearchDebounced ? 'No se encontraron productos con esa búsqueda' : 'Escribe para buscar productos'}
                       </p>
+                    </div>
+                  )}
+
+                  {/* Load More Button */}
+                  {hasMoreProducts && !isLoadingProducts && (
+                    <div className="flex justify-center mt-6">
+                      <button
+                        onClick={() => fetchProducts(productSearchDebounced, productPagination.page + 1, true)}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Cargar más productos
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Loading more indicator */}
+                  {isLoadingProducts && products.length > 0 && (
+                    <div className="flex justify-center mt-6">
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+                        Cargando más productos...
+                      </div>
                     </div>
                   )}
                 </div>
 
                 <div className="p-6 border-t border-gray-200">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <div className="text-sm text-gray-600">
-                      Productos disponibles: {filteredProducts.length}
+                      {productPagination.total > 0 ? (
+                        <>
+                          Mostrando {products.length} de {productPagination.total} productos
+                          {productSearchDebounced && (
+                            <span className="text-blue-600 ml-1">
+                              (filtrados por: "{productSearchDebounced}")
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        productSearchDebounced ? 'Sin resultados' : 'Busca productos para comenzar'
+                      )}
                     </div>
                     <button
-                      onClick={() => setShowProductModal(false)}
+                      onClick={closeProductModal}
                       className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                     >
                       Cerrar
