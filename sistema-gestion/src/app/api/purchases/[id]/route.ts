@@ -196,6 +196,35 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Función de retry con backoff exponencial
+  const retryWithBackoff = async (
+    operation: () => Promise<any>,
+    maxRetries: number = 3,
+    baseDelay: number = 1000
+  ): Promise<any> => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        const isLastAttempt = attempt === maxRetries - 1;
+        const isRetryableError =
+          error?.code === "P2028" ||
+          error?.message?.includes("timeout") ||
+          error?.message?.includes("transaction");
+
+        if (isLastAttempt || !isRetryableError) {
+          throw error;
+        }
+
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.log(
+          `⚠️ Intento ${attempt + 1} falló, reintentando en ${delay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  };
+
   try {
     // Verificar que la compra existe y obtener sus items
     // @ts-ignore - Temporary fix for Prisma client type issue
@@ -225,72 +254,120 @@ export async function DELETE(
       );
     }
 
-    // Usar transacción para garantizar consistencia
-    await prisma.$transaction(async (tx) => {
-      // Si la compra fue completada, revertir el impacto en stock
-      if (existingPurchase.status === "COMPLETED") {
-        for (const item of existingPurchase.items) {
-          // Revertir stock
-          await tx.product.update({
-            where: { id: item.productId },
-            data: {
-              stock: { decrement: item.quantity },
-            },
-          });
-
-          // Crear movimiento de stock (reversión)
-          await tx.stockMovement.create({
-            data: {
-              productId: item.productId,
-              type: "OUT",
-              quantity: item.quantity,
-              reason: "Reversión por eliminación de compra",
-              reference: `Compra ${existingPurchase.purchaseNumber} (eliminada)`,
-            },
-          });
-
-          // Recalcular costo promedio del producto
-          const otherPurchaseItems = await tx.purchaseItem.findMany({
-            where: {
-              productId: item.productId,
-              purchase: {
-                status: "COMPLETED",
-                id: { not: params.id }, // Excluir la compra actual
-              },
-            },
-          });
-
-          if (otherPurchaseItems.length > 0) {
-            const totalCost = otherPurchaseItems.reduce(
-              (sum, otherItem) =>
-                sum + otherItem.finalUnitCost * otherItem.quantity,
-              0
+    // Usar transacción optimizada con retry automático
+    await retryWithBackoff(async () => {
+      await prisma.$transaction(
+        async (tx) => {
+          // Si la compra fue completada, revertir el impacto en stock
+          if (existingPurchase.status === "COMPLETED") {
+            console.log(
+              `🔄 Revirtiendo ${existingPurchase.items.length} items de stock...`
             );
-            const totalQuantity = otherPurchaseItems.reduce(
-              (sum, otherItem) => sum + otherItem.quantity,
-              0
-            );
-            const averageCost =
-              totalQuantity > 0 ? totalCost / totalQuantity : 0;
 
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { cost: averageCost },
+            // Preparar operaciones de stock en paralelo
+            const stockOperations = existingPurchase.items.map(async (item) => {
+              // Revertir stock
+              await tx.product.update({
+                where: { id: item.productId },
+                data: {
+                  stock: { decrement: item.quantity },
+                },
+              });
+
+              console.log(
+                `✅ Stock revertido para producto ${item.product.sku}: -${item.quantity}`
+              );
             });
-          } else {
-            // Si no hay otras compras, resetear el costo
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { cost: 0 },
+
+            // Preparar operaciones de movimientos de stock en paralelo
+            const stockMovementOperations = existingPurchase.items.map(
+              async (item) => {
+                await tx.stockMovement.create({
+                  data: {
+                    productId: item.productId,
+                    type: "OUT",
+                    quantity: item.quantity,
+                    reason: "Reversión por eliminación de compra",
+                    reference: `Compra ${existingPurchase.purchaseNumber} (eliminada)`,
+                  },
+                });
+              }
+            );
+
+            // Ejecutar operaciones de stock y movimientos en paralelo
+            await Promise.all([...stockOperations, ...stockMovementOperations]);
+
+            console.log("✅ Stock y movimientos revertidos");
+
+            // Recalcular costos promedio para productos únicos
+            const uniqueProductIds = [
+              ...new Set(existingPurchase.items.map((item) => item.productId)),
+            ];
+            console.log(
+              `📊 Recalculando costos para ${uniqueProductIds.length} productos únicos...`
+            );
+
+            const costOperations = uniqueProductIds.map(async (productId) => {
+              const otherPurchaseItems = await tx.purchaseItem.findMany({
+                where: {
+                  productId: productId,
+                  purchase: {
+                    status: "COMPLETED",
+                    id: { not: params.id }, // Excluir la compra actual
+                  },
+                },
+              });
+
+              if (otherPurchaseItems.length > 0) {
+                const totalCost = otherPurchaseItems.reduce(
+                  (sum, otherItem) =>
+                    sum + otherItem.finalUnitCost * otherItem.quantity,
+                  0
+                );
+                const totalQuantity = otherPurchaseItems.reduce(
+                  (sum, otherItem) => sum + otherItem.quantity,
+                  0
+                );
+                const averageCost =
+                  totalQuantity > 0 ? totalCost / totalQuantity : 0;
+
+                await tx.product.update({
+                  where: { id: productId },
+                  data: { cost: averageCost },
+                });
+
+                console.log(
+                  `💰 Costo recalculado para producto: $${averageCost.toFixed(
+                    2
+                  )}`
+                );
+              } else {
+                // Si no hay otras compras, resetear el costo
+                await tx.product.update({
+                  where: { id: productId },
+                  data: { cost: 0 },
+                });
+
+                console.log(`💰 Costo reseteado a $0 (sin otras compras)`);
+              }
             });
+
+            // Ejecutar recálculo de costos en paralelo
+            await Promise.all(costOperations);
+            console.log("✅ Costos recalculados");
           }
-        }
-      }
 
-      // Eliminar la compra (los items se eliminan automáticamente por onDelete: Cascade)
-      await tx.purchase.delete({
-        where: { id: params.id },
-      });
+          // Eliminar la compra (los items se eliminan automáticamente por onDelete: Cascade)
+          console.log("🗑️ Eliminando compra y sus items...");
+          await tx.purchase.delete({
+            where: { id: params.id },
+          });
+          console.log("✅ Compra eliminada exitosamente");
+        },
+        {
+          timeout: 60000, // 60 segundos de timeout para transacciones grandes
+        }
+      );
     });
 
     return NextResponse.json({

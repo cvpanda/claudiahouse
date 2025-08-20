@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Layout from "@/components/Layout";
+import ImagePreview from "@/components/ImagePreview";
 import {
   ArrowLeft,
   Plus,
@@ -34,6 +35,7 @@ interface Product {
   retailPrice: number;
   stock: number;
   unit: string;
+  imageUrl?: string | null;
   supplier: {
     id: string;
     name: string;
@@ -1339,14 +1341,33 @@ const NewPurchasePage = () => {
                         className="border border-gray-200 rounded-lg p-4"
                       >
                         <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900">
-                              {item.product.name}
-                            </h4>
-                            <p className="text-sm text-gray-500">
-                              SKU: {item.product.sku || "N/A"} | Stock actual:{" "}
-                              {item.product.stock} {item.product.unit}
-                            </p>
+                          <div className="flex items-start space-x-3 flex-1">
+                            {item.product.imageUrl ? (
+                              <ImagePreview
+                                url={item.product.imageUrl}
+                                alt={item.product.name}
+                                className="w-12 h-12 rounded-md object-cover border"
+                                showInstructions={false}
+                              />
+                            ) : (
+                              <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center border border-gray-200">
+                                <Package className="w-4 h-4 text-gray-400" />
+                              </div>
+                            )}
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900">
+                                {item.product.name}
+                              </h4>
+                              <p className="text-sm text-gray-500">
+                                SKU: {item.product.sku || "N/A"} | Stock actual:{" "}
+                                {item.product.stock} {item.product.unit}
+                              </p>
+                              {item.product.imageUrl && (
+                                <span className="inline-block text-xs text-green-600 bg-green-50 px-2 py-1 rounded mt-1">
+                                  Con imagen
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <button
                             type="button"
@@ -1997,18 +2018,45 @@ const NewPurchasePage = () => {
                         onClick={() => addProduct(product)}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900">
-                              {product.name}
-                            </h4>
-                            <p className="text-sm text-gray-500">
-                              SKU: {product.sku || "N/A"} | Categoría:{" "}
-                              {product.category.name}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Stock: {product.stock} {product.unit} | Costo: $
-                              {product.cost.toLocaleString("es-AR")}
-                            </p>
+                          <div className="flex items-center space-x-3 flex-1">
+                            {product.imageUrl ? (
+                              <ImagePreview
+                                url={product.imageUrl}
+                                alt={product.name}
+                                className="w-12 h-12 rounded-md object-cover border"
+                                showInstructions={false}
+                              />
+                            ) : (
+                              <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center border border-gray-200">
+                                <Package className="w-4 h-4 text-gray-400" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-gray-900 truncate">
+                                {product.name}
+                              </h4>
+                              <p className="text-sm text-gray-500">
+                                SKU: {product.sku || "N/A"} | Categoría:{" "}
+                                {product.category.name}
+                              </p>
+                              <div className="flex items-center space-x-2 text-sm text-gray-500">
+                                <span>
+                                  Stock: {product.stock} {product.unit}
+                                </span>
+                                <span>•</span>
+                                <span className="font-medium">
+                                  Costo: ${product.cost.toLocaleString("es-AR")}
+                                </span>
+                                {product.imageUrl && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-green-600 text-xs">
+                                      Con imagen
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                           </div>
                           {items.find(
                             (item) => item.productId === product.id

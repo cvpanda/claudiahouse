@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Layout from "@/components/Layout";
+import ImagePreview from "@/components/ImagePreview";
 import {
   ArrowLeft,
   Save,
@@ -19,6 +20,7 @@ interface Product {
   id: string;
   name: string;
   cost: number;
+  imageUrl?: string | null;
   category: {
     name: string;
   };
@@ -29,6 +31,7 @@ interface PurchaseItem {
   product: {
     id: string;
     name: string;
+    imageUrl?: string | null;
     category: {
       name: string;
     };
@@ -73,6 +76,7 @@ interface EditItem {
   id?: string;
   productId: string;
   productName: string;
+  productImageUrl?: string | null;
   quantity: number;
   unitPriceForeign?: number;
   unitPricePesos: number;
@@ -187,6 +191,7 @@ export default function EditPurchasePage() {
           id: item.id,
           productId: item.product.id,
           productName: item.product.name,
+          productImageUrl: item.product.imageUrl,
           quantity: item.quantity,
           unitPriceForeign: item.unitPriceForeign || undefined,
           unitPricePesos: item.unitPricePesos,
@@ -221,6 +226,7 @@ export default function EditPurchasePage() {
     const newItem: EditItem = {
       productId: product.id,
       productName: product.name,
+      productImageUrl: product.imageUrl,
       quantity: 1,
       unitPricePesos: product.cost,
       isNew: true,
@@ -509,97 +515,126 @@ export default function EditPurchasePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {totals.itemsWithDistributedCosts.map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            {item.productName}
-                          </td>
-                          <td className="px-4 py-3">
-                            <input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) =>
-                                updateItemWithAutoCalculation(
-                                  index,
-                                  "quantity",
-                                  parseInt(e.target.value) || 1
-                                )
-                              }
-                              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                            />
-                          </td>
-                          {editData.currency !== "ARS" && (
+                      {totals.itemsWithDistributedCosts.map((item, index) => {
+                        const editItem = editItems[index];
+                        return (
+                          <tr key={index}>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              <div className="flex items-center space-x-3">
+                                {editItem?.productImageUrl ? (
+                                  <ImagePreview
+                                    url={editItem.productImageUrl}
+                                    alt={item.productName}
+                                    className="w-12 h-12 rounded-md object-cover border"
+                                    showInstructions={false}
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center border border-gray-200">
+                                    <Package className="w-4 h-4 text-gray-400" />
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-medium">
+                                    {item.productName}
+                                  </div>
+                                  {editItem?.productImageUrl && (
+                                    <div className="text-xs text-gray-500">
+                                      Con imagen
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) =>
+                                  updateItemWithAutoCalculation(
+                                    index,
+                                    "quantity",
+                                    parseInt(e.target.value) || 1
+                                  )
+                                }
+                                className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </td>
+                            {editData.currency !== "ARS" && (
+                              <td className="px-4 py-3">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={item.unitPriceForeign || 0}
+                                  onChange={(e) =>
+                                    updateItemWithAutoCalculation(
+                                      index,
+                                      "unitPriceForeign",
+                                      parseFloat(e.target.value) || 0
+                                    )
+                                  }
+                                  className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                                  placeholder="0,00"
+                                />
+                                <div className="text-xs text-gray-500 mt-1">
+                                  ARS: $
+                                  {formatNumber(
+                                    editData.exchangeRate *
+                                      (item.unitPriceForeign || 0)
+                                  )}
+                                </div>
+                              </td>
+                            )}
                             <td className="px-4 py-3">
                               <input
                                 type="number"
                                 step="0.01"
                                 min="0"
-                                value={item.unitPriceForeign || 0}
+                                value={item.unitPricePesos}
                                 onChange={(e) =>
                                   updateItemWithAutoCalculation(
                                     index,
-                                    "unitPriceForeign",
+                                    "unitPricePesos",
                                     parseFloat(e.target.value) || 0
                                   )
                                 }
-                                className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
                                 placeholder="0,00"
                               />
-                              <div className="text-xs text-gray-500 mt-1">
-                                ARS: $
-                                {formatNumber(
-                                  editData.exchangeRate *
-                                    (item.unitPriceForeign || 0)
-                                )}
-                              </div>
+                              {editData.currency !== "ARS" && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {editData.currency}:{" "}
+                                  {(
+                                    (item.unitPricePesos || 0) /
+                                    editData.exchangeRate
+                                  ).toFixed(2)}
+                                </div>
+                              )}
                             </td>
-                          )}
-                          <td className="px-4 py-3">
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={item.unitPricePesos}
-                              onChange={(e) =>
-                                updateItemWithAutoCalculation(
-                                  index,
-                                  "unitPricePesos",
-                                  parseFloat(e.target.value) || 0
-                                )
-                              }
-                              className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
-                              placeholder="0,00"
-                            />
-                            {editData.currency !== "ARS" && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                {editData.currency}:{" "}
-                                {(
-                                  (item.unitPricePesos || 0) /
-                                  editData.exchangeRate
-                                ).toFixed(2)}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            ${formatNumber(item.quantity * item.unitPricePesos)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-blue-600">
-                            ${formatNumber(item.distributedCosts)}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium text-green-600">
-                            ${formatNumber(item.finalUnitCost)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => removeItem(index)}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              $
+                              {formatNumber(
+                                item.quantity * item.unitPricePesos
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-blue-600">
+                              ${formatNumber(item.distributedCosts)}
+                            </td>
+                            <td className="px-4 py-3 text-sm font-medium text-green-600">
+                              ${formatNumber(item.finalUnitCost)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => removeItem(index)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1037,11 +1072,41 @@ export default function EditPurchasePage() {
                       <button
                         key={product.id}
                         onClick={() => addProduct(product)}
-                        className="w-full text-left p-3 border border-gray-200 rounded-md hover:bg-gray-50"
+                        className="w-full text-left p-3 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
                       >
-                        <div className="font-medium">{product.name}</div>
-                        <div className="text-sm text-gray-500">
-                          {product.category.name} - Costo: ${product.cost}
+                        <div className="flex items-center space-x-3">
+                          {product.imageUrl ? (
+                            <ImagePreview
+                              url={product.imageUrl}
+                              alt={product.name}
+                              className="w-12 h-12 rounded-md object-cover border"
+                              showInstructions={false}
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center border border-gray-200">
+                              <Package className="w-4 h-4 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 truncate">
+                              {product.name}
+                            </div>
+                            <div className="text-sm text-gray-500 flex items-center space-x-2">
+                              <span>{product.category.name}</span>
+                              <span>•</span>
+                              <span className="font-medium">
+                                Costo: ${product.cost.toLocaleString()}
+                              </span>
+                              {product.imageUrl && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-green-600 text-xs">
+                                    Con imagen
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </button>
                     ))}
