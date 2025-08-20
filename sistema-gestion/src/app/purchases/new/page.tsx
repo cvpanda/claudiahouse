@@ -92,7 +92,9 @@ const NewPurchasePage = () => {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [hasMoreProducts, setHasMoreProducts] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
+    new Set()
+  );
   const [error, setError] = useState<string | null>(null);
 
   // Form data
@@ -453,8 +455,10 @@ const NewPurchasePage = () => {
 
   // Add multiple selected products
   const addSelectedProducts = () => {
-    const selectedProductList = products.filter(product => selectedProducts.has(product.id));
-    const newItems: PurchaseItem[] = selectedProductList.map(product => ({
+    const selectedProductList = products.filter((product) =>
+      selectedProducts.has(product.id)
+    );
+    const newItems: PurchaseItem[] = selectedProductList.map((product) => ({
       productId: product.id,
       product,
       quantity: 1,
@@ -2002,7 +2006,9 @@ const NewPurchasePage = () => {
                       </h3>
                       {selectedProducts.size > 0 && (
                         <p className="text-sm text-blue-600 mt-1">
-                          {selectedProducts.size} producto{selectedProducts.size !== 1 ? 's' : ''} seleccionado{selectedProducts.size !== 1 ? 's' : ''}
+                          {selectedProducts.size} producto
+                          {selectedProducts.size !== 1 ? "s" : ""} seleccionado
+                          {selectedProducts.size !== 1 ? "s" : ""}
                         </p>
                       )}
                     </div>
@@ -2014,7 +2020,8 @@ const NewPurchasePage = () => {
                             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors"
                           >
                             <Plus className="h-4 w-4" />
-                            Agregar {selectedProducts.size} producto{selectedProducts.size !== 1 ? 's' : ''}
+                            Agregar {selectedProducts.size} producto
+                            {selectedProducts.size !== 1 ? "s" : ""}
                           </button>
                           <button
                             onClick={() => setSelectedProducts(new Set())}
@@ -2065,19 +2072,23 @@ const NewPurchasePage = () => {
                   <div className="grid grid-cols-1 gap-4">
                     {products.map((product) => {
                       const isSelected = selectedProducts.has(product.id);
-                      const isAlreadyAdded = items.some(item => item.productId === product.id);
-                      const addedItem = items.find(item => item.productId === product.id);
-                      
+                      const isAlreadyAdded = items.some(
+                        (item) => item.productId === product.id
+                      );
+                      const addedItem = items.find(
+                        (item) => item.productId === product.id
+                      );
+
                       return (
                         <div
                           key={product.id}
                           className={`border rounded-lg p-4 transition-colors ${
-                            isSelected 
-                              ? 'border-blue-500 bg-blue-50' 
+                            isSelected
+                              ? "border-blue-500 bg-blue-50"
                               : isAlreadyAdded
-                                ? 'border-gray-300 bg-gray-50'
-                                : 'border-gray-200 hover:bg-gray-50'
-                          } ${isAlreadyAdded ? 'opacity-60' : ''}`}
+                              ? "border-gray-300 bg-gray-50"
+                              : "border-gray-200 hover:bg-gray-50"
+                          } ${isAlreadyAdded ? "opacity-60" : ""}`}
                         >
                           <div className="flex items-start space-x-4">
                             {/* Checkbox */}
@@ -2085,12 +2096,14 @@ const NewPurchasePage = () => {
                               <input
                                 type="checkbox"
                                 checked={isSelected}
-                                onChange={() => toggleProductSelection(product.id)}
+                                onChange={() =>
+                                  toggleProductSelection(product.id)
+                                }
                                 disabled={isAlreadyAdded}
                                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                               />
                             </div>
-                            
+
                             {/* Image - Más grande */}
                             <div className="flex-shrink-0">
                               {product.imageUrl ? (
@@ -2106,7 +2119,7 @@ const NewPurchasePage = () => {
                                 </div>
                               )}
                             </div>
-                            
+
                             {/* Product Info */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between">
@@ -2116,17 +2129,31 @@ const NewPurchasePage = () => {
                                   </h4>
                                   <div className="mt-1 space-y-1">
                                     <p className="text-sm text-gray-500">
-                                      SKU: {product.sku || "N/A"} | Categoría: {product.category.name}
+                                      SKU: {product.sku || "N/A"} | Categoría:{" "}
+                                      {product.category.name}
                                     </p>
                                     <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                      <span>Stock: {product.stock} {product.unit}</span>
+                                      <span>
+                                        Stock: {product.stock} {product.unit}
+                                      </span>
                                       <span className="font-medium text-gray-900">
-                                        Costo: ${product.cost.toLocaleString("es-AR")}
+                                        Costo: $
+                                        {product.cost.toLocaleString("es-AR")}
                                       </span>
                                     </div>
                                     <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                      <span>Mayorista: ${product.wholesalePrice.toLocaleString("es-AR")}</span>
-                                      <span>Minorista: ${product.retailPrice.toLocaleString("es-AR")}</span>
+                                      <span>
+                                        Mayorista: $
+                                        {product.wholesalePrice.toLocaleString(
+                                          "es-AR"
+                                        )}
+                                      </span>
+                                      <span>
+                                        Minorista: $
+                                        {product.retailPrice.toLocaleString(
+                                          "es-AR"
+                                        )}
+                                      </span>
                                     </div>
                                     <div className="flex items-center space-x-2">
                                       {product.imageUrl && (
@@ -2136,13 +2163,14 @@ const NewPurchasePage = () => {
                                       )}
                                       {isAlreadyAdded && (
                                         <span className="inline-block text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                                          ✓ Agregado (Cant: {addedItem?.quantity})
+                                          ✓ Agregado (Cant:{" "}
+                                          {addedItem?.quantity})
                                         </span>
                                       )}
                                     </div>
                                   </div>
                                 </div>
-                                
+
                                 {/* Quick add button */}
                                 {!isAlreadyAdded && (
                                   <button
