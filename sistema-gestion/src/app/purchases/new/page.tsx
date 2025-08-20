@@ -85,7 +85,7 @@ const NewPurchasePage = () => {
     page: 1,
     limit: 100,
     total: 0,
-    pages: 0
+    pages: 0,
   });
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [hasMoreProducts, setHasMoreProducts] = useState(false);
@@ -280,20 +280,24 @@ const NewPurchasePage = () => {
   };
 
   // Fetch products with server-side search and pagination
-  const fetchProducts = async (searchTerm: string = "", page: number = 1, loadMore: boolean = false) => {
+  const fetchProducts = async (
+    searchTerm: string = "",
+    page: number = 1,
+    loadMore: boolean = false
+  ) => {
     setIsLoadingProducts(true);
     try {
       const params = new URLSearchParams({
         limit: productPagination.limit.toString(),
         page: page.toString(),
       });
-      
+
       if (searchTerm.trim()) {
-        params.append('search', searchTerm.trim());
+        params.append("search", searchTerm.trim());
       }
 
       const response = await fetch(`/api/products?${params.toString()}`, {
-        signal: AbortSignal.timeout(120000) // 2 minutos timeout
+        signal: AbortSignal.timeout(120000), // 2 minutos timeout
       });
 
       if (!response.ok) {
@@ -301,36 +305,36 @@ const NewPurchasePage = () => {
       }
 
       const result = await response.json();
-      console.log('🔍 Products API Response:', {
+      console.log("🔍 Products API Response:", {
         searchTerm,
         page,
         loadMore,
         totalProducts: result.data?.length,
-        pagination: result.pagination
+        pagination: result.pagination,
       });
-      
+
       if (result.data) {
         if (loadMore && page > 1) {
           // Append new products to existing ones
-          setProducts(prev => [...prev, ...result.data]);
+          setProducts((prev) => [...prev, ...result.data]);
         } else {
           // Replace products (new search or first page)
           setProducts(result.data);
         }
-        
+
         if (result.pagination) {
           setProductPagination(result.pagination);
           setHasMoreProducts(result.pagination.page < result.pagination.pages);
         }
       }
     } catch (error: any) {
-      console.error('Error fetching products:', error);
-      if (error.name !== 'TimeoutError' && error.name !== 'AbortError') {
-        setError('Error al cargar productos: ' + error.message);
+      console.error("Error fetching products:", error);
+      if (error.name !== "TimeoutError" && error.name !== "AbortError") {
+        setError("Error al cargar productos: " + error.message);
       }
       if (!loadMore) {
         setProducts([]);
-        setProductPagination(prev => ({ ...prev, total: 0, pages: 0 }));
+        setProductPagination((prev) => ({ ...prev, total: 0, pages: 0 }));
         setHasMoreProducts(false);
       }
     } finally {
@@ -356,7 +360,7 @@ const NewPurchasePage = () => {
   useEffect(() => {
     if (showProductModal) {
       // Reset pagination when new search or modal opens
-      setProductPagination(prev => ({ ...prev, page: 1 }));
+      setProductPagination((prev) => ({ ...prev, page: 1 }));
       fetchProducts(productSearchDebounced, 1, false);
     }
   }, [productSearchDebounced, showProductModal]);
@@ -454,7 +458,7 @@ const NewPurchasePage = () => {
       page: 1,
       limit: 100,
       total: 0,
-      pages: 0
+      pages: 0,
     });
     setHasMoreProducts(false);
   };
@@ -2028,7 +2032,9 @@ const NewPurchasePage = () => {
                     <div className="text-center py-8">
                       <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                       <p className="text-gray-500">
-                        {productSearchDebounced ? 'No se encontraron productos con esa búsqueda' : 'Escribe para buscar productos'}
+                        {productSearchDebounced
+                          ? "No se encontraron productos con esa búsqueda"
+                          : "Escribe para buscar productos"}
                       </p>
                     </div>
                   )}
@@ -2037,7 +2043,13 @@ const NewPurchasePage = () => {
                   {hasMoreProducts && !isLoadingProducts && (
                     <div className="flex justify-center mt-6">
                       <button
-                        onClick={() => fetchProducts(productSearchDebounced, productPagination.page + 1, true)}
+                        onClick={() =>
+                          fetchProducts(
+                            productSearchDebounced,
+                            productPagination.page + 1,
+                            true
+                          )
+                        }
                         className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         Cargar más productos
@@ -2061,15 +2073,18 @@ const NewPurchasePage = () => {
                     <div className="text-sm text-gray-600">
                       {productPagination.total > 0 ? (
                         <>
-                          Mostrando {products.length} de {productPagination.total} productos
+                          Mostrando {products.length} de{" "}
+                          {productPagination.total} productos
                           {productSearchDebounced && (
                             <span className="text-blue-600 ml-1">
                               (filtrados por: "{productSearchDebounced}")
                             </span>
                           )}
                         </>
+                      ) : productSearchDebounced ? (
+                        "Sin resultados"
                       ) : (
-                        productSearchDebounced ? 'Sin resultados' : 'Busca productos para comenzar'
+                        "Busca productos para comenzar"
                       )}
                     </div>
                     <button
