@@ -92,6 +92,7 @@ const NewPurchasePage = () => {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [hasMoreProducts, setHasMoreProducts] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   // Form data
@@ -450,9 +451,36 @@ const NewPurchasePage = () => {
     closeProductModal();
   };
 
+  // Add multiple selected products
+  const addSelectedProducts = () => {
+    const selectedProductList = products.filter(product => selectedProducts.has(product.id));
+    const newItems: PurchaseItem[] = selectedProductList.map(product => ({
+      productId: product.id,
+      product,
+      quantity: 1,
+      unitPriceForeign: currency !== "ARS" ? undefined : undefined,
+      unitPricePesos: product.cost,
+      isNew: true,
+    }));
+    setItems([...items, ...newItems]);
+    closeProductModal();
+  };
+
+  // Toggle product selection
+  const toggleProductSelection = (productId: string) => {
+    const newSelected = new Set(selectedProducts);
+    if (newSelected.has(productId)) {
+      newSelected.delete(productId);
+    } else {
+      newSelected.add(productId);
+    }
+    setSelectedProducts(newSelected);
+  };
+
   // Close product modal and reset state
   const closeProductModal = () => {
     setShowProductModal(false);
+    setSelectedProducts(new Set());
     setProductSearch("");
     setProductSearchDebounced("");
     setProducts([]);
@@ -1346,12 +1374,12 @@ const NewPurchasePage = () => {
                               <ImagePreview
                                 url={item.product.imageUrl}
                                 alt={item.product.name}
-                                className="w-12 h-12 rounded-md object-cover border"
+                                className="w-16 h-16 rounded-md object-cover border"
                                 showInstructions={false}
                               />
                             ) : (
-                              <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center border border-gray-200">
-                                <Package className="w-4 h-4 text-gray-400" />
+                              <div className="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center border border-gray-200">
+                                <Package className="w-5 h-5 text-gray-400" />
                               </div>
                             )}
                             <div className="flex-1">
@@ -1968,10 +1996,34 @@ const NewPurchasePage = () => {
               <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
                 <div className="p-6 border-b border-gray-200">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Seleccionar Producto
-                    </h3>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Seleccionar Productos
+                      </h3>
+                      {selectedProducts.size > 0 && (
+                        <p className="text-sm text-blue-600 mt-1">
+                          {selectedProducts.size} producto{selectedProducts.size !== 1 ? 's' : ''} seleccionado{selectedProducts.size !== 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
+                      {selectedProducts.size > 0 && (
+                        <>
+                          <button
+                            onClick={addSelectedProducts}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Agregar {selectedProducts.size} producto{selectedProducts.size !== 1 ? 's' : ''}
+                          </button>
+                          <button
+                            onClick={() => setSelectedProducts(new Set())}
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+                          >
+                            Limpiar selección
+                          </button>
+                        </>
+                      )}
                       <Link
                         href={`/products/new-from-purchase?returnTo=${encodeURIComponent(
                           "/purchases/new"
@@ -2011,69 +2063,104 @@ const NewPurchasePage = () => {
 
                 <div className="overflow-y-auto max-h-96 p-6">
                   <div className="grid grid-cols-1 gap-4">
-                    {products.map((product) => (
-                      <div
-                        key={product.id}
-                        className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                        onClick={() => addProduct(product)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3 flex-1">
-                            {product.imageUrl ? (
-                              <ImagePreview
-                                url={product.imageUrl}
-                                alt={product.name}
-                                className="w-12 h-12 rounded-md object-cover border"
-                                showInstructions={false}
+                    {products.map((product) => {
+                      const isSelected = selectedProducts.has(product.id);
+                      const isAlreadyAdded = items.some(item => item.productId === product.id);
+                      const addedItem = items.find(item => item.productId === product.id);
+                      
+                      return (
+                        <div
+                          key={product.id}
+                          className={`border rounded-lg p-4 transition-colors ${
+                            isSelected 
+                              ? 'border-blue-500 bg-blue-50' 
+                              : isAlreadyAdded
+                                ? 'border-gray-300 bg-gray-50'
+                                : 'border-gray-200 hover:bg-gray-50'
+                          } ${isAlreadyAdded ? 'opacity-60' : ''}`}
+                        >
+                          <div className="flex items-start space-x-4">
+                            {/* Checkbox */}
+                            <div className="flex items-center pt-2">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleProductSelection(product.id)}
+                                disabled={isAlreadyAdded}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                               />
-                            ) : (
-                              <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center border border-gray-200">
-                                <Package className="w-4 h-4 text-gray-400" />
-                              </div>
-                            )}
+                            </div>
+                            
+                            {/* Image - Más grande */}
+                            <div className="flex-shrink-0">
+                              {product.imageUrl ? (
+                                <ImagePreview
+                                  url={product.imageUrl}
+                                  alt={product.name}
+                                  className="w-20 h-20 rounded-md object-cover border"
+                                  showInstructions={false}
+                                />
+                              ) : (
+                                <div className="w-20 h-20 bg-gray-100 rounded-md flex items-center justify-center border border-gray-200">
+                                  <Package className="w-6 h-6 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Product Info */}
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-gray-900 truncate">
-                                {product.name}
-                              </h4>
-                              <p className="text-sm text-gray-500">
-                                SKU: {product.sku || "N/A"} | Categoría:{" "}
-                                {product.category.name}
-                              </p>
-                              <div className="flex items-center space-x-2 text-sm text-gray-500">
-                                <span>
-                                  Stock: {product.stock} {product.unit}
-                                </span>
-                                <span>•</span>
-                                <span className="font-medium">
-                                  Costo: ${product.cost.toLocaleString("es-AR")}
-                                </span>
-                                {product.imageUrl && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="text-green-600 text-xs">
-                                      Con imagen
-                                    </span>
-                                  </>
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-gray-900 text-base">
+                                    {product.name}
+                                  </h4>
+                                  <div className="mt-1 space-y-1">
+                                    <p className="text-sm text-gray-500">
+                                      SKU: {product.sku || "N/A"} | Categoría: {product.category.name}
+                                    </p>
+                                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                      <span>Stock: {product.stock} {product.unit}</span>
+                                      <span className="font-medium text-gray-900">
+                                        Costo: ${product.cost.toLocaleString("es-AR")}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                      <span>Mayorista: ${product.wholesalePrice.toLocaleString("es-AR")}</span>
+                                      <span>Minorista: ${product.retailPrice.toLocaleString("es-AR")}</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      {product.imageUrl && (
+                                        <span className="inline-block text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                                          Con imagen
+                                        </span>
+                                      )}
+                                      {isAlreadyAdded && (
+                                        <span className="inline-block text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                                          ✓ Agregado (Cant: {addedItem?.quantity})
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Quick add button */}
+                                {!isAlreadyAdded && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addProduct(product);
+                                    }}
+                                    className="ml-4 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex-shrink-0"
+                                  >
+                                    Agregar individual
+                                  </button>
                                 )}
                               </div>
                             </div>
                           </div>
-                          {items.find(
-                            (item) => item.productId === product.id
-                          ) && (
-                            <div className="text-sm text-green-600 font-medium">
-                              ✓ Agregado (
-                              {
-                                items.find(
-                                  (item) => item.productId === product.id
-                                )?.quantity
-                              }
-                              )
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {products.length === 0 && !isLoadingProducts && (
