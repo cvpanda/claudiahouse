@@ -67,8 +67,8 @@ export async function GET(
       insuranceCost: purchase.insuranceCost || 0,
       otherCosts: purchase.otherCosts || 0,
       subtotalPesos: purchase.subtotalPesos || 0,
-      totalCosts: purchase.totalCosts || 0,
-      total: purchase.total || 0,
+      totalCosts: totalImportCosts, // ✅ Usar el valor calculado correctamente
+      total: (purchase.subtotalPesos || 0) + totalImportCosts, // ✅ Recalcular total también
       exchangeRate: purchase.exchangeRate || null,
       subtotalForeign: purchase.subtotalForeign || null,
       items: purchase.items.map((item: any) => {
