@@ -633,25 +633,33 @@ export default function PurchaseDetailPage() {
                         {formatCurrency(purchase.totalCosts)}
                       </span>
                     </div>
-                    
+
                     {/* Desglose detallado de costos */}
                     <div className="mt-2 pl-4 border-l-2 border-gray-200">
                       {purchase.type === "IMPORT" && (
                         <>
                           {purchase.freightCost > 0 && (
                             <div className="flex justify-between text-sm text-gray-500">
-                              <span>• Flete ({purchase.currency || "USD"}):</span>
                               <span>
-                                {purchase.currency || "USD"} {purchase.freightCost.toLocaleString("es-AR", {
+                                • Flete ({purchase.currency || "USD"}):
+                              </span>
+                              <span>
+                                {purchase.currency || "USD"}{" "}
+                                {purchase.freightCost.toLocaleString("es-AR", {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2,
-                                })} 
+                                })}
                                 {purchase.exchangeRate && (
                                   <span className="text-xs ml-1">
-                                    (ARS ${(purchase.freightCost * purchase.exchangeRate).toLocaleString("es-AR", {
+                                    (ARS $
+                                    {(
+                                      purchase.freightCost *
+                                      purchase.exchangeRate
+                                    ).toLocaleString("es-AR", {
                                       minimumFractionDigits: 2,
                                       maximumFractionDigits: 2,
-                                    })})
+                                    })}
+                                    )
                                   </span>
                                 )}
                               </span>
@@ -660,26 +668,40 @@ export default function PurchaseDetailPage() {
                           {purchase.customsCost > 0 && (
                             <div className="flex justify-between text-sm text-gray-500">
                               <span>• Aduana (ARS):</span>
-                              <span>ARS ${purchase.customsCost.toLocaleString("es-AR", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}</span>
+                              <span>
+                                ARS $
+                                {purchase.customsCost.toLocaleString("es-AR", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </span>
                             </div>
                           )}
                           {purchase.insuranceCost > 0 && (
                             <div className="flex justify-between text-sm text-gray-500">
-                              <span>• Seguro ({purchase.currency || "USD"}):</span>
                               <span>
-                                {purchase.currency || "USD"} {purchase.insuranceCost.toLocaleString("es-AR", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
+                                • Seguro ({purchase.currency || "USD"}):
+                              </span>
+                              <span>
+                                {purchase.currency || "USD"}{" "}
+                                {purchase.insuranceCost.toLocaleString(
+                                  "es-AR",
+                                  {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  }
+                                )}
                                 {purchase.exchangeRate && (
                                   <span className="text-xs ml-1">
-                                    (ARS ${(purchase.insuranceCost * purchase.exchangeRate).toLocaleString("es-AR", {
+                                    (ARS $
+                                    {(
+                                      purchase.insuranceCost *
+                                      purchase.exchangeRate
+                                    ).toLocaleString("es-AR", {
                                       minimumFractionDigits: 2,
                                       maximumFractionDigits: 2,
-                                    })})
+                                    })}
+                                    )
                                   </span>
                                 )}
                               </span>
@@ -687,18 +709,26 @@ export default function PurchaseDetailPage() {
                           )}
                           {purchase.otherCosts > 0 && (
                             <div className="flex justify-between text-sm text-gray-500">
-                              <span>• Otros ({purchase.currency || "USD"}):</span>
                               <span>
-                                {purchase.currency || "USD"} {purchase.otherCosts.toLocaleString("es-AR", {
+                                • Otros ({purchase.currency || "USD"}):
+                              </span>
+                              <span>
+                                {purchase.currency || "USD"}{" "}
+                                {purchase.otherCosts.toLocaleString("es-AR", {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2,
                                 })}
                                 {purchase.exchangeRate && (
                                   <span className="text-xs ml-1">
-                                    (ARS ${(purchase.otherCosts * purchase.exchangeRate).toLocaleString("es-AR", {
+                                    (ARS $
+                                    {(
+                                      purchase.otherCosts *
+                                      purchase.exchangeRate
+                                    ).toLocaleString("es-AR", {
                                       minimumFractionDigits: 2,
                                       maximumFractionDigits: 2,
-                                    })})
+                                    })}
+                                    )
                                   </span>
                                 )}
                               </span>
@@ -709,10 +739,13 @@ export default function PurchaseDetailPage() {
                       {purchase.taxCost > 0 && (
                         <div className="flex justify-between text-sm text-gray-500">
                           <span>• Impuestos (ARS):</span>
-                          <span>ARS ${purchase.taxCost.toLocaleString("es-AR", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}</span>
+                          <span>
+                            ARS $
+                            {purchase.taxCost.toLocaleString("es-AR", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
                         </div>
                       )}
                       {purchase.type === "LOCAL" && (
@@ -720,37 +753,52 @@ export default function PurchaseDetailPage() {
                           {purchase.freightCost > 0 && (
                             <div className="flex justify-between text-sm text-gray-500">
                               <span>• Flete (ARS):</span>
-                              <span>ARS ${purchase.freightCost.toLocaleString("es-AR", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}</span>
+                              <span>
+                                ARS $
+                                {purchase.freightCost.toLocaleString("es-AR", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </span>
                             </div>
                           )}
                           {purchase.customsCost > 0 && (
                             <div className="flex justify-between text-sm text-gray-500">
                               <span>• Aduana (ARS):</span>
-                              <span>ARS ${purchase.customsCost.toLocaleString("es-AR", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}</span>
+                              <span>
+                                ARS $
+                                {purchase.customsCost.toLocaleString("es-AR", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </span>
                             </div>
                           )}
                           {purchase.insuranceCost > 0 && (
                             <div className="flex justify-between text-sm text-gray-500">
                               <span>• Seguro (ARS):</span>
-                              <span>ARS ${purchase.insuranceCost.toLocaleString("es-AR", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}</span>
+                              <span>
+                                ARS $
+                                {purchase.insuranceCost.toLocaleString(
+                                  "es-AR",
+                                  {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  }
+                                )}
+                              </span>
                             </div>
                           )}
                           {purchase.otherCosts > 0 && (
                             <div className="flex justify-between text-sm text-gray-500">
                               <span>• Otros (ARS):</span>
-                              <span>ARS ${purchase.otherCosts.toLocaleString("es-AR", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}</span>
+                              <span>
+                                ARS $
+                                {purchase.otherCosts.toLocaleString("es-AR", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </span>
                             </div>
                           )}
                         </>

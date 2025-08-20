@@ -10,10 +10,10 @@ const prisma = new PrismaClient();
 async function verifyProductCost() {
   try {
     console.log("🔍 Verificando corrección del producto LIB62");
-    console.log("=" .repeat(50));
+    console.log("=".repeat(50));
 
     const product = await prisma.product.findUnique({
-      where: { sku: "LIB62" }
+      where: { sku: "LIB62" },
     });
 
     if (!product) {
@@ -29,18 +29,33 @@ async function verifyProductCost() {
     console.log(`   Precio minorista: $${product.retailPrice}`);
 
     // Verificar si el costo es correcto (debería ser $4.607,80)
-    const expectedCost = 4607.80;
+    const expectedCost = 4607.8;
     const actualCost = parseFloat(product.cost);
 
     console.log(`\n✅ Verificación:`);
-    console.log(`   Costo esperado: $${expectedCost.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`);
-    console.log(`   Costo actual: $${actualCost.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`);
-    console.log(`   Diferencia: $${Math.abs(expectedCost - actualCost).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`);
+    console.log(
+      `   Costo esperado: $${expectedCost.toLocaleString("es-AR", {
+        minimumFractionDigits: 2,
+      })}`
+    );
+    console.log(
+      `   Costo actual: $${actualCost.toLocaleString("es-AR", {
+        minimumFractionDigits: 2,
+      })}`
+    );
+    console.log(
+      `   Diferencia: $${Math.abs(expectedCost - actualCost).toLocaleString(
+        "es-AR",
+        { minimumFractionDigits: 2 }
+      )}`
+    );
 
     if (Math.abs(expectedCost - actualCost) < 0.01) {
       console.log("\n🎉 ¡CORRECCIÓN EXITOSA!");
       console.log("   ✅ El costo del producto es correcto");
-      console.log("   ✅ Se guardó el Costo Final Unitario (incluye distribución de costos)");
+      console.log(
+        "   ✅ Se guardó el Costo Final Unitario (incluye distribución de costos)"
+      );
       console.log("   ✅ Ya no se usa el costo base incorrecto");
     } else {
       console.log("\n❌ PROBLEMA DETECTADO:");
@@ -48,13 +63,14 @@ async function verifyProductCost() {
     }
 
     // Verificar los márgenes
-    const wholesaleMargin = ((product.wholesalePrice - actualCost) / actualCost) * 100;
-    const retailMargin = ((product.retailPrice - actualCost) / actualCost) * 100;
+    const wholesaleMargin =
+      ((product.wholesalePrice - actualCost) / actualCost) * 100;
+    const retailMargin =
+      ((product.retailPrice - actualCost) / actualCost) * 100;
 
     console.log(`\n📊 Márgenes actualizados:`);
     console.log(`   Margen mayorista: ${wholesaleMargin.toFixed(1)}%`);
     console.log(`   Margen minorista: ${retailMargin.toFixed(1)}%`);
-
   } catch (error) {
     console.error("❌ Error:", error);
   } finally {
