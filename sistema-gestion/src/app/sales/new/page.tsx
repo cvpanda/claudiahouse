@@ -16,8 +16,10 @@ import {
   Layers,
   ChevronDown,
   ChevronRight,
+  X,
 } from "lucide-react";
 import Layout from "@/components/Layout";
+import ImagePreview from "@/components/ImagePreview";
 import ComboCreator from "@/components/ComboCreator";
 import Link from "next/link";
 
@@ -30,6 +32,7 @@ interface Product {
   wholesalePrice: number;
   retailPrice: number;
   unit: string;
+  imageUrl?: string | null;
   category?: {
     name: string;
   };
@@ -72,6 +75,20 @@ export default function NewSalePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  
+  // Estados para la búsqueda mejorada
+  const [productSearchDebounced, setProductSearchDebounced] = useState("");
+  const [productPagination, setProductPagination] = useState({
+    page: 1,
+    limit: 100,
+    total: 0,
+    pages: 0,
+  });
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [hasMoreProducts, setHasMoreProducts] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null
   );
@@ -107,42 +124,56 @@ export default function NewSalePage() {
   const total = taxableAmount + taxAmount + shippingCost;
 
   useEffect(() => {
-    fetchProducts();
     fetchCustomers();
-  }, []);
+    // Cargar productos locales para combos si es necesario
+    if (showComboCreator) {
+      fetchProductsForCombo();
+    }
+  }, [showComboCreator]);
 
-  // Función helper para filtrar productos de forma segura
+  // Función para cargar productos para combos (filtrado local)
+  const fetchProductsForCombo = async () => {
+    try {
+      const response = await fetch("/api/products?limit=1000");
+      if (response.ok) {
+        const data = await response.json();
+        const allProducts = data.data || [];
+        setFilteredProducts(allProducts);
+      }
+    } catch (error) {
+      console.error("Error fetching products for combo:", error);
+    }
+  };
+
+  // Función helper para filtrar productos localmente (para combos)
   const filterProducts = (searchTerm: string, productList: Product[]) => {
     if (!searchTerm.trim()) return [];
 
     const search = searchTerm.toLowerCase().trim();
 
     return productList.filter((product) => {
-      // Buscar en el nombre (siempre existe)
       const nameMatch = product.name.toLowerCase().includes(search);
-
-      // Buscar en SKU (puede ser null/undefined)
       const skuMatch = product.sku?.toLowerCase().includes(search) || false;
-
-      // Buscar en código de barras (puede ser null/undefined)
-      const barcodeMatch =
-        product.barcode?.toLowerCase().includes(search) || false;
+      const barcodeMatch = product.barcode?.toLowerCase().includes(search) || false;
 
       return nameMatch || skuMatch || barcodeMatch;
     });
   };
 
+  // Efecto para filtrar productos localmente solo para combos
   useEffect(() => {
-    setFilteredProducts(filterProducts(productSearch, products));
-    setSelectedProductIndex(-1); // Reset selection when search changes
-  }, [productSearch, products]);
+    if (showComboCreator) {
+      setFilteredProducts(filterProducts(productSearch, filteredProducts));
+      setSelectedProductIndex(-1);
+    }
+  }, [productSearch, showComboCreator]);
 
   // Función para verificar si un producto ya está agregado al combo/agrupación
   const isProductInCombo = (productId: string) => {
     return comboComponents.some((comp) => comp.productId === productId);
   };
 
-  // Función para manejar navegación con teclado
+  // Función para manejar navegación con teclado en búsqueda rápida
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!showProductSearch || filteredProducts.length === 0) return;
 
@@ -204,16 +235,92 @@ export default function NewSalePage() {
     }
   };
 
-  const fetchProducts = async () => {
+  // Debounce para búsqueda de productos
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setProductSearchDebounced(productSearch);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [productSearch]);
+
+  // Fetch products con búsqueda y paginación
+  const fetchProducts = async (search = "", page = 1, append = false) => {
+    setIsLoadingProducts(true);
     try {
-      const response = await fetch("/api/products");
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: productPagination.limit.toString(),
+        ...(search && { search }),
+      });
+
+      const response = await fetch(`/api/products?${params}`);
       if (response.ok) {
         const data = await response.json();
-        setProducts(data.data || []);
+        const newProducts = data.data || [];
+        
+        if (append) {
+          setProducts(prev => [...prev, ...newProducts]);
+        } else {
+          setProducts(newProducts);
+        }
+        
+        setProductPagination({
+          page: data.page || 1,
+          limit: data.limit || 100,
+          total: data.total || 0,
+          pages: data.pages || 1,
+        });
+        
+        setHasMoreProducts((data.page || 1) < (data.pages || 1));
       }
     } catch (error) {
       console.error("Error fetching products:", error);
     }
+    setIsLoadingProducts(false);
+  };
+
+  // Efecto para búsqueda con debounce
+  useEffect(() => {
+    if (showProductModal) {
+      fetchProducts(productSearchDebounced, 1, false);
+    }
+  }, [productSearchDebounced, showProductModal]);
+
+  // Agregar múltiples productos seleccionados
+  const addSelectedProducts = () => {
+    const selectedProductList = products.filter(product => selectedProducts.has(product.id));
+    selectedProductList.forEach(product => {
+      addProductToSale(product);
+    });
+    closeProductModal();
+  };
+
+  // Alternar selección de producto
+  const toggleProductSelection = (productId: string) => {
+    const newSelected = new Set(selectedProducts);
+    if (newSelected.has(productId)) {
+      newSelected.delete(productId);
+    } else {
+      newSelected.add(productId);
+    }
+    setSelectedProducts(newSelected);
+  };
+
+  // Cerrar modal de productos
+  const closeProductModal = () => {
+    setShowProductModal(false);
+    setSelectedProducts(new Set());
+    setProductSearch("");
+    setProductSearchDebounced("");
+    setProducts([]);
+    setProductPagination({
+      page: 1,
+      limit: 100,
+      total: 0,
+      pages: 0,
+    });
+    setHasMoreProducts(false);
   };
 
   const fetchCustomers = async () => {
@@ -252,7 +359,7 @@ export default function NewSalePage() {
       const existingItem = updatedItems[existingItemIndex];
       if (
         existingItem.product &&
-        existingItem.quantity < existingItem.product.stock
+        (product.stock === 0 || existingItem.quantity < existingItem.product.stock)
       ) {
         existingItem.quantity += 1;
         existingItem.totalPrice =
@@ -262,7 +369,7 @@ export default function NewSalePage() {
         alert("No hay suficiente stock disponible");
       }
     } else {
-      // Agregar nuevo producto
+      // Agregar nuevo producto (permitir incluso si stock es 0)
       const unitPrice =
         selectedCustomer?.customerType === "wholesale"
           ? product.wholesalePrice
@@ -632,6 +739,14 @@ export default function NewSalePage() {
                   <div className="flex space-x-2 mb-4">
                     <button
                       type="button"
+                      onClick={() => setShowProductModal(true)}
+                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar Productos
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => {
                         setItemType("combo");
                         setShowComboCreator(true);
@@ -714,114 +829,95 @@ export default function NewSalePage() {
                   </div>
                 )}
 
-                <div className="relative mb-4">
-                  <input
-                    type="text"
-                    placeholder={
-                      showComboCreator
-                        ? `Buscar productos para el ${
-                            itemType === "combo" ? "combo" : "pack"
-                          }...`
-                        : "Buscar por nombre, SKU o código de barras..."
-                    }
-                    value={productSearch}
-                    onChange={(e) => {
-                      setProductSearch(e.target.value);
-                      setShowProductSearch(e.target.value.length > 0);
-                      setSelectedProductIndex(-1);
-                    }}
-                    onKeyDown={handleKeyDown}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    autoComplete="off"
-                  />
+                {/* Búsqueda rápida para combos */}
+                {showComboCreator && (
+                  <div className="relative mb-4">
+                    <input
+                      type="text"
+                      placeholder={`Buscar productos para el ${
+                        itemType === "combo" ? "combo" : "pack"
+                      }...`}
+                      value={productSearch}
+                      onChange={(e) => {
+                        setProductSearch(e.target.value);
+                        setShowProductSearch(e.target.value.length > 0);
+                        setSelectedProductIndex(-1);
+                      }}
+                      onKeyDown={handleKeyDown}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      autoComplete="off"
+                    />
 
-                  {/* Instrucciones de navegación */}
-                  {showProductSearch && filteredProducts.length > 0 && (
-                    <div className="absolute right-2 top-2 text-xs text-gray-400 pointer-events-none">
-                      ↑↓ Enter
-                    </div>
-                  )}
+                    {showProductSearch && filteredProducts.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto dropdown-container">
+                        {filteredProducts.map((product, index) => {
+                          const isSelected = index === selectedProductIndex;
+                          const isInCombo = isProductInCombo(product.id);
 
-                  {showProductSearch && filteredProducts.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto dropdown-container">
-                      {filteredProducts.map((product, index) => {
-                        const isSelected = index === selectedProductIndex;
-                        const isInCombo =
-                          showComboCreator && isProductInCombo(product.id);
-
-                        return (
-                          <div
-                            key={product.id}
-                            data-index={index}
-                            className={`p-3 cursor-pointer border-b last:border-b-0 transition-colors ${
-                              isSelected
-                                ? "bg-blue-50 border-blue-200"
-                                : "hover:bg-gray-50"
-                            } ${isInCombo ? "bg-green-50" : ""}`}
-                            onClick={() => addProductToSale(product)}
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium">{product.name}</p>
-                                  {isInCombo && (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                      ✓ En{" "}
-                                      {itemType === "combo" ? "combo" : "pack"}
-                                    </span>
+                          return (
+                            <div
+                              key={product.id}
+                              data-index={index}
+                              className={`p-3 cursor-pointer border-b last:border-b-0 transition-colors ${
+                                isSelected
+                                  ? "bg-blue-50 border-blue-200"
+                                  : "hover:bg-gray-50"
+                              } ${isInCombo ? "bg-green-50" : ""}`}
+                              onClick={() => addProductToSale(product)}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium">{product.name}</p>
+                                    {isInCombo && (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        ✓ En {itemType === "combo" ? "combo" : "pack"}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-500">
+                                    SKU: {product.sku || "N/A"} | Stock: {product.stock} {product.unit}
+                                  </p>
+                                  {product.category && (
+                                    <p className="text-xs text-gray-400">
+                                      {product.category.name}
+                                    </p>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-500">
-                                  SKU: {product.sku || "N/A"} | Stock:{" "}
-                                  {product.stock} {product.unit}
-                                </p>
-                                {product.category && (
-                                  <p className="text-xs text-gray-400">
-                                    {product.category.name}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                {selectedCustomer?.customerType ===
-                                "wholesale" ? (
-                                  <>
-                                    <p className="font-medium text-green-600">
-                                      ${product.wholesalePrice.toFixed(2)}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      Mayorista
-                                    </p>
-                                  </>
-                                ) : (
-                                  <>
-                                    <p className="font-medium text-blue-600">
-                                      ${product.retailPrice.toFixed(2)}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      Minorista
-                                    </p>
-                                  </>
-                                )}
+                                <div className="text-right">
+                                  {selectedCustomer?.customerType === "wholesale" ? (
+                                    <>
+                                      <p className="font-medium text-green-600">
+                                        ${product.wholesalePrice.toFixed(2)}
+                                      </p>
+                                      <p className="text-xs text-gray-500">Mayorista</p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className="font-medium text-blue-600">
+                                        ${product.retailPrice.toFixed(2)}
+                                      </p>
+                                      <p className="text-xs text-gray-500">Minorista</p>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Mensaje cuando no hay resultados */}
-                  {showProductSearch &&
-                    productSearch.length > 0 &&
-                    filteredProducts.length === 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-center text-gray-500">
-                        <p>No se encontraron productos</p>
-                        <p className="text-sm">
-                          Intente con otro término de búsqueda
-                        </p>
+                          );
+                        })}
                       </div>
                     )}
-                </div>
+
+                    {showProductSearch &&
+                      productSearch.length > 0 &&
+                      filteredProducts.length === 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                          <p>No se encontraron productos</p>
+                          <p className="text-sm">Intente con otro término de búsqueda</p>
+                        </div>
+                      )}
+                  </div>
+                )}
 
                 {/* Lista de items en la venta */}
                 <div className="space-y-3">
@@ -1396,6 +1492,219 @@ export default function NewSalePage() {
             </div>
           </div>
         </form>
+
+        {/* Product Selection Modal */}
+        {showProductModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-6xl w-full max-h-[85vh] overflow-hidden">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Seleccionar Productos
+                    </h3>
+                    {selectedProducts.size > 0 && (
+                      <p className="text-sm text-blue-600 mt-1">
+                        {selectedProducts.size} producto{selectedProducts.size !== 1 ? 's' : ''} seleccionado{selectedProducts.size !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedProducts.size > 0 && (
+                      <>
+                        <button
+                          onClick={addSelectedProducts}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Agregar {selectedProducts.size} producto{selectedProducts.size !== 1 ? 's' : ''}
+                        </button>
+                        <button
+                          onClick={() => setSelectedProducts(new Set())}
+                          className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+                        >
+                          Limpiar selección
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={closeProductModal}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <input
+                      type="text"
+                      placeholder="Buscar productos por nombre, SKU o código de barras..."
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  {isLoadingProducts && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
+                      <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+                      Buscando productos...
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-y-auto max-h-96 p-6">
+                <div className="grid grid-cols-1 gap-4">
+                  {products.map((product) => {
+                    const isSelected = selectedProducts.has(product.id);
+                    const isAlreadyAdded = saleItems.some(item => item.productId === product.id);
+                    const addedItem = saleItems.find(item => item.productId === product.id);
+                    
+                    return (
+                      <div
+                        key={product.id}
+                        className={`border rounded-lg p-4 transition-colors ${
+                          isSelected 
+                            ? 'border-blue-500 bg-blue-50' 
+                            : isAlreadyAdded
+                              ? 'border-gray-300 bg-gray-50'
+                              : 'border-gray-200 hover:bg-gray-50'
+                        } ${isAlreadyAdded ? 'opacity-60' : ''}`}
+                      >
+                        <div className="flex items-start space-x-4">
+                          {/* Checkbox */}
+                          <div className="flex items-center pt-2">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleProductSelection(product.id)}
+                              disabled={isAlreadyAdded}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                          </div>
+                          
+                          {/* Image - Más grande */}
+                          <div className="flex-shrink-0">
+                            {product.imageUrl ? (
+                              <ImagePreview
+                                url={product.imageUrl}
+                                alt={product.name}
+                                className="w-20 h-20 rounded-md object-cover border"
+                                showInstructions={false}
+                              />
+                            ) : (
+                              <div className="w-20 h-20 bg-gray-100 rounded-md flex items-center justify-center border border-gray-200">
+                                <Package className="w-6 h-6 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Product Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-medium text-gray-900 text-base">
+                                  {product.name}
+                                </h4>
+                                <div className="mt-1 space-y-1">
+                                  <p className="text-sm text-gray-500">
+                                    SKU: {product.sku || "N/A"} | Categoría: {product.category?.name || "Sin categoría"}
+                                  </p>
+                                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                    <span className={product.stock === 0 ? 'text-red-600 font-medium' : ''}>
+                                      Stock: {product.stock} {product.unit}
+                                    </span>
+                                    <span className="font-medium text-gray-900">
+                                      Mayorista: ${product.wholesalePrice.toLocaleString("es-AR")}
+                                    </span>
+                                    <span className="font-medium text-gray-900">
+                                      Minorista: ${product.retailPrice.toLocaleString("es-AR")}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    {product.imageUrl && (
+                                      <span className="inline-block text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                                        Con imagen
+                                      </span>
+                                    )}
+                                    {product.stock === 0 && (
+                                      <span className="inline-block text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                                        Sin stock
+                                      </span>
+                                    )}
+                                    {isAlreadyAdded && (
+                                      <span className="inline-block text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                                        ✓ Agregado (Cant: {addedItem?.quantity})
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Quick add button */}
+                              {!isAlreadyAdded && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    addProductToSale(product);
+                                  }}
+                                  className="ml-4 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex-shrink-0"
+                                >
+                                  Agregar individual
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {products.length === 0 && !isLoadingProducts && (
+                  <div className="text-center py-8">
+                    <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">
+                      {productSearchDebounced
+                        ? "No se encontraron productos con esa búsqueda"
+                        : "Escribe para buscar productos"}
+                    </p>
+                  </div>
+                )}
+
+                {/* Load More Button */}
+                {hasMoreProducts && !isLoadingProducts && (
+                  <div className="flex justify-center mt-6">
+                    <button
+                      onClick={() =>
+                        fetchProducts(
+                          productSearchDebounced,
+                          productPagination.page + 1,
+                          true
+                        )
+                      }
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Cargar más productos
+                    </button>
+                  </div>
+                )}
+
+                {/* Loading more indicator */}
+                {isLoadingProducts && productPagination.page > 1 && (
+                  <div className="flex justify-center mt-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+                      Cargando más productos...
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
