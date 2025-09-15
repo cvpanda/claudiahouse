@@ -75,7 +75,7 @@ export default function NewSalePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  
+
   // Estados para la búsqueda mejorada
   const [productSearchDebounced, setProductSearchDebounced] = useState("");
   const [productPagination, setProductPagination] = useState({
@@ -87,8 +87,25 @@ export default function NewSalePage() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [hasMoreProducts, setHasMoreProducts] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
-  
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Estados específicos para combos
+  const [comboProducts, setComboProducts] = useState<Product[]>([]);
+  const [comboProductSearch, setComboProductSearch] = useState("");
+  const [comboProductSearchDebounced, setComboProductSearchDebounced] = useState("");
+  const [comboPagination, setComboPagination] = useState({
+    page: 1,
+    limit: 200, // Aumentamos el límite para mejor rendimiento
+    total: 0,
+    pages: 0,
+  });
+  const [isLoadingComboProducts, setIsLoadingComboProducts] = useState(false);
+  const [hasMoreComboProducts, setHasMoreComboProducts] = useState(false);
+  const [showComboModal, setShowComboModal] = useState(false);
+  const [isScrollLoading, setIsScrollLoading] = useState(false);
+
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null
   );
@@ -154,7 +171,8 @@ export default function NewSalePage() {
     return productList.filter((product) => {
       const nameMatch = product.name.toLowerCase().includes(search);
       const skuMatch = product.sku?.toLowerCase().includes(search) || false;
-      const barcodeMatch = product.barcode?.toLowerCase().includes(search) || false;
+      const barcodeMatch =
+        product.barcode?.toLowerCase().includes(search) || false;
 
       return nameMatch || skuMatch || barcodeMatch;
     });
@@ -235,7 +253,7 @@ export default function NewSalePage() {
     }
   };
 
-  // Debounce para búsqueda de productos
+  // Debounce para búsqueda de productos principales
   useEffect(() => {
     const timer = setTimeout(() => {
       setProductSearchDebounced(productSearch);
@@ -243,6 +261,15 @@ export default function NewSalePage() {
 
     return () => clearTimeout(timer);
   }, [productSearch]);
+
+  // Debounce para búsqueda de productos de combos
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setComboProductSearchDebounced(comboProductSearch);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [comboProductSearch]);
 
   // Fetch products con búsqueda y paginación
   const fetchProducts = async (search = "", page = 1, append = false) => {
@@ -258,20 +285,20 @@ export default function NewSalePage() {
       if (response.ok) {
         const data = await response.json();
         const newProducts = data.data || [];
-        
+
         if (append) {
-          setProducts(prev => [...prev, ...newProducts]);
+          setProducts((prev) => [...prev, ...newProducts]);
         } else {
           setProducts(newProducts);
         }
-        
+
         setProductPagination({
           page: data.page || 1,
           limit: data.limit || 100,
           total: data.total || 0,
           pages: data.pages || 1,
         });
-        
+
         setHasMoreProducts((data.page || 1) < (data.pages || 1));
       }
     } catch (error) {
@@ -280,20 +307,126 @@ export default function NewSalePage() {
     setIsLoadingProducts(false);
   };
 
-  // Efecto para búsqueda con debounce
+  // Efecto para búsqueda con debounce (modal principal)
   useEffect(() => {
     if (showProductModal) {
       fetchProducts(productSearchDebounced, 1, false);
     }
   }, [productSearchDebounced, showProductModal]);
 
+  // Fetch products específico para combos
+  const fetchComboProducts = async (search = "", page = 1, append = false) => {
+    if (append) {
+      setIsScrollLoading(true);
+    } else {
+      setIsLoadingComboProducts(true);
+    }
+    
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: comboPagination.limit.toString(),
+        ...(search && { search }),
+      });
+
+      const response = await fetch(`/api/products?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        const newProducts = data.data || [];
+        
+        if (append) {
+          setComboProducts(prev => [...prev, ...newProducts]);
+        } else {
+          setComboProducts(newProducts);
+        }
+        
+        setComboPagination({
+          page: data.page || 1,
+          limit: data.limit || 200,
+          total: data.total || 0,
+          pages: data.pages || 1,
+        });
+        
+        setHasMoreComboProducts((data.page || 1) < (data.pages || 1));
+      }
+    } catch (error) {
+      console.error("Error fetching combo products:", error);
+    }
+    
+    if (append) {
+      setIsScrollLoading(false);
+    } else {
+      setIsLoadingComboProducts(false);
+    }
+  };
+
+  // Efecto para búsqueda de combos con debounce
+  useEffect(() => {
+    if (showComboModal) {
+      fetchComboProducts(comboProductSearchDebounced, 1, false);
+    }
+  }, [comboProductSearchDebounced, showComboModal]);
+
+  // Función para manejar scroll infinito en el modal de combos
+  const handleComboScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const scrollThreshold = 200; // Cargar cuando esté a 200px del final
+
+    if (
+      scrollHeight - scrollTop <= clientHeight + scrollThreshold &&
+      hasMoreComboProducts &&
+      !isLoadingComboProducts &&
+      !isScrollLoading
+    ) {
+      fetchComboProducts(
+        comboProductSearchDebounced,
+        comboPagination.page + 1,
+        true
+      );
+    }
+  };
+
   // Agregar múltiples productos seleccionados
   const addSelectedProducts = () => {
-    const selectedProductList = products.filter(product => selectedProducts.has(product.id));
-    selectedProductList.forEach(product => {
+    const selectedProductList = products.filter((product) =>
+      selectedProducts.has(product.id)
+    );
+    selectedProductList.forEach((product) => {
       addProductToSale(product);
     });
     closeProductModal();
+  };
+
+  // Estados para productos seleccionados en combos
+  const [selectedComboProducts, setSelectedComboProducts] = useState<Set<string>>(new Set());
+
+  // Toggle selección de producto en combo
+  const toggleComboProductSelection = (productId: string) => {
+    const newSelected = new Set(selectedComboProducts);
+    if (newSelected.has(productId)) {
+      newSelected.delete(productId);
+    } else {
+      newSelected.add(productId);
+    }
+    setSelectedComboProducts(newSelected);
+  };
+
+  // Función para agregar producto al combo (alias de addProductToCombo)
+  const addComboProduct = (product: Product) => {
+    addProductToCombo(product);
+  };
+
+  // Agregar productos seleccionados de combos
+  const addSelectedComboProducts = () => {
+    const productsToAdd = comboProducts.filter(product => 
+      selectedComboProducts.has(product.id.toString())
+    );
+    
+    productsToAdd.forEach(product => {
+      addComboProduct(product);
+    });
+    
+    closeComboModal();
   };
 
   // Alternar selección de producto
@@ -307,7 +440,7 @@ export default function NewSalePage() {
     setSelectedProducts(newSelected);
   };
 
-  // Cerrar modal de productos
+  // Cerrar modal de productos principales
   const closeProductModal = () => {
     setShowProductModal(false);
     setSelectedProducts(new Set());
@@ -321,6 +454,22 @@ export default function NewSalePage() {
       pages: 0,
     });
     setHasMoreProducts(false);
+  };
+
+  // Cerrar modal de productos de combos
+  const closeComboModal = () => {
+    setShowComboModal(false);
+    setSelectedComboProducts(new Set());
+    setComboProductSearch("");
+    setComboProductSearchDebounced("");
+    setComboProducts([]);
+    setComboPagination({
+      page: 1,
+      limit: 200,
+      total: 0,
+      pages: 0,
+    });
+    setHasMoreComboProducts(false);
   };
 
   const fetchCustomers = async () => {
@@ -359,7 +508,8 @@ export default function NewSalePage() {
       const existingItem = updatedItems[existingItemIndex];
       if (
         existingItem.product &&
-        (product.stock === 0 || existingItem.quantity < existingItem.product.stock)
+        (product.stock === 0 ||
+          existingItem.quantity < existingItem.product.stock)
       ) {
         existingItem.quantity += 1;
         existingItem.totalPrice =
@@ -829,93 +979,21 @@ export default function NewSalePage() {
                   </div>
                 )}
 
-                {/* Búsqueda rápida para combos */}
+                {/* Botón para agregar productos al combo/agrupación */}
                 {showComboCreator && (
-                  <div className="relative mb-4">
-                    <input
-                      type="text"
-                      placeholder={`Buscar productos para el ${
-                        itemType === "combo" ? "combo" : "pack"
-                      }...`}
-                      value={productSearch}
-                      onChange={(e) => {
-                        setProductSearch(e.target.value);
-                        setShowProductSearch(e.target.value.length > 0);
-                        setSelectedProductIndex(-1);
+                  <div className="mb-4">
+                    <button
+                      onClick={() => {
+                        setShowComboModal(true);
+                        fetchComboProducts("", 1, false); // Cargar productos iniciales sin filtro
                       }}
-                      onKeyDown={handleKeyDown}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      autoComplete="off"
-                    />
-
-                    {showProductSearch && filteredProducts.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto dropdown-container">
-                        {filteredProducts.map((product, index) => {
-                          const isSelected = index === selectedProductIndex;
-                          const isInCombo = isProductInCombo(product.id);
-
-                          return (
-                            <div
-                              key={product.id}
-                              data-index={index}
-                              className={`p-3 cursor-pointer border-b last:border-b-0 transition-colors ${
-                                isSelected
-                                  ? "bg-blue-50 border-blue-200"
-                                  : "hover:bg-gray-50"
-                              } ${isInCombo ? "bg-green-50" : ""}`}
-                              onClick={() => addProductToSale(product)}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium">{product.name}</p>
-                                    {isInCombo && (
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        ✓ En {itemType === "combo" ? "combo" : "pack"}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-gray-500">
-                                    SKU: {product.sku || "N/A"} | Stock: {product.stock} {product.unit}
-                                  </p>
-                                  {product.category && (
-                                    <p className="text-xs text-gray-400">
-                                      {product.category.name}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="text-right">
-                                  {selectedCustomer?.customerType === "wholesale" ? (
-                                    <>
-                                      <p className="font-medium text-green-600">
-                                        ${product.wholesalePrice.toFixed(2)}
-                                      </p>
-                                      <p className="text-xs text-gray-500">Mayorista</p>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <p className="font-medium text-blue-600">
-                                        ${product.retailPrice.toFixed(2)}
-                                      </p>
-                                      <p className="text-xs text-gray-500">Minorista</p>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {showProductSearch &&
-                      productSearch.length > 0 &&
-                      filteredProducts.length === 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-center text-gray-500">
-                          <p>No se encontraron productos</p>
-                          <p className="text-sm">Intente con otro término de búsqueda</p>
-                        </div>
-                      )}
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Agregar Productos al {itemType === "combo" ? "Combo" : "Pack"}
+                    </button>
                   </div>
                 )}
 
@@ -1505,7 +1583,9 @@ export default function NewSalePage() {
                     </h3>
                     {selectedProducts.size > 0 && (
                       <p className="text-sm text-blue-600 mt-1">
-                        {selectedProducts.size} producto{selectedProducts.size !== 1 ? 's' : ''} seleccionado{selectedProducts.size !== 1 ? 's' : ''}
+                        {selectedProducts.size} producto
+                        {selectedProducts.size !== 1 ? "s" : ""} seleccionado
+                        {selectedProducts.size !== 1 ? "s" : ""}
                       </p>
                     )}
                   </div>
@@ -1517,7 +1597,8 @@ export default function NewSalePage() {
                           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors"
                         >
                           <Plus className="h-4 w-4" />
-                          Agregar {selectedProducts.size} producto{selectedProducts.size !== 1 ? 's' : ''}
+                          Agregar {selectedProducts.size} producto
+                          {selectedProducts.size !== 1 ? "s" : ""}
                         </button>
                         <button
                           onClick={() => setSelectedProducts(new Set())}
@@ -1559,19 +1640,23 @@ export default function NewSalePage() {
                 <div className="grid grid-cols-1 gap-4">
                   {products.map((product) => {
                     const isSelected = selectedProducts.has(product.id);
-                    const isAlreadyAdded = saleItems.some(item => item.productId === product.id);
-                    const addedItem = saleItems.find(item => item.productId === product.id);
-                    
+                    const isAlreadyAdded = saleItems.some(
+                      (item) => item.productId === product.id
+                    );
+                    const addedItem = saleItems.find(
+                      (item) => item.productId === product.id
+                    );
+
                     return (
                       <div
                         key={product.id}
                         className={`border rounded-lg p-4 transition-colors ${
-                          isSelected 
-                            ? 'border-blue-500 bg-blue-50' 
+                          isSelected
+                            ? "border-blue-500 bg-blue-50"
                             : isAlreadyAdded
-                              ? 'border-gray-300 bg-gray-50'
-                              : 'border-gray-200 hover:bg-gray-50'
-                        } ${isAlreadyAdded ? 'opacity-60' : ''}`}
+                            ? "border-gray-300 bg-gray-50"
+                            : "border-gray-200 hover:bg-gray-50"
+                        } ${isAlreadyAdded ? "opacity-60" : ""}`}
                       >
                         <div className="flex items-start space-x-4">
                           {/* Checkbox */}
@@ -1579,12 +1664,14 @@ export default function NewSalePage() {
                             <input
                               type="checkbox"
                               checked={isSelected}
-                              onChange={() => toggleProductSelection(product.id)}
+                              onChange={() =>
+                                toggleProductSelection(product.id)
+                              }
                               disabled={isAlreadyAdded}
                               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                             />
                           </div>
-                          
+
                           {/* Image - Más grande */}
                           <div className="flex-shrink-0">
                             {product.imageUrl ? (
@@ -1600,7 +1687,7 @@ export default function NewSalePage() {
                               </div>
                             )}
                           </div>
-                          
+
                           {/* Product Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between">
@@ -1610,17 +1697,30 @@ export default function NewSalePage() {
                                 </h4>
                                 <div className="mt-1 space-y-1">
                                   <p className="text-sm text-gray-500">
-                                    SKU: {product.sku || "N/A"} | Categoría: {product.category?.name || "Sin categoría"}
+                                    SKU: {product.sku || "N/A"} | Categoría:{" "}
+                                    {product.category?.name || "Sin categoría"}
                                   </p>
                                   <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                    <span className={product.stock === 0 ? 'text-red-600 font-medium' : ''}>
+                                    <span
+                                      className={
+                                        product.stock === 0
+                                          ? "text-red-600 font-medium"
+                                          : ""
+                                      }
+                                    >
                                       Stock: {product.stock} {product.unit}
                                     </span>
                                     <span className="font-medium text-gray-900">
-                                      Mayorista: ${product.wholesalePrice.toLocaleString("es-AR")}
+                                      Mayorista: $
+                                      {product.wholesalePrice.toLocaleString(
+                                        "es-AR"
+                                      )}
                                     </span>
                                     <span className="font-medium text-gray-900">
-                                      Minorista: ${product.retailPrice.toLocaleString("es-AR")}
+                                      Minorista: $
+                                      {product.retailPrice.toLocaleString(
+                                        "es-AR"
+                                      )}
                                     </span>
                                   </div>
                                   <div className="flex items-center space-x-2">
@@ -1642,7 +1742,7 @@ export default function NewSalePage() {
                                   </div>
                                 </div>
                               </div>
-                              
+
                               {/* Quick add button */}
                               {!isAlreadyAdded && (
                                 <button
@@ -1701,6 +1801,267 @@ export default function NewSalePage() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Combo Product Selection Modal */}
+        {showComboModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] flex flex-col">
+              {/* Header */}
+              <div className="p-6 border-b border-gray-200 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Seleccionar Productos para {itemType === "combo" ? "Combo" : "Pack"}
+                    </h3>
+                    <div className="flex items-center gap-4 mt-1">
+                      {selectedComboProducts.size > 0 && (
+                        <p className="text-sm text-blue-600">
+                          {selectedComboProducts.size} producto
+                          {selectedComboProducts.size !== 1 ? "s" : ""} seleccionado
+                          {selectedComboProducts.size !== 1 ? "s" : ""}
+                        </p>
+                      )}
+                      {comboPagination.total > 0 && (
+                        <p className="text-sm text-gray-500">
+                          {comboProducts.length} de {comboPagination.total} productos mostrados
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedComboProducts.size > 0 && (
+                      <>
+                        <button
+                          onClick={addSelectedComboProducts}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Agregar {selectedComboProducts.size} producto
+                          {selectedComboProducts.size !== 1 ? "s" : ""}
+                        </button>
+                        <button
+                          onClick={() => setSelectedComboProducts(new Set())}
+                          className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+                        >
+                          Limpiar selección
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={closeComboModal}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+
+                {/* Search input */}
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="Buscar productos por nombre, SKU o código de barras..."
+                      value={comboProductSearch}
+                      onChange={(e) => setComboProductSearch(e.target.value)}
+                      className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      autoComplete="off"
+                      autoFocus
+                    />
+                    {comboProductSearch && (
+                      <button
+                        onClick={() => setComboProductSearch("")}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  {hasMoreComboProducts && (
+                    <div className="text-xs text-gray-500 whitespace-nowrap">
+                      Scroll ↓ para más
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Products grid - Scrollable container */}
+              <div 
+                className="flex-1 overflow-y-auto"
+                onScroll={handleComboScroll}
+                style={{ minHeight: '400px', maxHeight: 'calc(90vh - 200px)' }}
+              >
+                <div className="p-6">
+                  {isLoadingComboProducts && comboPagination.page === 1 ? (
+                    <div className="flex justify-center items-center h-64">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="animate-spin h-8 w-8 border-2 border-gray-400 border-t-blue-600 rounded-full"></div>
+                        <p className="text-sm text-gray-500">Cargando productos...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {comboProducts.map((product) => {
+                        const isSelected = selectedComboProducts.has(product.id.toString());
+                        const isInCombo = comboComponents.some(comp => comp.productId === product.id);
+
+                        return (
+                          <div
+                            key={product.id}
+                            className={`relative border rounded-lg p-4 transition-all cursor-pointer ${
+                              isSelected
+                                ? "border-blue-500 bg-blue-50"
+                                : isInCombo
+                                ? "border-green-500 bg-green-50"
+                                : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                            }`}
+                            onClick={() => toggleComboProductSelection(product.id.toString())}
+                          >
+                            {/* Checkbox */}
+                            <div className="absolute top-2 left-2">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleComboProductSelection(product.id.toString())}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+
+                            {/* Product image */}
+                            <div className="flex justify-center mb-3 mt-4">
+                              {product.imageUrl ? (
+                                <img
+                                  src={product.imageUrl}
+                                  alt={product.name}
+                                  className="w-20 h-20 object-cover rounded"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.nextElementSibling?.classList.remove('hidden');
+                                  }}
+                                />
+                              ) : null}
+                              <div className={`w-20 h-20 bg-gray-200 rounded flex items-center justify-center ${product.imageUrl ? 'hidden' : ''}`}>
+                                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                            </div>
+
+                            <div className="text-center">
+                              <h3 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">
+                                {product.name}
+                              </h3>
+                              <p className="text-xs text-gray-500 mb-2">
+                                SKU: {product.sku || "N/A"}
+                              </p>
+                              
+                              {/* Stock info */}
+                              <div className="mb-2">
+                                {product.stock === 0 ? (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    Sin stock
+                                  </span>
+                                ) : product.stock <= 5 ? (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Poco stock: {product.stock}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-600">
+                                    Stock: {product.stock} {product.unit}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Price */}
+                              <div className="text-center">
+                                {selectedCustomer?.customerType === "wholesale" ? (
+                                  <>
+                                    <p className="font-medium text-green-600">
+                                      ${product.wholesalePrice.toFixed(2)}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Mayorista
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="font-medium text-blue-600">
+                                      ${product.retailPrice.toFixed(2)}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Minorista
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Already in combo indicator */}
+                              {isInCombo && (
+                                <div className="mt-2">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    ✓ En {itemType === "combo" ? "combo" : "pack"}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Category */}
+                              {product.category && (
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {product.category.name}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                      {/* Empty state */}
+                      {comboProducts.length === 0 && !isLoadingComboProducts && (
+                        <div className="text-center py-12">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m14 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m14 0H6m0 0l.01.01M6 20l.01.01" />
+                          </svg>
+                          <h3 className="mt-2 text-sm font-medium text-gray-900">No se encontraron productos</h3>
+                          <p className="mt-1 text-sm text-gray-500">Intente con otro término de búsqueda.</p>
+                        </div>
+                      )}
+
+                      {/* Scroll Loading Indicator - Solo se muestra cuando hay scroll infinito */}
+                      {isScrollLoading && (
+                        <div className="flex justify-center py-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-blue-600 rounded-full"></div>
+                            Cargando más productos...
+                          </div>
+                        </div>
+                      )}
+
+                      {/* End of results indicator */}
+                      {!hasMoreComboProducts && comboProducts.length > 0 && !isLoadingComboProducts && (
+                        <div className="text-center py-4">
+                          <p className="text-sm text-gray-500">
+                            {comboPagination.total > comboProducts.length 
+                              ? `Mostrando ${comboProducts.length} de ${comboPagination.total} productos`
+                              : `Todos los productos mostrados (${comboProducts.length})`
+                            }
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
