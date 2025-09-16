@@ -102,7 +102,7 @@ export interface SaleItem {
   saleId: string;
 
   // Nuevo: Tipo de item y nombre personalizado
-  itemType: "simple" | "combo" | "grouped";
+  itemType: "simple" | "combo" | "grouped" | "custom";
   displayName?: string;
 
   // Para productos simples
@@ -111,6 +111,9 @@ export interface SaleItem {
 
   // Para combos/agrupaciones
   components?: SaleItemComponent[];
+
+  // Para productos personalizados
+  customDescription?: string;
 }
 
 export interface SaleItemComponent {
@@ -175,10 +178,13 @@ export interface SaleItemFormData {
   quantity: number;
   unitPrice: number;
 
-  // Para combos/agrupaciones
-  itemType: "simple" | "combo" | "grouped";
+  // Para combos/agrupaciones/personalizados
+  itemType: "simple" | "combo" | "grouped" | "custom";
   displayName?: string;
   components?: SaleItemComponentFormData[];
+
+  // Para productos personalizados
+  customDescription?: string;
 }
 
 export interface SaleItemComponentFormData {

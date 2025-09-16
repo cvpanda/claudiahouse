@@ -5,16 +5,19 @@
 Se han implementado las siguientes mejoras en el modal de selección de productos para combos/agrupaciones:
 
 ### ✅ Scroll Infinito Automático
+
 - **Funcionalidad**: Los productos se cargan automáticamente al hacer scroll cerca del final del contenedor
 - **Threshold**: Se cargan más productos cuando el usuario está a 200px del final
 - **Estado de Carga**: Indicador visual separado para la carga por scroll vs carga inicial
 
 ### ✅ Límite de Productos Aumentado
+
 - **Antes**: 100 productos por página (7 páginas para 643 productos)
 - **Ahora**: 200 productos por página (4 páginas para 643 productos)
 - **Beneficio**: Menos peticiones al servidor, mejor rendimiento
 
 ### ✅ Sin Límites de Búsqueda
+
 - **Funcionalidad**: La búsqueda puede acceder a todos los productos disponibles
 - **Paginación Dinámica**: Se mantiene la paginación para evitar sobrecarga
 - **Scroll Infinito**: También funciona en resultados de búsqueda
@@ -22,24 +25,29 @@ Se han implementado las siguientes mejoras en el modal de selección de producto
 ### ✅ UX Mejorada del Modal
 
 #### Header Mejorado
+
 ```tsx
 // Información más detallada en el header
-{comboPagination.total > 0 && (
-  <p className="text-sm text-gray-500">
-    {comboProducts.length} de {comboPagination.total} productos mostrados
-  </p>
-)}
+{
+  comboPagination.total > 0 && (
+    <p className="text-sm text-gray-500">
+      {comboProducts.length} de {comboPagination.total} productos mostrados
+    </p>
+  );
+}
 ```
 
 #### Campo de Búsqueda Mejorado
+
 - **Autofocus**: El campo se enfoca automáticamente al abrir el modal
 - **Placeholder descriptivo**: Indica que se puede buscar por nombre, SKU o código de barras
 - **Botón de limpiar**: Botón X para limpiar la búsqueda rápidamente
 - **Indicador visual**: "Scroll ↓ para más" cuando hay más productos disponibles
 
 #### Contenedor de Scroll Optimizado
+
 ```tsx
-<div 
+<div
   className="flex-1 overflow-y-auto"
   onScroll={handleComboScroll}
   style={{ minHeight: '400px', maxHeight: 'calc(90vh - 200px)' }}
@@ -49,34 +57,42 @@ Se han implementado las siguientes mejoras en el modal de selección de producto
 ### ✅ Indicadores de Estado Mejorados
 
 #### Carga por Scroll Infinito
+
 ```tsx
-{isScrollLoading && (
-  <div className="flex justify-center py-4">
-    <div className="flex items-center gap-2 text-sm text-gray-500">
-      <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-blue-600 rounded-full"></div>
-      Cargando más productos...
+{
+  isScrollLoading && (
+    <div className="flex justify-center py-4">
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-blue-600 rounded-full"></div>
+        Cargando más productos...
+      </div>
     </div>
-  </div>
-)}
+  );
+}
 ```
 
 #### Final de Resultados
+
 ```tsx
-{!hasMoreComboProducts && comboProducts.length > 0 && !isLoadingComboProducts && (
-  <div className="text-center py-4">
-    <p className="text-sm text-gray-500">
-      {comboPagination.total > comboProducts.length 
-        ? `Mostrando ${comboProducts.length} de ${comboPagination.total} productos`
-        : `Todos los productos mostrados (${comboProducts.length})`
-      }
-    </p>
-  </div>
-)}
+{
+  !hasMoreComboProducts &&
+    comboProducts.length > 0 &&
+    !isLoadingComboProducts && (
+      <div className="text-center py-4">
+        <p className="text-sm text-gray-500">
+          {comboPagination.total > comboProducts.length
+            ? `Mostrando ${comboProducts.length} de ${comboPagination.total} productos`
+            : `Todos los productos mostrados (${comboProducts.length})`}
+        </p>
+      </div>
+    );
+}
 ```
 
 ## 🛠️ Implementación Técnica
 
 ### Función de Scroll Infinito
+
 ```tsx
 const handleComboScroll = (e: React.UIEvent<HTMLDivElement>) => {
   const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -98,6 +114,7 @@ const handleComboScroll = (e: React.UIEvent<HTMLDivElement>) => {
 ```
 
 ### Estados Mejorados
+
 ```tsx
 // Estado adicional para controlar la carga por scroll
 const [isScrollLoading, setIsScrollLoading] = useState(false);
@@ -112,6 +129,7 @@ const [comboPagination, setComboPagination] = useState({
 ```
 
 ### Función de Fetch Mejorada
+
 ```tsx
 const fetchComboProducts = async (search = "", page = 1, append = false) => {
   if (append) {
@@ -119,9 +137,9 @@ const fetchComboProducts = async (search = "", page = 1, append = false) => {
   } else {
     setIsLoadingComboProducts(true); // Estado para carga inicial
   }
-  
+
   // ... lógica de fetch ...
-  
+
   if (append) {
     setIsScrollLoading(false);
   } else {
@@ -133,12 +151,14 @@ const fetchComboProducts = async (search = "", page = 1, append = false) => {
 ## 📊 Métricas de Rendimiento
 
 ### Antes de las Mejoras
+
 - **100 productos por página**
 - **7 páginas totales** para 643 productos
 - **7 peticiones** para ver todos los productos
 - **Sin scroll infinito** (solo botón "Cargar más")
 
 ### Después de las Mejoras
+
 - **200 productos por página**
 - **4 páginas totales** para 643 productos
 - **Scroll infinito automático**
@@ -148,6 +168,7 @@ const fetchComboProducts = async (search = "", page = 1, append = false) => {
 ## 🧪 Testing
 
 El archivo `tests/test-combo-scroll-improvements.js` valida:
+
 - ✅ Productos cargados correctamente con nuevo límite
 - ✅ Paginación calculada correctamente
 - ✅ Búsqueda funcional sin límites
@@ -157,6 +178,7 @@ El archivo `tests/test-combo-scroll-improvements.js` valida:
 ## 🎨 Experiencia de Usuario
 
 ### Flujo Optimizado
+
 1. **Abrir Modal**: Autofocus en búsqueda, productos cargados inmediatamente
 2. **Buscar**: Búsqueda en tiempo real con debounce
 3. **Navegar**: Scroll suave con carga automática
@@ -164,6 +186,7 @@ El archivo `tests/test-combo-scroll-improvements.js` valida:
 5. **Finalizar**: Botones de acción siempre visibles
 
 ### Indicadores Visuales
+
 - **Stock bajo**: Badges amarillos para productos con poco stock
 - **Sin stock**: Badges rojos para productos agotados
 - **En combo**: Badges verdes para productos ya agregados
