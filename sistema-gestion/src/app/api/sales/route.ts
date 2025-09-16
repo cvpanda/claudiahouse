@@ -17,9 +17,12 @@ const saleItemSchema = z
     totalPrice: z.number().min(0, "El precio total debe ser mayor o igual a 0"),
 
     // Para combos/agrupaciones
-    itemType: z.enum(["simple", "combo", "grouped"]).default("simple"),
+    itemType: z.enum(["simple", "combo", "grouped", "custom"]).default("simple"),
     displayName: z.string().nullable().optional(),
     components: z.array(saleItemComponentSchema).nullable().optional(),
+    
+    // Para productos personalizados
+    customDescription: z.string().nullable().optional(),
   })
   .refine(
     (data) => {
@@ -32,6 +35,10 @@ const saleItemSchema = z
         return (
           !!data.components && data.components.length > 0 && !!data.displayName
         );
+      }
+      // Validar que para productos personalizados se requiera displayName
+      if (data.itemType === "custom") {
+        return !!data.displayName;
       }
       return true;
     },
@@ -244,6 +251,7 @@ export async function POST(request: NextRequest) {
                     totalPrice: item.quantity * item.unitPrice,
                     itemType: item.itemType,
                     displayName: item.displayName,
+                    customDescription: item.customDescription,
                   };
 
                   // Para productos simples

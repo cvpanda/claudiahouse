@@ -149,8 +149,9 @@ model SaleItem {
   totalPrice Float
 
   // Nuevo: Tipo de item de venta
-  itemType    String  @default("simple") // "simple" | "combo" | "grouped"
-  displayName String? // Nombre personalizado para combos/agrupaciones
+  itemType          String  @default("simple") // "simple" | "combo" | "grouped" | "custom"
+  displayName       String? // Nombre personalizado para combos/agrupaciones
+  customDescription String? // Descripción para productos personalizados
 
   saleId String
   sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
