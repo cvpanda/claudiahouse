@@ -641,8 +641,11 @@ export default function SaleDetailPage() {
       .map((item) => {
         const itemData = item as any;
         const isSimple = itemData.itemType === "simple";
+        const isCustom = itemData.itemType === "custom";
         const displayName = isSimple
           ? item.product?.name
+          : isCustom
+          ? itemData.displayName
           : itemData.displayName ||
             `${
               itemData.itemType === "combo" ? "Combo" : "Agrupación"
@@ -650,6 +653,8 @@ export default function SaleDetailPage() {
 
         const unit = isSimple
           ? item.product?.unit || "unidad"
+          : isCustom
+          ? "unidad"
           : itemData.itemType === "combo"
           ? "combo"
           : itemData.components
@@ -689,16 +694,18 @@ export default function SaleDetailPage() {
           ${
             isSimple && item.product?.sku
               ? `<div style="font-size: 12px; color: #666;">SKU: ${item.product.sku}</div>`
-              : !isSimple
+              : !isSimple && !isCustom
               ? `<div style="font-size: 12px; color: #666;">Tipo: ${
                   itemData.itemType === "combo" ? "Combo" : "Agrupación"
                 }</div>`
+              : isCustom
+              ? `<div style="font-size: 12px; color: #666;">Tipo: Producto Personalizado</div>`
               : ""
           }
           ${componentsHTML}
         </td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${
-          isSimple || itemData.itemType === "combo"
+          isSimple || itemData.itemType === "combo" || itemData.itemType === "custom"
             ? `${item.quantity} ${unit}`
             : unit // Para agrupaciones, solo mostrar las unidades totales
         }</td>
@@ -1678,6 +1685,8 @@ export default function SaleDetailPage() {
                         <div className="text-sm font-medium text-gray-900">
                           {(item as any).itemType === "simple"
                             ? item.product?.name
+                            : (item as any).itemType === "custom"
+                            ? (item as any).displayName
                             : (item as any).displayName ||
                               `${
                                 (item as any).itemType === "combo"
@@ -1688,6 +1697,8 @@ export default function SaleDetailPage() {
                         <div className="text-sm text-gray-500">
                           {(item as any).itemType === "simple"
                             ? `SKU: ${item.product?.sku || "N/A"}`
+                            : (item as any).itemType === "custom"
+                            ? "Tipo: Producto Personalizado"
                             : `Tipo: ${
                                 (item as any).itemType === "combo"
                                   ? "Combo"
@@ -1766,6 +1777,8 @@ export default function SaleDetailPage() {
                           <span className="text-sm text-gray-500">
                             {(item as any).itemType === "simple"
                               ? item.product?.unit || "unidad"
+                              : (item as any).itemType === "custom"
+                              ? "unidad"
                               : (item as any).itemType === "combo"
                               ? "combo"
                               : (item as any).components
@@ -1780,11 +1793,14 @@ export default function SaleDetailPage() {
                       ) : (
                         <span className="text-sm text-gray-900">
                           {(item as any).itemType === "simple" ||
-                          (item as any).itemType === "combo" ? (
+                          (item as any).itemType === "combo" ||
+                          (item as any).itemType === "custom" ? (
                             <>
                               {item.quantity}{" "}
                               {(item as any).itemType === "simple"
                                 ? item.product?.unit || "unidad"
+                                : (item as any).itemType === "custom"
+                                ? "unidad"
                                 : "combo"}
                             </>
                           ) : // Para agrupaciones, mostrar solo las unidades totales
