@@ -17,10 +17,12 @@ const saleItemSchema = z
     totalPrice: z.number().min(0, "El precio total debe ser mayor o igual a 0"),
 
     // Para combos/agrupaciones
-    itemType: z.enum(["simple", "combo", "grouped", "custom"]).default("simple"),
+    itemType: z
+      .enum(["simple", "combo", "grouped", "custom"])
+      .default("simple"),
     displayName: z.string().nullable().optional(),
     components: z.array(saleItemComponentSchema).nullable().optional(),
-    
+
     // Para productos personalizados
     customDescription: z.string().nullable().optional(),
   })

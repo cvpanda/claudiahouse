@@ -705,7 +705,9 @@ export default function SaleDetailPage() {
           ${componentsHTML}
         </td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${
-          isSimple || itemData.itemType === "combo" || itemData.itemType === "custom"
+          isSimple ||
+          itemData.itemType === "combo" ||
+          itemData.itemType === "custom"
             ? `${item.quantity} ${unit}`
             : unit // Para agrupaciones, solo mostrar las unidades totales
         }</td>

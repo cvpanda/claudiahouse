@@ -84,16 +84,46 @@ export default function SalesPage() {
     to: "",
   });
 
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20); // Aumentamos a 20 por página
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalSales, setTotalSales] = useState(0);
+
   useEffect(() => {
     fetchSales();
-  }, []);
+  }, [currentPage, itemsPerPage, searchTerm, filterStatus, filterPayment]);
 
   const fetchSales = async () => {
     try {
-      const response = await fetch("/api/sales");
+      setLoading(true);
+
+      // Construir parámetros de consulta
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+        orderBy: "createdAt",
+        order: "desc",
+      });
+
+      if (searchTerm.trim()) {
+        params.append("search", searchTerm.trim());
+      }
+
+      if (filterStatus) {
+        params.append("status", filterStatus);
+      }
+
+      if (filterPayment) {
+        params.append("paymentMethod", filterPayment);
+      }
+
+      const response = await fetch(`/api/sales?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setSales(data.data || []);
+        setTotalPages(data.pagination.pages || 1);
+        setTotalSales(data.pagination.total || 0);
       }
     } catch (error) {
       console.error("Error fetching sales:", error);
@@ -102,32 +132,40 @@ export default function SalesPage() {
     }
   };
 
-  const filteredSales = sales.filter((sale) => {
-    const matchesSearch =
-      sale.saleNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.customer?.name.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus = !filterStatus || sale.status === filterStatus;
-    const matchesPayment =
-      !filterPayment || sale.paymentMethod === filterPayment;
-
-    // Filtros de fecha
-    let matchesDate = true;
-    if (dateFilter.from || dateFilter.to) {
-      const saleDate = new Date(sale.createdAt);
-      if (dateFilter.from) {
-        const fromDate = new Date(dateFilter.from);
-        matchesDate = matchesDate && saleDate >= fromDate;
-      }
-      if (dateFilter.to) {
-        const toDate = new Date(dateFilter.to);
-        toDate.setHours(23, 59, 59, 999); // Incluir todo el día
-        matchesDate = matchesDate && saleDate <= toDate;
-      }
+  // Funciones de paginación
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
     }
+  };
 
-    return matchesSearch && matchesStatus && matchesPayment && matchesDate;
-  });
+  const goToFirstPage = () => setCurrentPage(1);
+  const goToLastPage = () => setCurrentPage(totalPages);
+  const goToPreviousPage = () => goToPage(currentPage - 1);
+  const goToNextPage = () => goToPage(currentPage + 1);
+
+  // Función para manejar cambios de búsqueda
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Resetear a primera página cuando se busca
+  };
+
+  const handleFilterChange = (type: string, value: string) => {
+    if (type === "status") {
+      setFilterStatus(value);
+    } else if (type === "payment") {
+      setFilterPayment(value);
+    }
+    setCurrentPage(1); // Resetear a primera página cuando se filtra
+  };
+
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setFilterStatus("");
+    setFilterPayment("");
+    setDateFilter({ from: "", to: "" });
+    setCurrentPage(1);
+  };
 
   const toggleSaleExpansion = (saleId: string) => {
     const newExpanded = new Set(expandedSales);
@@ -211,9 +249,9 @@ export default function SalesPage() {
   const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
 
   const filteredStats = {
-    total: filteredSales.length,
-    completed: filteredSales.filter((s) => s.status === "completed").length,
-    revenue: filteredSales
+    total: totalSales, // Usar el total de la paginación
+    completed: sales.filter((s) => s.status === "completed").length,
+    revenue: sales
       .filter((s) => s.status === "completed")
       .reduce((sum, sale) => sum + sale.total, 0),
   };
@@ -233,7 +271,7 @@ export default function SalesPage() {
       "Estado",
     ];
 
-    const csvData = filteredSales.map((sale) => [
+    const csvData = sales.map((sale) => [
       sale.saleNumber,
       formatDate(sale.createdAt),
       sale.customer?.name || "Cliente sin registrar",
@@ -270,13 +308,6 @@ export default function SalesPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const clearAllFilters = () => {
-    setSearchTerm("");
-    setFilterStatus("");
-    setFilterPayment("");
-    setDateFilter({ from: "", to: "" });
   };
 
   if (loading) {
@@ -337,7 +368,7 @@ export default function SalesPage() {
                 type="text"
                 placeholder="Buscar ventas..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-9 sm:pl-10 w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -372,7 +403,7 @@ export default function SalesPage() {
 
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => handleFilterChange("status", e.target.value)}
               className="text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="">Todos los estados</option>
@@ -382,7 +413,7 @@ export default function SalesPage() {
             </select>
             <select
               value={filterPayment}
-              onChange={(e) => setFilterPayment(e.target.value)}
+              onChange={(e) => handleFilterChange("payment", e.target.value)}
               className="text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="">Todos los métodos</option>
@@ -406,7 +437,7 @@ export default function SalesPage() {
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   Buscar: {searchTerm}
                   <button
-                    onClick={() => setSearchTerm("")}
+                    onClick={() => handleSearchChange("")}
                     className="ml-1 text-blue-600 hover:text-blue-800"
                   >
                     ×
@@ -417,7 +448,7 @@ export default function SalesPage() {
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   Estado: {getStatusLabel(filterStatus)}
                   <button
-                    onClick={() => setFilterStatus("")}
+                    onClick={() => handleFilterChange("status", "")}
                     className="ml-1 text-green-600 hover:text-green-800"
                   >
                     ×
@@ -428,7 +459,7 @@ export default function SalesPage() {
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                   Pago: {getPaymentMethodLabel(filterPayment)}
                   <button
-                    onClick={() => setFilterPayment("")}
+                    onClick={() => handleFilterChange("payment", "")}
                     className="ml-1 text-purple-600 hover:text-purple-800"
                   >
                     ×
@@ -528,7 +559,7 @@ export default function SalesPage() {
 
         {/* Mobile Cards View */}
         <div className="block md:hidden">
-          {filteredSales.length === 0 && !loading ? (
+          {sales.length === 0 && !loading ? (
             <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
               <ShoppingCart className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -563,7 +594,7 @@ export default function SalesPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredSales.map((sale) => (
+              {sales.map((sale) => (
                 <div
                   key={sale.id}
                   className="bg-white rounded-lg shadow-sm border p-4"
@@ -811,7 +842,7 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredSales.map((sale) => (
+                {sales.map((sale) => (
                   <>
                     <tr key={sale.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -1053,7 +1084,148 @@ export default function SalesPage() {
             </table>
           </div>
 
-          {filteredSales.length === 0 && !loading && (
+          {/* Paginación */}
+          {!loading && totalPages > 1 && (
+            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-b-lg">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 1}
+                  className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+                    currentPage === 1
+                      ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+                      : "text-gray-700 bg-white hover:bg-gray-50"
+                  }`}
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                  className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+                    currentPage === totalPages
+                      ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+                      : "text-gray-700 bg-white hover:bg-gray-50"
+                  }`}
+                >
+                  Siguiente
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div className="flex items-center space-x-4">
+                  <p className="text-sm text-gray-700">
+                    Mostrando{" "}
+                    <span className="font-medium">
+                      {(currentPage - 1) * itemsPerPage + 1}
+                    </span>{" "}
+                    a{" "}
+                    <span className="font-medium">
+                      {Math.min(currentPage * itemsPerPage, totalSales)}
+                    </span>{" "}
+                    de <span className="font-medium">{totalSales}</span> ventas
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <label className="text-sm text-gray-700">Por página:</label>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="text-sm border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <nav
+                    className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                    aria-label="Pagination"
+                  >
+                    <button
+                      onClick={goToFirstPage}
+                      disabled={currentPage === 1}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${
+                        currentPage === 1
+                          ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+                          : "text-gray-500 bg-white hover:bg-gray-50"
+                      }`}
+                    >
+                      ««
+                    </button>
+                    <button
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className={`relative inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium ${
+                        currentPage === 1
+                          ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+                          : "text-gray-500 bg-white hover:bg-gray-50"
+                      }`}
+                    >
+                      ‹
+                    </button>
+
+                    {/* Números de página */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNumber;
+                      if (totalPages <= 5) {
+                        pageNumber = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNumber = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNumber = totalPages - 4 + i;
+                      } else {
+                        pageNumber = currentPage - 2 + i;
+                      }
+
+                      return (
+                        <button
+                          key={pageNumber}
+                          onClick={() => goToPage(pageNumber)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            currentPage === pageNumber
+                              ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                              : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className={`relative inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium ${
+                        currentPage === totalPages
+                          ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+                          : "text-gray-500 bg-white hover:bg-gray-50"
+                      }`}
+                    >
+                      ›
+                    </button>
+                    <button
+                      onClick={goToLastPage}
+                      disabled={currentPage === totalPages}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 text-sm font-medium ${
+                        currentPage === totalPages
+                          ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+                          : "text-gray-500 bg-white hover:bg-gray-50"
+                      }`}
+                    >
+                      »»
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {sales.length === 0 && !loading && (
             <div className="text-center py-12">
               <ShoppingCart className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
