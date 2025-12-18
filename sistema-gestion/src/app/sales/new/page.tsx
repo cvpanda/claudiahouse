@@ -147,6 +147,9 @@ export default function NewSalePage() {
   const [customProductPrice, setCustomProductPrice] = useState(0);
   const [customProductDescription, setCustomProductDescription] = useState("");
 
+  // Estado para confirmación de venta sin cliente
+  const [showNoCustomerConfirm, setShowNoCustomerConfirm] = useState(false);
+
   // Cálculos de totales
   const subtotal = saleItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const discountAmount = (subtotal * formData.discount) / 100;
@@ -876,6 +879,17 @@ export default function NewSalePage() {
       return;
     }
 
+    // Si no hay cliente seleccionado, mostrar confirmación
+    if (!selectedCustomer) {
+      setShowNoCustomerConfirm(true);
+      return;
+    }
+
+    // Si hay cliente o ya se confirmó, proceder con la venta
+    await submitSale();
+  };
+
+  const submitSale = async () => {
     setLoading(true);
 
     try {
@@ -921,6 +935,7 @@ export default function NewSalePage() {
       alert("Error al registrar la venta");
     } finally {
       setLoading(false);
+      setShowNoCustomerConfirm(false);
     }
   };
 
@@ -2412,6 +2427,76 @@ export default function NewSalePage() {
                   className="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
                   Agregar Producto
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Confirmación sin Cliente */}
+        {showNoCustomerConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+              <div className="flex items-start mb-4">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-12 w-12 text-yellow-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-4 flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    ¿Crear venta sin cliente?
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    No has seleccionado un cliente para esta venta. ¿Estás seguro que deseas continuar sin asignar un cliente?
+                  </p>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <div className="flex">
+                      <svg
+                        className="h-5 w-5 text-blue-400 mt-0.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <div className="ml-2">
+                        <p className="text-sm text-blue-700">
+                          <strong>Tip:</strong> Asignar un cliente te permite hacer seguimiento de ventas, enviar el remito por email y gestionar mejor tus clientes.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowNoCustomerConfirm(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Volver y Asignar Cliente
+                </button>
+                <button
+                  onClick={submitSale}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Sí, Continuar sin Cliente
                 </button>
               </div>
             </div>

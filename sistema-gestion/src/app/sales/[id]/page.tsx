@@ -92,6 +92,8 @@ export default function SaleDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [productToRemove, setProductToRemove] = useState<string | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   const [editForm, setEditForm] = useState({
     paymentMethod: "",
@@ -114,6 +116,7 @@ export default function SaleDetailPage() {
     if (params.id) {
       fetchSale();
       fetchProducts();
+      fetchCustomers();
     }
   }, [params.id]);
 
@@ -166,6 +169,18 @@ export default function SaleDetailPage() {
       }
     } catch (error) {
       console.error("Error fetching products:", error);
+    }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch("/api/customers");
+      if (response.ok) {
+        const data = await response.json();
+        setCustomers(data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching customers:", error);
     }
   };
 
@@ -698,8 +713,6 @@ export default function SaleDetailPage() {
               ? `<div style="font-size: 12px; color: #666;">Tipo: ${
                   itemData.itemType === "combo" ? "Combo" : "Agrupación"
                 }</div>`
-              : isCustom
-              ? `<div style="font-size: 12px; color: #666;">Tipo: Producto Personalizado</div>`
               : ""
           }
           ${componentsHTML}
@@ -1173,8 +1186,9 @@ export default function SaleDetailPage() {
         heightLeft -= pageHeight;
       }
 
-      // Descargar el PDF
-      pdf.save(`remito-${sale.saleNumber}.pdf`);
+      // Descargar el PDF con nombre que incluye el cliente
+      const customerName = sale.customer?.name ? sale.customer.name.replace(/[^a-zA-Z0-9]/g, '_') : 'SinCliente';
+      pdf.save(`remito-${sale.saleNumber}-${customerName}.pdf`);
 
       alert("Remito exportado exitosamente como PDF.");
     } catch (error) {
@@ -1425,7 +1439,37 @@ export default function SaleDetailPage() {
                 <User className="w-5 h-5 mr-2" />
                 Cliente
               </h3>
-              {sale.customer ? (
+              {editing ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Seleccionar Cliente (opcional)
+                  </label>
+                  <select
+                    value={selectedCustomerId || ""}
+                    onChange={(e) => setSelectedCustomerId(e.target.value || null)}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <option value="">Sin cliente</option>
+                    {customers.map((customer) => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.name} ({
+                          customer.customerType === "retail" ? "Minorista" : "Mayorista"
+                        })
+                      </option>
+                    ))}
+                  </select>
+                  {selectedCustomerId && (() => {
+                    const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
+                    return selectedCustomer && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
+                        <p><strong>Tipo:</strong> {selectedCustomer.customerType === "retail" ? "Minorista" : "Mayorista"}</p>
+                        {selectedCustomer.phone && <p><strong>Teléfono:</strong> {selectedCustomer.phone}</p>}
+                        {selectedCustomer.email && <p><strong>Email:</strong> {selectedCustomer.email}</p>}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : sale.customer ? (
                 <div className="bg-gray-50 p-4 rounded-md">
                   <p className="font-medium text-gray-900">
                     {sale.customer.name}
