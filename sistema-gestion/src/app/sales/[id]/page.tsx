@@ -2130,7 +2130,7 @@ export default function SaleDetailPage() {
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                   Agregar Producto
                 </h3>
-                
+
                 {/* Botón para producto personalizado */}
                 <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
                   <button
@@ -2158,9 +2158,11 @@ export default function SaleDetailPage() {
                 </div>
 
                 <div className="border-t border-gray-200 pt-4">
-                  <p className="text-sm text-gray-600 mb-3">O selecciona del inventario:</p>
+                  <p className="text-sm text-gray-600 mb-3">
+                    O selecciona del inventario:
+                  </p>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2424,7 +2426,9 @@ export default function SaleDetailPage() {
                 </button>
                 <button
                   onClick={addCustomProduct}
-                  disabled={!customProductName.trim() || customProductPrice <= 0}
+                  disabled={
+                    !customProductName.trim() || customProductPrice <= 0
+                  }
                   className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Agregar Producto
