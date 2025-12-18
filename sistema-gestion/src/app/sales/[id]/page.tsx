@@ -97,6 +97,12 @@ export default function SaleDetailPage() {
     null
   );
 
+  // Estados para productos personalizados
+  const [showCustomProductModal, setShowCustomProductModal] = useState(false);
+  const [customProductName, setCustomProductName] = useState("");
+  const [customProductPrice, setCustomProductPrice] = useState(0);
+  const [customProductDescription, setCustomProductDescription] = useState("");
+
   const [editForm, setEditForm] = useState({
     paymentMethod: "",
     discount: 0,
@@ -348,6 +354,48 @@ export default function SaleDetailPage() {
     setNewProduct({ productId: "", quantity: 1, unitPrice: 0 });
     setShowAddProductDialog(false);
     setSuccessMessage("Producto agregado exitosamente");
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  // Funciones para productos personalizados
+  const openCustomProductModal = () => {
+    setShowAddProductDialog(false);
+    setShowCustomProductModal(true);
+  };
+
+  const closeCustomProductModal = () => {
+    setShowCustomProductModal(false);
+    setCustomProductName("");
+    setCustomProductPrice(0);
+    setCustomProductDescription("");
+  };
+
+  const addCustomProduct = () => {
+    if (!customProductName.trim()) {
+      alert("Debe ingresar un nombre para el producto");
+      return;
+    }
+
+    if (customProductPrice <= 0) {
+      alert("Debe ingresar un precio válido para el producto");
+      return;
+    }
+
+    const customItem: SaleItem = {
+      id: `temp-custom-${Date.now()}`,
+      productId: undefined,
+      product: undefined,
+      quantity: 1,
+      unitPrice: customProductPrice,
+      totalPrice: customProductPrice,
+      itemType: "custom",
+      displayName: customProductName,
+      customDescription: customProductDescription.trim() || undefined,
+    };
+
+    setEditedItems((prev) => [...prev, customItem]);
+    closeCustomProductModal();
+    setSuccessMessage("Producto personalizado agregado exitosamente");
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
@@ -2082,6 +2130,37 @@ export default function SaleDetailPage() {
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                   Agregar Producto
                 </h3>
+                
+                {/* Botón para producto personalizado */}
+                <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
+                  <button
+                    onClick={openCustomProductModal}
+                    className="w-full flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+                  >
+                    <svg
+                      className="h-5 w-5 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"
+                      />
+                    </svg>
+                    Crear Producto Personalizado
+                  </button>
+                  <p className="text-xs text-orange-700 mt-2 text-center">
+                    Para productos únicos que no están en tu inventario
+                  </p>
+                </div>
+
+                <div className="border-t border-gray-200 pt-4">
+                  <p className="text-sm text-gray-600 mb-3">O selecciona del inventario:</p>
+                </div>
+                
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2205,6 +2284,151 @@ export default function SaleDetailPage() {
                     Agregar
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Product Modal */}
+        {showCustomProductModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-hidden">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                    <svg
+                      className="h-6 w-6 mr-2 text-orange-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"
+                      />
+                    </svg>
+                    Producto Personalizado
+                  </h2>
+                  <button
+                    onClick={closeCustomProductModal}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg
+                      className="h-6 w-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <p className="mt-2 text-sm text-gray-600">
+                  Agrega un producto único que no está en tu inventario
+                </p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nombre del Producto *
+                  </label>
+                  <input
+                    type="text"
+                    value={customProductName}
+                    onChange={(e) => setCustomProductName(e.target.value)}
+                    placeholder="ej: Mochila única, Producto especial..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Precio *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-gray-500">
+                      $
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={customProductPrice}
+                      onChange={(e) =>
+                        setCustomProductPrice(parseFloat(e.target.value) || 0)
+                      }
+                      placeholder="0.00"
+                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Descripción (opcional)
+                  </label>
+                  <textarea
+                    value={customProductDescription}
+                    onChange={(e) =>
+                      setCustomProductDescription(e.target.value)
+                    }
+                    placeholder="Detalles adicionales sobre el producto..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                  <div className="flex">
+                    <svg
+                      className="h-5 w-5 text-orange-400 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <div className="ml-2">
+                      <h4 className="text-sm font-medium text-orange-800">
+                        ℹ️ Información
+                      </h4>
+                      <p className="mt-1 text-sm text-orange-700">
+                        Este producto no se guardará en tu inventario. Es ideal
+                        para artículos únicos o circunstanciales.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+                <button
+                  onClick={closeCustomProductModal}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={addCustomProduct}
+                  disabled={!customProductName.trim() || customProductPrice <= 0}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Agregar Producto
+                </button>
               </div>
             </div>
           </div>
