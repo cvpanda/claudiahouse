@@ -93,11 +93,14 @@ export default function SaleDetailPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [productToRemove, setProductToRemove] = useState<string | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
+    null
+  );
 
   const [editForm, setEditForm] = useState({
     paymentMethod: "",
     discount: 0,
+    discountType: "percentage" as "percentage" | "fixed",
     tax: 0,
     shippingCost: 0,
     shippingType: "",
@@ -194,6 +197,7 @@ export default function SaleDetailPage() {
         setEditForm({
           paymentMethod: normalizePaymentMethod(data.data.paymentMethod || ""),
           discount: data.data.discount || 0,
+          discountType: data.data.discountType || "percentage",
           tax: data.data.tax || 0,
           shippingCost: data.data.shippingCost || 0,
           shippingType: data.data.shippingType || "",
@@ -221,6 +225,7 @@ export default function SaleDetailPage() {
       setEditForm({
         paymentMethod: normalizePaymentMethod(sale.paymentMethod || ""),
         discount: sale.discount || 0,
+        discountType: (sale as any).discountType || "percentage",
         tax: sale.tax || 0,
         shippingCost: sale.shippingCost || 0,
         shippingType: sale.shippingType || "",
@@ -238,7 +243,10 @@ export default function SaleDetailPage() {
       (sum, item) => sum + item.quantity * item.unitPrice,
       0
     );
-    const discountAmount = subtotal * (editForm.discount / 100);
+    const discountAmount =
+      editForm.discountType === "percentage"
+        ? subtotal * (editForm.discount / 100)
+        : editForm.discount;
     const taxAmount = (subtotal - discountAmount) * (editForm.tax / 100);
     const shippingCost = editForm.shippingCost || 0;
     const total = subtotal - discountAmount + taxAmount + shippingCost;
@@ -1187,7 +1195,9 @@ export default function SaleDetailPage() {
       }
 
       // Descargar el PDF con nombre que incluye el cliente
-      const customerName = sale.customer?.name ? sale.customer.name.replace(/[^a-zA-Z0-9]/g, '_') : 'SinCliente';
+      const customerName = sale.customer?.name
+        ? sale.customer.name.replace(/[^a-zA-Z0-9]/g, "_")
+        : "SinCliente";
       pdf.save(`remito-${sale.saleNumber}-${customerName}.pdf`);
 
       alert("Remito exportado exitosamente como PDF.");
@@ -1446,28 +1456,51 @@ export default function SaleDetailPage() {
                   </label>
                   <select
                     value={selectedCustomerId || ""}
-                    onChange={(e) => setSelectedCustomerId(e.target.value || null)}
+                    onChange={(e) =>
+                      setSelectedCustomerId(e.target.value || null)
+                    }
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Sin cliente</option>
                     {customers.map((customer) => (
                       <option key={customer.id} value={customer.id}>
-                        {customer.name} ({
-                          customer.customerType === "retail" ? "Minorista" : "Mayorista"
-                        })
+                        {customer.name} (
+                        {customer.customerType === "retail"
+                          ? "Minorista"
+                          : "Mayorista"}
+                        )
                       </option>
                     ))}
                   </select>
-                  {selectedCustomerId && (() => {
-                    const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
-                    return selectedCustomer && (
-                      <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
-                        <p><strong>Tipo:</strong> {selectedCustomer.customerType === "retail" ? "Minorista" : "Mayorista"}</p>
-                        {selectedCustomer.phone && <p><strong>Teléfono:</strong> {selectedCustomer.phone}</p>}
-                        {selectedCustomer.email && <p><strong>Email:</strong> {selectedCustomer.email}</p>}
-                      </div>
-                    );
-                  })()}
+                  {selectedCustomerId &&
+                    (() => {
+                      const selectedCustomer = customers.find(
+                        (c) => c.id === selectedCustomerId
+                      );
+                      return (
+                        selectedCustomer && (
+                          <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
+                            <p>
+                              <strong>Tipo:</strong>{" "}
+                              {selectedCustomer.customerType === "retail"
+                                ? "Minorista"
+                                : "Mayorista"}
+                            </p>
+                            {selectedCustomer.phone && (
+                              <p>
+                                <strong>Teléfono:</strong>{" "}
+                                {selectedCustomer.phone}
+                              </p>
+                            )}
+                            {selectedCustomer.email && (
+                              <p>
+                                <strong>Email:</strong> {selectedCustomer.email}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      );
+                    })()}
                 </div>
               ) : sale.customer ? (
                 <div className="bg-gray-50 p-4 rounded-md">
@@ -1565,24 +1598,54 @@ export default function SaleDetailPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descuento (%)
+                    Descuento
                   </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={editForm.discount}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0;
-                      setEditForm({
-                        ...editForm,
-                        discount: Math.min(100, Math.max(0, value)),
-                      });
-                    }}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="0.0"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={editForm.discountType}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          discountType: e.target.value as
+                            | "percentage"
+                            | "fixed",
+                          discount: 0, // Resetear descuento al cambiar tipo
+                        })
+                      }
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    >
+                      <option value="percentage">%</option>
+                      <option value="fixed">$</option>
+                    </select>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max={
+                        editForm.discountType === "percentage"
+                          ? "100"
+                          : calculateTotals().subtotal.toString()
+                      }
+                      value={editForm.discount}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        const maxValue =
+                          editForm.discountType === "percentage"
+                            ? 100
+                            : calculateTotals().subtotal;
+                        setEditForm({
+                          ...editForm,
+                          discount: Math.min(maxValue, Math.max(0, value)),
+                        });
+                      }}
+                      placeholder={
+                        editForm.discountType === "percentage"
+                          ? "0-100"
+                          : "Monto"
+                      }
+                      className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

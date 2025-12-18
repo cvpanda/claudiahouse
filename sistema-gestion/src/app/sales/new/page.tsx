@@ -125,6 +125,7 @@ export default function NewSalePage() {
   const [formData, setFormData] = useState({
     paymentMethod: "efectivo",
     discount: 0,
+    discountType: "percentage" as "percentage" | "fixed",
     tax: 0,
     shippingCost: 0,
     shippingType: "",
@@ -152,7 +153,10 @@ export default function NewSalePage() {
 
   // Cálculos de totales
   const subtotal = saleItems.reduce((sum, item) => sum + item.totalPrice, 0);
-  const discountAmount = (subtotal * formData.discount) / 100;
+  const discountAmount =
+    formData.discountType === "percentage"
+      ? (subtotal * formData.discount) / 100
+      : formData.discount;
   const taxableAmount = subtotal - discountAmount;
   const taxAmount = (taxableAmount * formData.tax) / 100;
   const shippingCost = formData.shippingCost || 0;
@@ -897,6 +901,7 @@ export default function NewSalePage() {
         customerId: selectedCustomer?.id || null,
         paymentMethod: formData.paymentMethod,
         discount: formData.discount,
+        discountType: formData.discountType,
         tax: formData.tax,
         shippingCost: formData.shippingCost,
         shippingType: formData.shippingType,
@@ -1548,22 +1553,49 @@ export default function NewSalePage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Descuento (%)
+                      Descuento
                     </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={formData.discount}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          discount: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+                    <div className="flex gap-2">
+                      <select
+                        value={formData.discountType}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            discountType: e.target.value as
+                              | "percentage"
+                              | "fixed",
+                            discount: 0, // Resetear descuento al cambiar tipo
+                          })
+                        }
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      >
+                        <option value="percentage">%</option>
+                        <option value="fixed">$</option>
+                      </select>
+                      <input
+                        type="number"
+                        min="0"
+                        max={
+                          formData.discountType === "percentage"
+                            ? "100"
+                            : subtotal.toString()
+                        }
+                        step="0.01"
+                        value={formData.discount}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            discount: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        placeholder={
+                          formData.discountType === "percentage"
+                            ? "0-100"
+                            : "Monto"
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -1660,7 +1692,13 @@ export default function NewSalePage() {
 
                   {formData.discount > 0 && (
                     <div className="flex justify-between text-red-600">
-                      <span>Descuento (-{formData.discount}%):</span>
+                      <span>
+                        Descuento{" "}
+                        {formData.discountType === "percentage"
+                          ? `(-${formData.discount}%)`
+                          : "(monto fijo)"}
+                        :
+                      </span>
                       <span>-${discountAmount.toFixed(2)}</span>
                     </div>
                   )}
@@ -2458,7 +2496,8 @@ export default function NewSalePage() {
                     ¿Crear venta sin cliente?
                   </h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    No has seleccionado un cliente para esta venta. ¿Estás seguro que deseas continuar sin asignar un cliente?
+                    No has seleccionado un cliente para esta venta. ¿Estás
+                    seguro que deseas continuar sin asignar un cliente?
                   </p>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                     <div className="flex">
@@ -2477,7 +2516,9 @@ export default function NewSalePage() {
                       </svg>
                       <div className="ml-2">
                         <p className="text-sm text-blue-700">
-                          <strong>Tip:</strong> Asignar un cliente te permite hacer seguimiento de ventas, enviar el remito por email y gestionar mejor tus clientes.
+                          <strong>Tip:</strong> Asignar un cliente te permite
+                          hacer seguimiento de ventas, enviar el remito por
+                          email y gestionar mejor tus clientes.
                         </p>
                       </div>
                     </div>

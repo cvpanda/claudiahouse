@@ -119,6 +119,7 @@ model Sale {
   subtotal      Float
   tax           Float    @default(0)
   discount      Float    @default(0)
+  discountType  String   @default("percentage") // "percentage" | "fixed"
   shippingCost  Float    @default(0)
   shippingType  String?
   paymentMethod String   @default("cash")
