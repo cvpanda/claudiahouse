@@ -194,6 +194,7 @@ export default function SaleDetailPage() {
         const data = await response.json();
         setSale(data.data);
         setEditedItems(data.data.saleItems || []);
+        setSelectedCustomerId(data.data.customer?.id || null);
         setEditForm({
           paymentMethod: normalizePaymentMethod(data.data.paymentMethod || ""),
           discount: data.data.discount || 0,
@@ -222,6 +223,7 @@ export default function SaleDetailPage() {
 
   const handleCancelEdit = () => {
     if (sale) {
+      setSelectedCustomerId(sale.customer?.id || null);
       setEditForm({
         paymentMethod: normalizePaymentMethod(sale.paymentMethod || ""),
         discount: sale.discount || 0,
